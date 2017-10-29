@@ -8,4 +8,5 @@ setup(name='Cloud Training',
       author='Oleg Polosin',
       author_email='apls777@gmial.com',
       packages=['cloud_training', 'cloud_training.commands'],
-      scripts=['bin/cloud_training'])
+      package_data={'cloud_training': ['data/launch-specification.json', 'data/unzip.py', 'data/user_data.sh']},
+      scripts=['bin/cloud-training'])

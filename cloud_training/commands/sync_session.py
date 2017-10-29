@@ -1,57 +1,48 @@
-import logging
 import os
-from cloud_training.abstract_command import AbstractCommand
+from cloud_training import utils
 from cloud_training.aws import Aws
+from cloud_training.project_command import ProjectCommand
 
 
-class SyncSessionCommand(AbstractCommand):
-    def check(self):
-        if not self._args.model:
-            logging.error('The model is not specified')
-            return False
-
-        return True
+class SyncSessionCommand(ProjectCommand):
 
     def run(self):
-        s3_project_dir = self._config['aws_s3_path']
-        training_dir = 'training/' + self._args.model
-
-        aws = Aws(self._region)
+        local_training_path = os.path.join(self._project_dir, 'training', self._model)
+        s3_training_path = '/'.join([self._s3_project_dir, 'training', self._model])
+        aws = Aws(self._settings['region'])
 
         if self._args.session == 0:
-            logging.info('Session was not specified. Getting the last session ID...')
+            print('Session was not specified. Getting the last session ID...')
 
             # sync the last_session file
-            res = aws.s3_sync(s3_project_dir + '/' + training_dir, os.path.join(self._project_dir, training_dir),
-                              ['*'], ['last_session'])
-            logging.debug('S3 output: ' + res)
+            aws.s3_sync(s3_training_path, local_training_path, ['*'], ['last_session'])
 
             # read the last session ID
-            with open(os.path.join(self._project_dir, training_dir, 'last_session'), 'r') as f:
-                session_id = int(f.readline())
+            with open(os.path.join(local_training_path, 'last_session'), 'r') as f:
+                session_id = int(f.read())
         else:
             session_id = self._args.session
 
-        logging.info('Syncing the session #' + str(session_id) + '...')
+        print('Syncing the session #' + str(session_id) + '...')
 
         # sync the session directory (excluding checkpoints' files)
-        session_dir = training_dir + '/session_' + str(session_id)
-        res = aws.s3_sync(s3_project_dir + '/' + session_dir, os.path.join(self._project_dir, session_dir),
-                          ['checkpoints/*'], ['checkpoints/checkpoint'])
-        logging.debug('S3 output: ' + res)
+        session_dir = 'session_' + str(session_id)
+        aws.s3_sync(s3_training_path + '/' + session_dir, os.path.join(local_training_path, session_dir),
+                    ['checkpoints/*'], ['checkpoints/checkpoint'])
 
         # get the last checkpoint name
-        checkpoints_dir = session_dir + '/checkpoints'
-        with open(os.path.join(self._project_dir, checkpoints_dir, 'checkpoint'), 'r') as f:
-            last_model_str = f.readline()
+        local_checkpoints_path = os.path.join(local_training_path, session_dir, 'checkpoints')
+        s3_checkpoints_path = s3_training_path + '/' + session_dir + '/checkpoints'
+        last_model_name = utils.get_last_checkpoint_name(os.path.join(local_checkpoints_path, 'checkpoint'))
+        if not last_model_name:
+            print('Checkpoint was not found')
+            return True
 
-        last_model_name = os.path.basename(last_model_str[24:-2])
-
-        logging.info('Getting the checkpoint "%s"...' % last_model_name)
+        print('Getting the checkpoint "%s"...' % last_model_name)
 
         # get the last checkpoint's files
-        res = aws.s3_sync(s3_project_dir + '/' + checkpoints_dir, os.path.join(self._project_dir, checkpoints_dir),
-                          ['*'], [last_model_name + '*'])
-        logging.debug('S3 output: ' + res)
+        aws.s3_sync(s3_checkpoints_path, local_checkpoints_path, [s3_checkpoints_path + '/*'], [last_model_name + '*'])
 
-        logging.info('Done')
+        print('Done')
+
+        return True

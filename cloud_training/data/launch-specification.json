@@ -1,0 +1,32 @@
+{
+  "ImageId": "",
+  "InstanceType": "",
+  "KeyName": "",
+  "BlockDeviceMappings": [
+    {
+      "DeviceName": "/dev/sda1",
+      "Ebs": {
+        "DeleteOnTermination": true,
+        "VolumeType": "gp2",
+        "VolumeSize": 0,
+        "SnapshotId": ""
+      }
+    },
+    {
+      "DeviceName": "/dev/xvdba",
+      "Ebs": {
+        "DeleteOnTermination": true,
+        "VolumeType": "gp2",
+        "VolumeSize": 0
+      }
+    }
+  ],
+  "UserData": "",
+  "NetworkInterfaces": [
+    {
+      "DeviceIndex": 0,
+      "DeleteOnTermination": true,
+      "AssociatePublicIpAddress": true
+    }
+  ]
+}
