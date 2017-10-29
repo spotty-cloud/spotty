@@ -1,3 +1,4 @@
+from cloud_training import configure
 from cloud_training.aws import Aws
 from cloud_training.abstract_command import AbstractCommand
 
@@ -21,7 +22,7 @@ class SpotPriceCommand(AbstractCommand):
         print('Getting prices for a "%s" instance...' % instance_type)
 
         for region in regions:
-            prices = Aws(region).spot_price(instance_type)
+            prices = Aws(configure.get_aws_profile_name(self._args.profile), region).spot_price(instance_type)
             print(prices)
 
         return True

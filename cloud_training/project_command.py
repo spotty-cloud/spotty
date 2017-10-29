@@ -1,7 +1,9 @@
 import json
 import os
 from argparse import Namespace
+from cloud_training import configure
 from cloud_training.abstract_command import AbstractCommand
+from cloud_training.aws import Aws
 
 
 class ProjectCommand(AbstractCommand):
@@ -44,6 +46,7 @@ class ProjectCommand(AbstractCommand):
             raise ValueError('The model is not specified.')
 
         self._model = self._args.model
+        self._aws = Aws(configure.get_aws_profile_name(self._args.profile))
 
     def _get_project_config(self):
         config = None

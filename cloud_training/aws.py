@@ -8,13 +8,22 @@ from cloud_training import utils
 
 
 class Aws(object):
-    def __init__(self, region):
+    def __init__(self, profile: str = None, region: str = None):
+        self._profile = profile
         self._region = region
 
     def run(self, args: list, json_format=True):
-        command_args = ['aws', '--region', self._region] + args
+        command_args = ['aws']
+        if self._profile:
+            command_args += ['--profile', self._profile]
+
+        if self._region:
+            command_args += ['--region', self._region]
+
         if json_format:
             command_args += ['--output', 'json']
+
+        command_args += args
 
         logging.debug('AWS command: ' + subprocess.list2cmdline(command_args))
 
@@ -44,6 +53,9 @@ class Aws(object):
                 args += ['--include', path]
 
         return self.run(args, False)
+
+    def s3_copy(self, from_file: str, to_file: str):
+        return self.run(['s3', 'sync', from_file, to_file], False)
 
     def spot_price(self, instance_type: str) -> dict:
         tomorrow_date = (datetime.date.today() + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
