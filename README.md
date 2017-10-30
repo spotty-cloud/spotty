@@ -139,7 +139,7 @@ and [this](http://mortada.net/tips-for-running-tensorflow-with-gpu-support-on-aw
 You can create your own AMI or use my one: **ami-a396bac6** (us-east-2 region). 
 
 I installed there Anaconda 3 with "nlp" environment which contains TensorFlow 1.4.0-rc0. 
-TensorFlow was compiled with the capacity 3.7 (see [CUDA GPUs](https://developer.nvidia.com/cuda-gpus)), 
+TensorFlow was compiled with the compute capability 3.7 (see [CUDA GPUs](https://developer.nvidia.com/cuda-gpus)), 
 so the image can be used for any p2.* instance. If you want to use this image for g3.* instances, 
 you can recompile TensorFlow and install it for another environment.
 
