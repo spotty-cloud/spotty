@@ -104,6 +104,15 @@ class Aws(object):
 
         return res['SpotInstanceRequests'][0]
 
+    def cancel_spot_request(self, request_id: str = None):
+        args = ['ec2', 'cancel-spot-instance-requests', '--spot-instance-request-ids', request_id]
+        res = self.run(args)
+        if not res or not res['CancelledSpotInstanceRequests'] \
+                or res['CancelledSpotInstanceRequests'][0]['State'] != 'cancelled':
+            return False
+
+        return True
+
     def get_spot_request(self, request_id):
         args = ['ec2', 'describe-spot-instance-requests', '--spot-instance-request-ids', request_id]
         res = self.run(args)

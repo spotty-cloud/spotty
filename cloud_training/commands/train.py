@@ -8,9 +8,15 @@ from cloud_training.project_command import ProjectCommand
 
 class TrainCommand(ProjectCommand):
     def run(self):
-        instance_type = self._args.instance_type if self._args.instance_type else self._settings['instance_type']
+        # check the train script exists
+        train_script_path = os.path.join(self._project_dir, self._project_config['package_name'], 'models', self._model,
+                                         'train.py')
+        if not os.path.exists(train_script_path):
+            self._print('The train script "%s" was not found.' % train_script_path)
+            return False
 
         # get a spot price for requested instance type
+        instance_type = self._args.instance_type if self._args.instance_type else self._settings['instance_type']
         prices = self._aws.spot_price(instance_type)
         if not prices:
             self._print('Can\'t get spot instance prices')
@@ -67,7 +73,8 @@ class TrainCommand(ProjectCommand):
             user_data = user_data.replace('{{' + key + '}}', user_data_replacements[key])
 
         # run a spot instance
-        request = self._aws.create_spot_request(instance_type, self._settings['image_id'], self._settings['root_snapshot_id'],
+        request = self._aws.create_spot_request(instance_type, self._settings['image_id'],
+                                                self._settings['root_snapshot_id'],
                                                 int(self._settings['root_volume_size']),
                                                 int(self._settings['training_volume_size']), user_data,
                                                 self._settings['key_name'], max_price)
@@ -80,6 +87,7 @@ class TrainCommand(ProjectCommand):
 
         if request_status != 'pending-evaluation':
             self._print('Request is failed (status=%s). Message: %s' % (request_status, request['Status']['Message']))
+            self._cancel_request(request_id)
             return False
 
         self._print('Waiting for the "active" status for the request...')
@@ -93,6 +101,7 @@ class TrainCommand(ProjectCommand):
 
         if request_status != 'fulfilled':
             self._print('Request is failed (status=%s). Message: %s' % (request_status, request['Status']['Message']))
+            self._cancel_request(request_id)
             return False
 
         # tag the instance
@@ -104,6 +113,19 @@ class TrainCommand(ProjectCommand):
 
         self._print('IP address of the instance: ' + instance['PublicIpAddress'])
         self._print('Use "cloud-training --model %s sync-session --session %s" command '
-              'to get the trained model' % (self._model, session_id))
+                    'to get the trained model' % (self._model, session_id))
 
         return True
+
+    def _cancel_request(self, request_id):
+        """Cancel the spot request if it was failed for some reason.
+
+        For example, if the requested price is lower than the minimum required price,
+        instance will not be run, but the request will be still open. If the minimum required
+        price will become lower than the requested one, the instance will be run, but
+        you may not notice it.
+        """
+        cancelled = self._aws.cancel_spot_request(request_id)
+        if not cancelled:
+            self._print(
+                '[WARNING] Request "%s" can\'t be cancelled! Please make sure that it was closed.' % request_id)

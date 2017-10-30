@@ -27,7 +27,7 @@ class SyncSessionCommand(ProjectCommand):
         self._print('Getting the checkpoint "%s"...' % last_model_name)
 
         # get the last checkpoint's files
-        self._aws.s3_sync(s3_checkpoints_path, local_checkpoints_path, [s3_checkpoints_path + '/*'], [last_model_name + '*'])
+        self._aws.s3_sync(s3_checkpoints_path, local_checkpoints_path, ['*'], [last_model_name + '*'])
 
         self._print('Done')
 
