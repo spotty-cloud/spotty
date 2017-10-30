@@ -19,10 +19,10 @@ class SpotPriceCommand(AbstractCommand):
 
         instance_type = self._args.instance_type if self._args.instance_type else self._settings['instance_type']
 
-        print('Getting prices for a "%s" instance...' % instance_type)
+        self._print('Getting prices for a "%s" instance...' % instance_type)
 
         for region in regions:
             prices = Aws(configure.get_aws_profile_name(self._args.profile), region).spot_price(instance_type)
-            print(prices)
+            self._print(prices)
 
         return True

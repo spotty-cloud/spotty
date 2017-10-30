@@ -10,7 +10,7 @@ class SyncSessionCommand(ProjectCommand):
         s3_training_path = '/'.join([self._s3_project_dir, 'training', self._model])
         session_id = self._args.session
 
-        print('Syncing the session "%s"...' % session_id)
+        self._print('Syncing the session "%s"...' % session_id)
 
         # sync the session directory (excluding checkpoints' files)
         self._aws.s3_sync(s3_training_path + '/' + session_id, os.path.join(local_training_path, session_id),
@@ -21,14 +21,14 @@ class SyncSessionCommand(ProjectCommand):
         s3_checkpoints_path = s3_training_path + '/' + session_id + '/checkpoints'
         last_model_name = utils.get_last_checkpoint_name(os.path.join(local_checkpoints_path, 'checkpoint'))
         if not last_model_name:
-            print('Checkpoint was not found')
+            self._print('Checkpoint was not found')
             return True
 
-        print('Getting the checkpoint "%s"...' % last_model_name)
+        self._print('Getting the checkpoint "%s"...' % last_model_name)
 
         # get the last checkpoint's files
         self._aws.s3_sync(s3_checkpoints_path, local_checkpoints_path, [s3_checkpoints_path + '/*'], [last_model_name + '*'])
 
-        print('Done')
+        self._print('Done')
 
         return True

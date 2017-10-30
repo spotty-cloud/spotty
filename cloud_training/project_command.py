@@ -9,6 +9,7 @@ from cloud_training.aws import Aws
 class ProjectCommand(AbstractCommand):
 
     def __init__(self, args: Namespace):
+        """Abstract class to implement a command that interacts with a project"""
         super().__init__(args)
 
         # check CloudTraining settings
@@ -49,6 +50,7 @@ class ProjectCommand(AbstractCommand):
         self._aws = Aws(configure.get_aws_profile_name(self._args.profile))
 
     def _get_project_config(self):
+        """Returns a project configuration"""
         config = None
         config_file = os.path.join(self._project_dir, 'cloud_training.json')
         if os.path.exists(config_file):

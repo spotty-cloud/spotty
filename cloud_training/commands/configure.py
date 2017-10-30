@@ -65,7 +65,7 @@ class ConfigureCommand(AbstractCommand):
             if default_value is not None:
                 value = default_value
             else:
-                print('Value is required')
+                self._print('Value is required')
                 value = self.get_input(message)
 
         return value

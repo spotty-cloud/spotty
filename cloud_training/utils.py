@@ -1,12 +1,16 @@
-import configparser
 import logging
 import os
 import zipfile
-
 import errno
 
 
 def data_dir(path: str = ''):
+    """Returns an absolute path to "data" directory.
+
+    Args:
+        path: A path which should be added to the "data" path.
+
+    """
     res_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
     if path:
         res_path = os.path.join(res_path, path)
@@ -15,6 +19,15 @@ def data_dir(path: str = ''):
 
 
 def zip_dir(path: str):
+    """Zips non-zip files recursively one by one.
+
+    Note:
+        "Unzip" script is located in the "unzip.py" file to be transferred to a remote machine.
+
+    Args:
+        path: The directory in which the files should be zipped.
+
+    """
     zip_files_list = []
     for root, dirs, filenames in os.walk(path):
         for filename in filenames:
@@ -47,6 +60,9 @@ def zip_dir(path: str):
 
 
 def get_last_checkpoint_name(checkpoint_path):
+    """Returns the last TensorFlow checkpoint name from a "checkpoints" directory.
+    It's used to avoid a syncing of all saved checkpoints from S3.
+    """
     if not os.path.exists(checkpoint_path):
         return False
 
@@ -58,6 +74,7 @@ def get_last_checkpoint_name(checkpoint_path):
 
 
 def check_path(path):
+    """Creates a directory if it doesn't exist."""
     if not os.path.exists(path):
         try:
             os.makedirs(path)

@@ -2,7 +2,6 @@ import base64
 import os
 import time
 from datetime import datetime
-
 from cloud_training import utils
 from cloud_training.project_command import ProjectCommand
 
@@ -14,20 +13,20 @@ class TrainCommand(ProjectCommand):
         # get a spot price for requested instance type
         prices = self._aws.spot_price(instance_type)
         if not prices:
-            print('Can\'t get spot instance prices')
+            self._print('Can\'t get spot instance prices')
             return False
 
         min_price = float(min(prices.values()))
         max_price = min_price * 1.25
 
         # ask the user the max price
-        print('Spot instance price for "%s" is %.03f' % (instance_type, min_price))
+        self._print('Spot instance price for "%s" is %.03f' % (instance_type, min_price))
         user_price = input('Set your max price [default: %.03f]: ' % max_price)
         if user_price:
             max_price = float(user_price)
 
         # zip files in the data directory
-        print('Compressing files in the data directory...')
+        self._print('Compressing files in the data directory...')
         data_dir = os.path.join(self._project_dir, 'data')
         utils.zip_dir(data_dir)
 
@@ -37,7 +36,7 @@ class TrainCommand(ProjectCommand):
             session_id = datetime.today().strftime('%y%m%d_%H%M')
 
         # sync the project
-        print('Syncing the project with S3...')
+        self._print('Syncing the project with S3...')
         exclude = [os.path.join(self._project_dir, '*')]
         include = [os.path.join(data_dir, '*.zip'),
                    os.path.join(self._project_dir, self._project_config['package_name'], '*'),
@@ -73,17 +72,17 @@ class TrainCommand(ProjectCommand):
                                                 int(self._settings['training_volume_size']), user_data,
                                                 self._settings['key_name'], max_price)
         if not request:
-            print('Can\'t create a spot instance request')
+            self._print('Can\'t create a spot instance request')
             return False
 
         request_id = request['SpotInstanceRequestId']
         request_status = request['Status']['Code']
 
         if request_status != 'pending-evaluation':
-            print('Request is failed (status=%s). Message: %s' % (request_status, request['Status']['Message']))
+            self._print('Request is failed (status=%s). Message: %s' % (request_status, request['Status']['Message']))
             return False
 
-        print('Waiting for the "active" status for the request...')
+        self._print('Waiting for the "active" status for the request...')
 
         # waiting for the "active" status
         waiting_statuses = {'pending-evaluation', 'pending-fulfillment'}
@@ -93,7 +92,7 @@ class TrainCommand(ProjectCommand):
             time.sleep(3)
 
         if request_status != 'fulfilled':
-            print('Request is failed (status=%s). Message: %s' % (request_status, request['Status']['Message']))
+            self._print('Request is failed (status=%s). Message: %s' % (request_status, request['Status']['Message']))
             return False
 
         # tag the instance
@@ -103,8 +102,8 @@ class TrainCommand(ProjectCommand):
         # get the IP address
         instance = self._aws.get_instance_by_id(request['InstanceId'])
 
-        print('IP address of the instance: ' + instance['PublicIpAddress'])
-        print('Use "cloud-training --model %s sync-session --session %s" command '
+        self._print('IP address of the instance: ' + instance['PublicIpAddress'])
+        self._print('Use "cloud-training --model %s sync-session --session %s" command '
               'to get the trained model' % (self._model, session_id))
 
         return True
