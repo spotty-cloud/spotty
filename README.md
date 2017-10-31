@@ -151,14 +151,3 @@ This command should be run from the project directory. Or you can use `--project
 to specify the absolute or the relative path to the project directory.
 
 To continue training of an existing session use `--session` parameter.
-
-
-### Issues ###
-
-If you're using the MINGW you might get an error:
-
-    bash: /c/Program Files/Anaconda/Scripts/cloud-training: C:/Program: bad interpreter: Permission denied
-
-I simply fixed it by changing the first line of the "cloud-training" script to:
-
-    #!python.exe
