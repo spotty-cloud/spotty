@@ -4,7 +4,7 @@ import json
 import logging
 import subprocess
 from tempfile import NamedTemporaryFile
-from cloud_training import utils
+from spotty import utils
 
 
 class Aws(object):
@@ -86,7 +86,7 @@ class Aws(object):
         config['BlockDeviceMappings'][0]['Ebs']['VolumeSize'] = root_vol_size
         config['BlockDeviceMappings'][1]['Ebs']['VolumeSize'] = training_vol_size
 
-        # same new config to temporary file
+        # save new config to temporary file
         tmp_file = NamedTemporaryFile(mode='w', delete=False)
         json.dump(config, tmp_file)
         tmp_file.close()

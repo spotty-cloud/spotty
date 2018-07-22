@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+
+import sys
+import argparse
+import logging
+from spotty.commands.create_ami import CreateAmiCommand
+from spotty.commands.delete_ami import DeleteAmiCommand
+from spotty.commands.delete_stack import DeleteStackCommand
+from spotty.commands.run import RunCommand
+from spotty.commands.writers.output_writrer import OutputWriter
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', '--debug', action='store_true', help='Show debug messages')
+
+commands = [
+    CreateAmiCommand,
+    DeleteAmiCommand,
+    RunCommand,
+    DeleteStackCommand,
+]
+
+# add commands
+subparsers = parser.add_subparsers()
+for command_class in commands:
+    subparser = subparsers.add_parser(command_class.get_name(), help=command_class.get_description())
+    command_class.configure(subparser)
+    subparser.set_defaults(command_class=command_class, parser=subparser)
+
+# # "spot-price" command
+# parser_spot_price = subparsers.add_parser('spot-price', help='Spot Instance Prices')
+# parser_spot_price.add_argument('--region', type=str, default=None, help='Prices for a particular AWS region')
+# parser_spot_price.add_argument('--instance-type', type=str, default=None, help='Instance Type')
+# parser_spot_price.add_argument('--all-regions', action='store_true', help='Get prices for all regions')
+# parser_spot_price.set_defaults(command_class=SpotPriceCommand, parser=parser_spot_price)
+#
+# # "train" command
+# parser_train = subparsers.add_parser('train', help='Train the model on AWS machine (starts new session by default)')
+# parser_train.add_argument('--session', type=str, default=None, help='Continue the training with this session')
+# parser_train.add_argument('--instance-type', type=str, default=None, help='Instance Type')
+# parser_train.add_argument('--conda-env', type=str, default=None, help='Name of a Conda environment for training')
+# parser_train.set_defaults(command_class=TrainCommand, parser=parser_train)
+#
+# # "shutdown" command
+# parser_shutdown = subparsers.add_parser('shutdown', help='Shutdown the instance')
+# parser_shutdown.set_defaults(command_class=ShutdownCommand, parser=parser_shutdown)
+
+# parse arguments
+args = parser.parse_args()
+
+# logging
+logging_level = logging.DEBUG if args.debug else logging.WARNING
+logging.basicConfig(level=logging_level, format='%(levelname)s %(message)s')
+
+if not hasattr(args, 'command_class'):
+    parser.print_usage()
+    sys.exit(1)
+
+# create a command object
+try:
+    command = args.command_class(args)
+except ValueError as e:
+    parser.print_usage()
+    print(e)
+    sys.exit(1)
+
+writer = OutputWriter()
+
+# run a command
+try:
+    command.run(writer)
+except ValueError as e:
+    args.parser.print_usage()
+    print(e)
+    sys.exit(1)

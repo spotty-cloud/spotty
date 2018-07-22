@@ -1,6 +1,6 @@
-from cloud_training import configure
-from cloud_training.aws import Aws
-from cloud_training.abstract_command import AbstractCommand
+from spotty.aws import Aws
+from spotty.commands.abstract import AbstractCommand
+import boto3
 
 
 class SpotPriceCommand(AbstractCommand):
