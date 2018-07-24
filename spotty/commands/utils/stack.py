@@ -1,5 +1,5 @@
 from time import sleep
-from botocore.exceptions import EndpointConnectionError
+from botocore.exceptions import EndpointConnectionError, WaiterError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
@@ -18,3 +18,13 @@ def wait_for_status_changed(cf, stack_id, waiting_status, output: AbstractOutput
         current_status = stack['StackStatus']
 
     return current_status, stack
+
+
+def stack_exists(cf, stack_name):
+    res = True
+    try:
+        cf.get_waiter('stack_exists').wait(StackName=stack_name, WaiterConfig={'MaxAttempts': 1})
+    except WaiterError:
+        res = False
+
+    return res

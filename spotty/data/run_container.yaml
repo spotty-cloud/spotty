@@ -24,6 +24,7 @@ Resources:
 
   SpotFleet:
     Type: AWS::EC2::SpotFleet
+    DeletionPolicy: Retain
     Properties:
       SpotFleetRequestConfigData:
         IamFleetRole: !GetAtt SpotFleetRole.Arn
@@ -38,7 +39,7 @@ Resources:
             Arn: !GetAtt SpotFleetInstanceProfile.Arn
           UserData:
             'Fn::Base64': !Sub |
-              #!/bin/bash -x
+              #!/bin/bash -xe
 
               # install CloudFormation tools
               apt-get update
@@ -177,7 +178,7 @@ Resources:
               owner: root
               group: root
               mode: '000400'
-              content: ''
+              content: 'echo "Nothing to do"'
             /tmp/scripts/run_container.sh:
               owner: root
               group: root
@@ -198,7 +199,7 @@ Resources:
                 fi
 
                 # run docker container
-                docker run --runtime=nvidia -itd --name spotty $IMAGE /bin/bash
+                docker run --runtime=nvidia -itd --name spotty nvidia/cuda /bin/bash
                 docker cp /tmp/scripts/container_commands.sh spotty:/tmp/run.sh
                 docker exec spotty /bin/bash -xe /tmp/run.sh > /var/log/container-commands.log 2>&1
           commands:
@@ -276,11 +277,6 @@ Resources:
     DeletionPolicy: Snapshot
     Properties:
       AvailabilityZone: !GetAtt GetSpotInstance.AvailabilityZone
-#      SnapshotId: snap-06268821fe0c09236
-#      Size: 10
-#      Tags:
-#        - Key: Name
-#          Value: test
   VolumeAttachment1:
     Type: AWS::EC2::VolumeAttachment
     Properties:
@@ -376,6 +372,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
       LogGroupName: !Join ['', ['/aws/lambda/', !Ref TerminateInstanceFunction]]
+      RetentionInDays: 1
 
   # function to delete the snapshot which was used to create the volume
   DeleteSnapshot:
@@ -465,6 +462,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
       LogGroupName: !Join ['', ['/aws/lambda/', !Ref DeleteSnapshotFunction]]
+      RetentionInDays: 1
 
   # function to set logs retention for a log group to 1 day (for lambdas by default they never expire)
   SetLogsRetentionFunction:
@@ -506,11 +504,16 @@ Resources:
                   return failed('LogGroupName required');
               }
 
+              var retentionInDays = event.ResourceProperties.RetentionInDays;
+              if (!retentionInDays) {
+                  return failed('RetentionInDays required');
+              }
+
               var cloudwatchlogs = new aws.CloudWatchLogs();
 
               cloudwatchlogs.putRetentionPolicy({
                   logGroupName: logGroupName,
-                  retentionInDays: 1
+                  retentionInDays: retentionInDays
               })
               .promise()
               .then((data) => {
@@ -550,8 +553,11 @@ Resources:
     Properties:
       ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
       LogGroupName: !Join ['', ['/aws/lambda/', !Ref SetLogsRetentionFunction]]
+      RetentionInDays: 1
 
-  # function to get an instance information from SpotFleet request
+  # this function is waiting for an instance to be running and cancels the SpotFleet request
+  # (SpotFleet has "Retain" deletion policy because it takes 6 minutes to get from "cancelled_terminating"
+  # to "cancelled" state, and CF would be waiting all that time)
   GetSpotInstance:
     Type: Custom::SpotFleetInstance
     Properties:
@@ -598,6 +604,7 @@ Resources:
 
               var ec2 = new AWS.EC2();
 
+              // waiting for an instance in the running state
               ec2.waitFor('instanceRunning', {
                   'Filters': [{
                       'Name': 'tag:aws:ec2spot:fleet-request-id',
@@ -609,11 +616,23 @@ Resources:
                   console.log('"instanceRunning" Response:\n', JSON.stringify(data));
 
                   var instance = data.Reservations[0].Instances[0];
-                  physicalId = instance.InstanceId;
-                  success({
-                      'PublicIpAddress': instance.PublicIpAddress,
-                      'AvailabilityZone': instance.Placement.AvailabilityZone
-                  });
+
+                  // cancel spot fleet request
+                  ec2.cancelSpotFleetRequests({
+                    SpotFleetRequestIds: [spotFleetRequestId],
+                    TerminateInstances: false
+                  })
+                  .promise()
+                  .then((data) => {
+                      console.log('"cancelSpotFleetRequests" Response:\n', JSON.stringify(data));
+
+                      physicalId = instance.InstanceId;
+                      success({
+                          'PublicIpAddress': instance.PublicIpAddress,
+                          'AvailabilityZone': instance.Placement.AvailabilityZone
+                      });
+                  })
+                  .catch((err) => failed(err));
               })
               .catch((err) => failed(err));
           };
@@ -641,6 +660,7 @@ Resources:
             - Effect: Allow
               Action:
               - 'ec2:DescribeInstances'
+              - 'ec2:CancelSpotFleetRequests'
               Resource: ['*']
   GetSpotInstanceFunctionRetention:
     Type: Custom::LogsRetention
@@ -648,6 +668,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
       LogGroupName: !Join ['', ['/aws/lambda/', !Ref GetSpotInstanceFunction]]
+      RetentionInDays: 1
 
 Outputs:
   InstanceId:

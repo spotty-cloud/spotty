@@ -30,6 +30,7 @@ exports.handler = function(event, context) {
 
     var ec2 = new AWS.EC2();
 
+    // waiting for an instance in the running state
     ec2.waitFor('instanceRunning', {
         'Filters': [{
             'Name': 'tag:aws:ec2spot:fleet-request-id',
@@ -41,11 +42,23 @@ exports.handler = function(event, context) {
         console.log('"instanceRunning" Response:\n', JSON.stringify(data));
 
         var instance = data.Reservations[0].Instances[0];
-        physicalId = instance.InstanceId;
-        success({
-            'PublicIpAddress': instance.PublicIpAddress,
-            'AvailabilityZone': instance.Placement.AvailabilityZone
-        });
+
+        // cancel spot fleet request
+        ec2.cancelSpotFleetRequests({
+          SpotFleetRequestIds: [spotFleetRequestId],
+          TerminateInstances: false
+        })
+        .promise()
+        .then((data) => {
+            console.log('"cancelSpotFleetRequests" Response:\n', JSON.stringify(data));
+
+            physicalId = instance.InstanceId;
+            success({
+                'PublicIpAddress': instance.PublicIpAddress,
+                'AvailabilityZone': instance.Placement.AvailabilityZone
+            });
+        })
+        .catch((err) => failed(err));
     })
     .catch((err) => failed(err));
 };

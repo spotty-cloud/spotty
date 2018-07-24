@@ -1,14 +1,14 @@
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.utils.stack import wait_for_status_changed
+from spotty.commands.utils.stack import wait_for_status_changed, stack_exists
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
-class DeleteStackCommand(AbstractConfigCommand):
+class StopCommand(AbstractConfigCommand):
 
     @staticmethod
     def get_name() -> str:
-        return 'delete-stack'
+        return 'stop'
 
     def run(self, output: AbstractOutputWriter):
         # TODO: check config
@@ -16,6 +16,10 @@ class DeleteStackCommand(AbstractConfigCommand):
         stack_name = self._config['instance']['stackName']
 
         cf = boto3.client('cloudformation', region_name=region)
+
+        # check that the stack exists
+        if not stack_exists(cf, stack_name):
+            raise ValueError('Stack "%s" doesn\'t exists.' % stack_name)
 
         # get image info
         res = cf.describe_stacks(StackName=stack_name)

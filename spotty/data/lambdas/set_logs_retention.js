@@ -28,11 +28,16 @@ exports.handler = function(event, context) {
         return failed('LogGroupName required');
     }
 
+    var retentionInDays = event.ResourceProperties.RetentionInDays;
+    if (!retentionInDays) {
+        return failed('RetentionInDays required');
+    }
+
     var cloudwatchlogs = new aws.CloudWatchLogs();
 
     cloudwatchlogs.putRetentionPolicy({
         logGroupName: logGroupName,
-        retentionInDays: 1
+        retentionInDays: retentionInDays
     })
     .promise()
     .then((data) => {
