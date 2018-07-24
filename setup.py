@@ -13,8 +13,9 @@ setup(name='spotty',
       package_data={'spotty': ['data/launch-specification.json', 'data/unzip.py', 'data/user_data.sh']},
       scripts=['bin/spotty'],
       install_requires=[
+          'botocore>=1.10.0',
+          'boto3>=1.7.0',
           'yaml',
-          'boto3',
           'cfn_tools',
       ],
       classifiers=[

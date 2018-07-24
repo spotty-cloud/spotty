@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 import yaml
 import boto3
+from botocore.exceptions import WaiterError
 from spotty.commands.abstract_config import AbstractConfigCommand
 from spotty.commands.utils.stack import wait_for_status_changed
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
@@ -35,6 +36,17 @@ class RunCommand(AbstractConfigCommand):
 
         cf = boto3.client('cloudformation', region_name=region)
         ec2 = boto3.client('ec2', region_name=region)
+
+        # check that the stack doesn't exist
+        stack_exists = True
+        try:
+            cf.get_waiter('stack_exists').wait(StackName=stack_name, WaiterConfig={'MaxAttempts': 1})
+        except WaiterError:
+            stack_exists = False
+
+        if stack_exists:
+            raise ValueError('Stack "%s" already exists. Use "spotty delete-stack" command to delete the stack.'
+                             % stack_name)
 
         # get image info
         res = ec2.describe_images(Filters=[
