@@ -12,8 +12,8 @@ class StopCommand(AbstractConfigCommand):
 
     def run(self, output: AbstractOutputWriter):
         # TODO: check config
+        stack_name = 'spotty-instance-%s' % self._config['project']['name']
         region = self._config['instance']['region']
-        stack_name = self._config['instance']['stackName']
 
         cf = boto3.client('cloudformation', region_name=region)
 

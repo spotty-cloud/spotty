@@ -1,6 +1,7 @@
 import yaml
 import os
 from argparse import Namespace, ArgumentParser
+from yaml.scanner import ScannerError
 from spotty.commands.abstract import AbstractCommand
 
 
@@ -32,7 +33,9 @@ class AbstractConfigCommand(AbstractCommand):
         config = None
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
-                # set the config
-                config = yaml.load(f)
+                try:
+                    config = yaml.load(f)
+                except ScannerError as e:
+                    raise ValueError(str(e))
 
         return config

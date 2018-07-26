@@ -17,11 +17,23 @@ Parameters:
     Description: Docker data root directory
     Type: String
     Default: ''
+  DockerImage:
+    Description: Docker image to run
+    Type: String
+    Default: ''
+  DockerfilePath:
+    Description: Dockerfile to build and to use instead of the image
+    Type: String
+    Default: ''
+  ProjectS3Bucket:
+    Description: S3 bucket with the project
+    Type: String
+    Default: ''
+  ProjectDirectory:
+    Description: Destination directory for the project
+    Type: String
+    Default: ''
 Resources:
-
-# TODO:
-#  1. specify open ports in the template (SecurityGroup) (all ports are open for default group?)
-
   SpotFleet:
     Type: AWS::EC2::SpotFleet
     DeletionPolicy: Retain
@@ -50,6 +62,7 @@ Resources:
 
               # install AWS CLI
               apt-get install -y awscli
+              aws configure set default.region ${AWS::Region}
 
               # install jq
               apt-get install -y jq
@@ -76,6 +89,7 @@ Resources:
           init:
             - stop_cfn_hup_config
             - mount_volume_config
+            - sync_project_config
             - docker_container_config
         cwlogs_config:
           files:
@@ -165,20 +179,29 @@ Resources:
               content: !Sub |
                 if [ -n "${VolumeMountDirectory}" ]; then
                   mkfs -t ext4 /dev/xvdb
-                  mkdir -p /${VolumeMountDirectory}
+                  mkdir -p ${VolumeMountDirectory}
                   mount /dev/xvdb /${VolumeMountDirectory}
-                  chown -R ubuntu:ubuntu /${VolumeMountDirectory}
+                  chown -R ubuntu:ubuntu ${VolumeMountDirectory}
                 fi
           commands:
             mount_volume:
               command: '/bin/bash -xe /tmp/scripts/mount_volume.sh'
-        docker_container_config:
+        sync_project_config:
           files:
-            /tmp/scripts/container_commands.sh:
+            /tmp/scripts/sync_project.sh:
               owner: root
               group: root
               mode: '000400'
-              content: 'echo "Nothing to do"'
+              content: !Sub |
+                if [ -n "${ProjectS3Bucket}" ] && [ -n "${ProjectDirectory}" ]; then
+                  mkdir -p ${ProjectDirectory}
+                  aws s3 sync s3://${ProjectS3Bucket} ${ProjectDirectory} --delete
+                fi
+          commands:
+            mount_volume:
+              command: '/bin/bash -xe /tmp/scripts/sync_project.sh'
+        docker_container_config:
+          files:
             /tmp/scripts/run_container.sh:
               owner: root
               group: root
@@ -198,15 +221,32 @@ Resources:
                   service docker restart
                 fi
 
+                # build docker image
+                DOCKER_IMAGE="${DockerImage}"
+                if [ -n "${DockerfilePath}" ] && [ -n "${ProjectDirectory}" ]; then
+                  DOCKER_IMAGE=spotty:`date +%s`
+                  docker build \
+                    -t $DOCKER_IMAGE \
+                    -f ${ProjectDirectory}/${DockerfilePath} \
+                    ${ProjectDirectory}
+                fi
+
                 # run docker container
                 VOLUME_PARAM=""
                 if [ -n "${VolumeMountDirectory}" ]; then
                   VOLUME_PARAM="-v ${VolumeMountDirectory}:${VolumeMountDirectory}"
                 fi
 
-                docker run --runtime=nvidia -itd $VOLUME_PARAM --name spotty nvidia/cuda /bin/bash
-                docker cp /tmp/scripts/container_commands.sh spotty:/tmp/run.sh
-                docker exec spotty /bin/bash -xe /tmp/run.sh > /var/log/container-commands.log 2>&1
+                if [ -n "$DOCKER_IMAGE" ]; then
+                  docker run --runtime=nvidia --net=host -itd $VOLUME_PARAM --name spotty $DOCKER_IMAGE /bin/bash
+                  docker cp /tmp/scripts/container_commands.sh spotty:/tmp/run.sh
+                  docker exec spotty /bin/bash -xe /tmp/run.sh > /var/log/container-commands.log 2>&1
+                fi
+            /tmp/scripts/container_commands.sh:
+              owner: root
+              group: root
+              mode: '000400'
+              content: 'echo "Nothing to do"'
           commands:
             run_container:
               command: /bin/bash -xe /tmp/scripts/run_container.sh
@@ -214,7 +254,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
     Properties:
-      RetentionInDays: 7
+      RetentionInDays: 1
   SpotFleetRole:
     Type: AWS::IAM::Role
     Properties:
