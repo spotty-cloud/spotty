@@ -31,6 +31,7 @@ class RunCommand(AbstractConfigCommand):
         key_name = config['keyName']
         ami_name = config['amiName']
         volume = config['volumes'][0]
+        ports = config['ports']
 
         # if not instance_type:
         #     raise ValueError('Instance type not specified')
@@ -126,15 +127,38 @@ class RunCommand(AbstractConfigCommand):
         if 'size' in volume:
             template['Resources']['Volume1']['Properties']['Size'] = volume['size']
 
-        # update deletion policy
+        # update deletion policy of the volume
         if volume.get('deleteOnTermination', False):
             template['Resources']['Volume1']['DeletionPolicy'] = 'Delete'
 
-        # set tag
+        # set tag for the volume
         template['Resources']['Volume1']['Properties']['Tags'] = [{'Key': 'Name', 'Value': snapshot_name}]
+
+        # get default VPC ID
+        res = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
+        if not len(res['Vpcs']):
+            raise ValueError('Default VPC not found')
+
+        vpc_id = res['Vpcs'][0]['VpcId']
+
+        # add ports to the security group
+        for port in set(ports):
+            if port != 22:
+                template['Resources']['InstanceSecurityGroup']['Properties']['SecurityGroupIngress'] += [{
+                    'CidrIp': '0.0.0.0/0',
+                    'IpProtocol': 'tcp',
+                    'FromPort': port,
+                    'ToPort': port,
+                }, {
+                    'CidrIpv6': '::/0',
+                    'IpProtocol': 'tcp',
+                    'FromPort': port,
+                    'ToPort': port,
+                }]
 
         # create stack
         params = [
+            {'ParameterKey': 'VpcId', 'ParameterValue': vpc_id},
             {'ParameterKey': 'InstanceType', 'ParameterValue': instance_type},
             {'ParameterKey': 'ImageId', 'ParameterValue': ami_id},
             {'ParameterKey': 'VolumeMountDirectory', 'ParameterValue': volume.get('directory', '')},
@@ -166,4 +190,5 @@ class RunCommand(AbstractConfigCommand):
             output.write('Stack "%s" was successfully created.' % stack_name)
             output.write('IP address of the instance: %s' % ip_address)
         else:
-            raise ValueError('Stack "%s" not created. See CloudFormation and CloudWatch logs for details.' % stack_name)
+            raise ValueError('Stack "%s" was not created.\n'
+                             'Please, see CloudFormation and CloudWatch logs for the details.' % stack_name)

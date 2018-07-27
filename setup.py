@@ -1,25 +1,26 @@
 #!/usr/bin/env python
 
-from setuptools import setup
+from setuptools import setup, find_packages
+
 
 setup(name='spotty',
       version='1.0.0',
-      description='Train models on AWS Spot Instances',
+      description='Train models on AWS EC2 Spot Instances',
       url='http://github.com/apls777/spotty',
       author='Oleg Polosin',
       author_email='apls777@gmail.com',
       license='MIT',
-      packages=['spotty', 'spotty.commands'],
-      package_data={'spotty': ['data/launch-specification.json', 'data/unzip.py', 'data/user_data.sh']},
+      packages=find_packages(exclude=['tests*']),
+      package_data={'spotty': ['data/create_ami.yaml', 'data/run_container.yaml']},
       scripts=['bin/spotty'],
       install_requires=[
           'botocore>=1.10.0',
           'boto3>=1.7.0',
-          'yaml',
           'cfn_tools',
       ],
       classifiers=[
           'Development Status :: 3 - Alpha',
+          'Intended Audience :: Science/Research'
           'Intended Audience :: Developers',
           'Intended Audience :: System Administrators',
           'Natural Language :: English',

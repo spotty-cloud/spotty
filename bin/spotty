@@ -70,6 +70,5 @@ writer = OutputWriter()
 try:
     command.run(writer)
 except ValueError as e:
-    args.parser.print_usage()
-    print(e)
+    print('\n--------------------\n%s\n--------------------' % str(e))
     sys.exit(1)
