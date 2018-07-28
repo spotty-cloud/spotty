@@ -5,8 +5,9 @@ import argparse
 import logging
 from spotty.commands.create_ami import CreateAmiCommand
 from spotty.commands.delete_ami import DeleteAmiCommand
+from spotty.commands.ssh import SshCommand
 from spotty.commands.stop import StopCommand
-from spotty.commands.run import RunCommand
+from spotty.commands.start import StartCommand
 from spotty.commands.writers.output_writrer import OutputWriter
 
 
@@ -16,8 +17,9 @@ parser.add_argument('-d', '--debug', action='store_true', help='Show debug messa
 commands = [
     CreateAmiCommand,
     DeleteAmiCommand,
-    RunCommand,
+    StartCommand,
     StopCommand,
+    SshCommand,
 ]
 
 # add commands

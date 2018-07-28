@@ -1,15 +1,16 @@
 import boto3
+import subprocess
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.helpers.resources import wait_for_status_changed
+from spotty.commands.project_resources.key_pair import KeyPairResource
 from spotty.commands.project_resources.stack import StackResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
-class StopCommand(AbstractConfigCommand):
+class SshCommand(AbstractConfigCommand):
 
     @staticmethod
     def get_name() -> str:
-        return 'stop'
+        return 'ssh'
 
     def run(self, output: AbstractOutputWriter):
         project_config = self._config['project']
@@ -26,20 +27,11 @@ class StopCommand(AbstractConfigCommand):
         if not stack.stack_exists():
             raise ValueError('Stack "%s" doesn\'t exists.' % stack.name)
 
-        # get stack ID
+        # get instance IP address
         info = stack.get_stack_info()
-        stack_id = info['StackId']
+        ip_address = [row['OutputValue'] for row in info['Outputs'] if row['OutputKey'] == 'InstanceIpAddress'][0]
 
-        # delete the stack
-        stack.delete_stack()
-
-        output.write('Waiting for the stack to be deleted...')
-
-        # wait for the deletion to be completed
-        status, stack = wait_for_status_changed(cf, stack_id=stack_id, waiting_status='DELETE_IN_PROGRESS',
-                                                output=output)
-
-        if status == 'DELETE_COMPLETE':
-            output.write('Stack was successfully deleted.')
-        else:
-            raise ValueError('Stack "%s" not deleted. See CloudFormation and CloudWatch logs for details.' % stack_id)
+        # connect to the instance
+        host = 'ubuntu@%s' % ip_address
+        key_path = KeyPairResource(None, project_name, region).key_path
+        subprocess.call(['ssh', '-i', key_path, host])

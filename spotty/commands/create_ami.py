@@ -1,8 +1,7 @@
 import yaml
 import boto3
-from botocore.exceptions import EndpointConnectionError
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.utils.stack import wait_for_status_changed
+from spotty.commands.helpers.resources import is_gpu_instance, wait_for_status_changed
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.utils import data_dir, random_string
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
@@ -18,13 +17,16 @@ class CreateAmiCommand(AbstractConfigCommand):
         # TODO: check config
         region = self._config['instance']['region']
         instance_type = self._config['instance']['instanceType']
-        key_name = self._config['instance']['keyName']
+        key_name = self._config['instance'].get('keyName', '')
 
         # TODO: Constraints: 3-128 alphanumeric characters, parentheses (()), square brackets ([]), spaces ( ), periods (.), slashes (/), dashes (-), single quotes ('), at-signs (@), or underscores(_)
         ami_name = self._config['instance']['amiName']
 
         if not instance_type:
             raise ValueError('Instance type not specified')
+
+        if not is_gpu_instance(instance_type):
+            raise ValueError('"%s" is not a GPU instance' % instance_type)
 
         cf = boto3.client('cloudformation', region_name=region)
         ec2 = boto3.client('ec2', region_name=region)

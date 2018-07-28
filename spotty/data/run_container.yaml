@@ -28,6 +28,11 @@ Parameters:
     Description: Dockerfile to build and to use instead of the image
     Type: String
     Default: ''
+  DockerNvidiaRuntime:
+    Description: Run Docker container with NVIDIA runtime
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
   ProjectS3Bucket:
     Description: S3 bucket with the project
     Type: String
@@ -77,13 +82,15 @@ Resources:
                 --stack ${AWS::StackName} \
                 --resource SpotFleet \
                 --region ${AWS::Region} \
-                -c cwlogs
+                -c cwlogs \
+                -v
 
               /usr/local/bin/cfn-init \
                 --stack ${AWS::StackName} \
                 --resource SpotFleet \
                 --region ${AWS::Region} \
-                -c cfn_hup
+                -c cfn_hup \
+                -v
     Metadata:
       'AWS::CloudFormation::Init':
         configSets:
@@ -166,7 +173,7 @@ Resources:
                 [cfn-volume-attached-hook]
                 triggers=post.add
                 path=Resources.VolumeAttachment1.PhysicalResourceId
-                action=/usr/local/bin/cfn-init --stack ${AWS::StackName} --resource SpotFleet --region ${AWS::Region} -c init
+                action=/usr/local/bin/cfn-init --stack ${AWS::StackName} --resource SpotFleet --region ${AWS::Region} -c init -v
                 runas=root
           commands:
             run_init:
@@ -185,7 +192,7 @@ Resources:
                 if [ -n "${VolumeMountDirectory}" ]; then
                   mkfs -t ext4 /dev/xvdb
                   mkdir -p ${VolumeMountDirectory}
-                  mount /dev/xvdb /${VolumeMountDirectory}
+                  mount /dev/xvdb ${VolumeMountDirectory}
                   chown -R ubuntu:ubuntu ${VolumeMountDirectory}
                 fi
           commands:
@@ -212,13 +219,6 @@ Resources:
               group: root
               mode: '000400'
               content: !Sub |
-                # auto login into the Docker container for "ubuntu" user
-                cat <<EOF >> /home/ubuntu/.profile
-                echo "You are inside the Docker container."
-                echo "Use the \"exit\" command to get back to the host OS."
-                sudo docker exec -it -w /root spotty /bin/bash
-                EOF
-
                 # change docker data root directory
                 if [ -n "${DockerDataRootDirectory}" ]; then
                   jq '. + { "data-root": "${DockerDataRootDirectory}" }' /etc/docker/daemon.json > /tmp/docker_daemon.json \
@@ -236,14 +236,28 @@ Resources:
                     ${ProjectDirectory}
                 fi
 
-                # run docker container
-                VOLUME_PARAM=""
-                if [ -n "${VolumeMountDirectory}" ]; then
-                  VOLUME_PARAM="-v ${VolumeMountDirectory}:${VolumeMountDirectory}"
-                fi
-
                 if [ -n "$DOCKER_IMAGE" ]; then
-                  docker run --runtime=nvidia --net=host -itd $VOLUME_PARAM --name spotty $DOCKER_IMAGE /bin/bash
+                  VOLUME_PARAM=""
+                  if [ -n "${VolumeMountDirectory}" ]; then
+                    VOLUME_PARAM="-v ${VolumeMountDirectory}:${VolumeMountDirectory}"
+                  fi
+
+                  NVIDIA_RUNTIME=""
+                  if [ "${DockerNvidiaRuntime}" == "true" ]; then
+                    NVIDIA_RUNTIME="--runtime=nvidia"
+                  fi
+
+                  # run docker container
+                  docker run $NVIDIA_RUNTIME --net=host -itd $VOLUME_PARAM --name spotty $DOCKER_IMAGE /bin/bash
+
+                  # auto login into the Docker container for "ubuntu" user
+                  cat <<EOF >> /home/ubuntu/.profile
+                  echo "You are inside the Docker container."
+                  echo "Use the \"exit\" command to get back to the host OS."
+                  sudo docker exec -it -w /root spotty /bin/bash
+                  EOF
+
+                  # run user script
                   docker cp /tmp/scripts/container_commands.sh spotty:/tmp/run.sh
                   docker exec spotty /bin/bash -xe /tmp/run.sh > /var/log/container-commands.log 2>&1
                 fi
@@ -749,3 +763,5 @@ Outputs:
     Value: !Ref GetSpotInstance
   InstanceIpAddress:
     Value: !GetAtt GetSpotInstance.PublicIpAddress
+  InstanceLogGroup:
+    Value: !Ref SpotFleetLogGroup

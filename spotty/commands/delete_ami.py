@@ -1,6 +1,6 @@
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.utils.stack import wait_for_status_changed
+from spotty.commands.helpers.resources import wait_for_status_changed
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
