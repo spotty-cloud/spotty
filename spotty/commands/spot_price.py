@@ -1,4 +1,4 @@
-from spotty.aws import Aws
+from spotty.aws_cli import Aws
 from spotty.commands.abstract import AbstractCommand
 import boto3
 

@@ -1,6 +1,7 @@
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
 from spotty.commands.helpers.resources import wait_for_status_changed
+from spotty.commands.helpers.validation import validate_instance_config
 from spotty.commands.project_resources.stack import StackResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
@@ -10,6 +11,10 @@ class StopCommand(AbstractConfigCommand):
     @staticmethod
     def get_name() -> str:
         return 'stop'
+
+    @staticmethod
+    def _validate_config(config):
+        return validate_instance_config(config)
 
     def run(self, output: AbstractOutputWriter):
         project_config = self._config['project']
@@ -40,6 +45,10 @@ class StopCommand(AbstractConfigCommand):
                                                 output=output)
 
         if status == 'DELETE_COMPLETE':
-            output.write('Stack was successfully deleted.')
+            output.write('\n'
+                         '--------------------\n'
+                         'Stack was successfully deleted.\n'
+                         '--------------------')
         else:
-            raise ValueError('Stack "%s" not deleted. See CloudFormation and CloudWatch logs for details.' % stack_id)
+            raise ValueError('Stack "%s" was not deleted.\n'
+                             'See CloudFormation and CloudWatch logs for details.' % stack_id)

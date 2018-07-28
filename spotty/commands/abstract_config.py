@@ -21,11 +21,16 @@ class AbstractConfigCommand(AbstractCommand):
         self._project_dir = os.path.dirname(config_path)
 
         # load project config file
-        self._config = self._load_config(config_path)
+        self._config = self._validate_config(self._load_config(config_path))
+        exit()
 
     @staticmethod
     def configure(parser: ArgumentParser):
         parser.add_argument('-c', '--config', type=str, default=None, help='Path to the configuration file')
+
+    @staticmethod
+    def _validate_config(config):
+        return config
 
     @staticmethod
     def _load_config(config_path: str):

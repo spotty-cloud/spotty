@@ -1,6 +1,7 @@
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
 from spotty.commands.helpers.resources import wait_for_status_changed
+from spotty.commands.helpers.validation import validate_ami_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
@@ -10,15 +11,17 @@ class DeleteAmiCommand(AbstractConfigCommand):
     def get_name() -> str:
         return 'delete-ami'
 
-    def run(self, output: AbstractOutputWriter):
-        # TODO: check config
-        region = self._config['instance']['region']
-        ami_name = self._config['instance']['amiName']
+    @staticmethod
+    def _validate_config(config):
+        return validate_ami_config(config)
 
+    def run(self, output: AbstractOutputWriter):
+        region = self._config['instance']['region']
         cf = boto3.client('cloudformation', region_name=region)
         ec2 = boto3.client('ec2', region_name=region)
 
         # get image info
+        ami_name = self._config['instance']['amiName']
         res = ec2.describe_images(Filters=[
             {'Name': 'name', 'Values': [ami_name]},
         ])
@@ -53,6 +56,10 @@ class DeleteAmiCommand(AbstractConfigCommand):
                                                 output=output)
 
         if status == 'DELETE_COMPLETE':
-            output.write('AMI was successfully deleted.')
+            output.write('\n'
+                         '--------------------\n'
+                         'AMI was successfully deleted.\n'
+                         '--------------------')
         else:
-            raise ValueError('Stack "%s" not deleted. See CloudFormation and CloudWatch logs for details.' % stack_id)
+            raise ValueError('Stack "%s" not deleted.\n'
+                             'See CloudFormation and CloudWatch logs for details.' % stack_id)

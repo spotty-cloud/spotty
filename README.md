@@ -1,6 +1,8 @@
 cloud-training
 ==============
 
+ https://docs.aws.amazon.com/cli/latest/reference/s3/index.html#use-of-exclude-and-include-filters
+
 This package provides a command line interface to help you to train your TensorFlow models on AWS spot instances.
 
 ### Installation ###

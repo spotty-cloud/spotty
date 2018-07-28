@@ -2,6 +2,7 @@ import yaml
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
 from spotty.commands.helpers.resources import is_gpu_instance, wait_for_status_changed
+from spotty.commands.helpers.validation import validate_ami_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.utils import data_dir, random_string
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
@@ -13,25 +14,22 @@ class CreateAmiCommand(AbstractConfigCommand):
     def get_name() -> str:
         return 'create-ami'
 
+    @staticmethod
+    def _validate_config(config):
+        return validate_ami_config(config)
+
     def run(self, output: AbstractOutputWriter):
-        # TODO: check config
-        region = self._config['instance']['region']
+        # check that it's a GPU instance type
         instance_type = self._config['instance']['instanceType']
-        key_name = self._config['instance'].get('keyName', '')
-
-        # TODO: Constraints: 3-128 alphanumeric characters, parentheses (()), square brackets ([]), spaces ( ), periods (.), slashes (/), dashes (-), single quotes ('), at-signs (@), or underscores(_)
-        ami_name = self._config['instance']['amiName']
-
-        if not instance_type:
-            raise ValueError('Instance type not specified')
-
         if not is_gpu_instance(instance_type):
             raise ValueError('"%s" is not a GPU instance' % instance_type)
 
+        region = self._config['instance']['region']
         cf = boto3.client('cloudformation', region_name=region)
         ec2 = boto3.client('ec2', region_name=region)
 
         # check that an image with this name doesn't exist yet
+        ami_name = self._config['instance']['amiName']
         res = ec2.describe_images(Filters=[
             {'Name': 'name', 'Values': [ami_name]},
         ])
@@ -43,6 +41,8 @@ class CreateAmiCommand(AbstractConfigCommand):
         with open(data_dir('create_ami.yaml')) as f:
             template = yaml.load(f, Loader=CfnYamlLoader)
 
+        # remove key parameter if key is not provided
+        key_name = self._config['instance'].get('keyName', '')
         if not key_name:
             del template['Parameters']['KeyName']
             del template['Resources']['SpotFleet']['Properties']['SpotFleetRequestConfigData']['LaunchSpecifications'][0]['KeyName']
@@ -72,6 +72,12 @@ class CreateAmiCommand(AbstractConfigCommand):
 
         if status == 'CREATE_COMPLETE':
             ami_id = [row['OutputValue'] for row in stack['Outputs'] if row['OutputKey'] == 'NewAMI'][0]
-            output.write('AMI "%s" (ID=%s) was successfully created.' % (ami_name, ami_id))
+
+            output.write('\n'
+                         '--------------------\n'
+                         'AMI "%s" (ID=%s) was successfully created.\n'
+                         'Use "spotty start" command to run Spot instance.\n'
+                         '--------------------' % (ami_name, ami_id))
         else:
-            raise ValueError('Stack "%s" not created. See CloudFormation and CloudWatch logs for details.' % stack_name)
+            raise ValueError('Stack "%s" was not created.\n'
+                             'See CloudFormation and CloudWatch logs for details.' % stack_name)

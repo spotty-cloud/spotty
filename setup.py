@@ -17,6 +17,7 @@ setup(name='spotty',
           'botocore>=1.10.0',
           'boto3>=1.7.0',
           'cfn_tools',
+          'schema',
       ],
       classifiers=[
           'Development Status :: 3 - Alpha',

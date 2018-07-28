@@ -96,7 +96,7 @@ class StackResource(object):
         return yaml.dump(template, Dumper=CfnYamlDumper)
 
     def create_stack(self, ec2, template: str, instance_type: str, ami_name: str, mount_dir: str,
-                     bucket_name: str, project_dir: str, docker_config: dict):
+                     bucket_name: str, remote_project_dir: str, docker_config: dict):
         # get default VPC ID
         res = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
         if not len(res['Vpcs']):
@@ -126,7 +126,7 @@ class StackResource(object):
             'DockerfilePath': docker_config.get('file', ''),
             'DockerNvidiaRuntime': 'true' if is_gpu_instance(instance_type) else 'false',
             'ProjectS3Bucket': bucket_name,
-            'ProjectDirectory': project_dir.rstrip('/'),
+            'ProjectDirectory': remote_project_dir,
         }
 
         res = self._cf.create_stack(

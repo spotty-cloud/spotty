@@ -1,6 +1,7 @@
 import boto3
 import subprocess
 from spotty.commands.abstract_config import AbstractConfigCommand
+from spotty.commands.helpers.validation import validate_instance_config
 from spotty.commands.project_resources.key_pair import KeyPairResource
 from spotty.commands.project_resources.stack import StackResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
@@ -11,6 +12,10 @@ class SshCommand(AbstractConfigCommand):
     @staticmethod
     def get_name() -> str:
         return 'ssh'
+
+    @staticmethod
+    def _validate_config(config):
+        return validate_instance_config(config)
 
     def run(self, output: AbstractOutputWriter):
         project_config = self._config['project']
