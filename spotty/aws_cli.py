@@ -23,7 +23,7 @@ class AwsCli(object):
             for sync_filter in filters:
                 if ('exclude' in sync_filter and 'include' in sync_filter) \
                         or ('exclude' not in sync_filter and 'include' not in sync_filter):
-                    raise ValueError('S3 sync filter has wrong format')
+                    raise ValueError('S3 sync filter has wrong format.')
 
                 if 'exclude' in sync_filter:
                     for path in sync_filter['exclude']:

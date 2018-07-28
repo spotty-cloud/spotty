@@ -37,7 +37,7 @@ class StackResource(object):
         return res['Stacks'][0]
 
     def prepare_template(self, ec2, snapshot_name: str, volume_size: int, delete_volume: bool, ports: list,
-                         output: AbstractOutputWriter):
+                         max_price, output: AbstractOutputWriter):
         # read and update CF template
         with open(data_dir('run_container.yaml')) as f:
             template = yaml.load(f, Loader=CfnYamlLoader)
@@ -92,6 +92,11 @@ class StackResource(object):
                     'FromPort': port,
                     'ToPort': port,
                 }]
+
+        # set maximum price
+        if max_price:
+            template['Resources']['SpotFleet']['Properties']['SpotFleetRequestConfigData'] \
+                ['LaunchSpecifications'][0]['SpotPrice'] = max_price
 
         return yaml.dump(template, Dumper=CfnYamlDumper)
 

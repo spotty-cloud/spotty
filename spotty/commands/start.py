@@ -61,7 +61,8 @@ class StartCommand(AbstractConfigCommand):
         volume_size = volume['size']
         delete_volume = volume['deleteOnTermination']
         ports = instance_config['ports']
-        template = stack.prepare_template(ec2, snapshot_name, volume_size, delete_volume, ports, output)
+        max_price = instance_config['maxPrice']
+        template = stack.prepare_template(ec2, snapshot_name, volume_size, delete_volume, ports, max_price, output)
 
         # create stack
         instance_type = instance_config['instanceType']

@@ -1,4 +1,6 @@
 from schema import Schema, And, Use, Optional, SchemaError, Or, Regex
+from spotty.commands.helpers.resources import is_valid_instance_type
+
 
 AMI_REGEX = r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$'
 
@@ -15,7 +17,7 @@ def _validate(schema: Schema, data):
 def validate_instance_config(data):
     schema = Schema({
         'project': {
-            'name': And(str, Regex(r'^[a-zA-Z0-9-]{1,28}$')),
+            'name': And(str, Regex(r'^[a-zA-Z0-9][a-zA-Z0-9-]{,26}[a-zA-Z0-9]$')),
             'remoteDir': And(str, Use(lambda x: x.rstrip('/'))),
             Optional('syncFilters', default=[]): [{
                 Optional('exclude'): [And(str, len)],
@@ -24,11 +26,17 @@ def validate_instance_config(data):
         },
         'instance': {
             'region': And(str, len),
-            'instanceType': And(str, len),
+            'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
             'amiName': And(str, len, Regex(AMI_REGEX)),
             Optional('keyName'): str,
-            Optional('maxPrice'): And(Or(int, float), lambda x: x > 0),
-            'volumes': And([{
+            Optional('maxPrice', default=0): And(Or(float, int, str), Use(str),
+                                                 Regex(r'^\d+(\.\d{1,6})?$', error='Incorrect value for "maxPrice".'),
+                                                 Use(float),
+                                                 And(lambda x: x > 0, error='"maxPrice" should be greater than 0 or '
+                                                                            'should  not be specified.'),
+                                                 ),
+            'volumes': And(
+                [{
                     Optional('snapshotName', default=''): str,
                     'directory': And(str, Use(lambda x: x.rstrip('/'))),
                     Optional('size', default=0): And(int, lambda x: x > 0),
@@ -37,7 +45,8 @@ def validate_instance_config(data):
                 And(len, error='Volume configuration is required.'),
                 And(lambda x: len(x) == 1, error='Only one volume is supported at the moment.'),
             ),
-            'docker': And({
+            'docker': And(
+                {
                     Optional('image', default=''): str,
                     Optional('file', default=''): str,
                     Optional('dataRoot', default=''): And(str, Use(lambda x: x.rstrip('/'))),

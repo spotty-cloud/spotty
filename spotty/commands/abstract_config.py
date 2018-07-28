@@ -22,7 +22,6 @@ class AbstractConfigCommand(AbstractCommand):
 
         # load project config file
         self._config = self._validate_config(self._load_config(config_path))
-        exit()
 
     @staticmethod
     def configure(parser: ArgumentParser):
