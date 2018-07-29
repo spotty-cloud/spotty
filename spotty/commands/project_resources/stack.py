@@ -37,7 +37,7 @@ class StackResource(object):
         return res['Stacks'][0]
 
     def prepare_template(self, ec2, snapshot_name: str, volume_size: int, delete_volume: bool, ports: list,
-                         max_price, output: AbstractOutputWriter):
+                         max_price, docker_commands, output: AbstractOutputWriter):
         # read and update CF template
         with open(data_dir('run_container.yaml')) as f:
             template = yaml.load(f, Loader=CfnYamlLoader)
@@ -98,6 +98,11 @@ class StackResource(object):
             template['Resources']['SpotFleet']['Properties']['SpotFleetRequestConfigData'] \
                 ['LaunchSpecifications'][0]['SpotPrice'] = max_price
 
+        # set initial docker commands
+        if docker_commands:
+            template['Resources']['SpotFleet']['Metadata']['AWS::CloudFormation::Init'] \
+                ['docker_container_config']['files']['/tmp/scripts/docker_commands.sh']['content'] = docker_commands
+
         return yaml.dump(template, Dumper=CfnYamlDumper)
 
     def create_stack(self, ec2, template: str, instance_type: str, ami_name: str, mount_dir: str,
@@ -126,10 +131,11 @@ class StackResource(object):
             'KeyName': key_name,
             'ImageId': ami_id,
             'VolumeMountDirectory': mount_dir,
-            'DockerDataRootDirectory': docker_config.get('dataRoot', ''),
+            'DockerDataRootDirectory': docker_config['dataRoot'],
             'DockerImage': docker_config.get('image', ''),
             'DockerfilePath': docker_config.get('file', ''),
             'DockerNvidiaRuntime': 'true' if is_gpu_instance(instance_type) else 'false',
+            'DockerWorkingDirectory': docker_config['workingDir'],
             'ProjectS3Bucket': bucket_name,
             'ProjectDirectory': remote_project_dir,
         }

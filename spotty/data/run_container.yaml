@@ -33,6 +33,10 @@ Parameters:
     Type: String
     Default: 'true'
     AllowedValues: ['true', 'false']
+  DockerWorkingDirectory:
+    Description: Working directory inside Docker container
+    Type: String
+    Default: ''
   ProjectS3Bucket:
     Description: S3 bucket with the project
     Type: String
@@ -134,10 +138,10 @@ Resources:
                 log_stream_name = {instance_id}/cfn-wire.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
 
-                [/var/log/container-commands.log]
-                file = /var/log/container-commands.log
+                [/var/log/docker-commands.log]
+                file = /var/log/docker-commands.log
                 log_group_name = ${SpotFleetLogGroup}
-                log_stream_name = {instance_id}/container-commands.log
+                log_stream_name = {instance_id}/docker-commands.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
               mode: '000400'
               owner: root
@@ -248,20 +252,19 @@ Resources:
                   fi
 
                   # run docker container
-                  docker run $NVIDIA_RUNTIME --net=host -itd $VOLUME_PARAM --name spotty $DOCKER_IMAGE /bin/bash
+                  docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAM \
+                    -v /root/.aws:/root/.aws --name spotty $DOCKER_IMAGE /bin/sh
 
-                  # auto login into the Docker container for "ubuntu" user
-                  cat <<EOF >> /home/ubuntu/.profile
-                echo "You are inside the Docker container."
-                echo "Use the \"exit\" command to get back to the host OS."
-                sudo docker exec -it -w /root spotty /bin/bash
-                EOF
+                  WORKING_DIR="/root"
+                  if [ -n "${DockerWorkingDirectory}" ]; then
+                    WORKING_DIR="${DockerWorkingDirectory}"
+                  fi
 
-                  # run user script
-                  docker cp /tmp/scripts/container_commands.sh spotty:/tmp/run.sh
-                  docker exec spotty /bin/bash -xe /tmp/run.sh > /var/log/container-commands.log 2>&1
+                  # run initial user commands
+                  docker cp /tmp/scripts/docker_commands.sh spotty:/tmp/run.sh
+                  docker exec -w $WORKING_DIR spotty /bin/bash -xe /tmp/run.sh > /var/log/docker-commands.log 2>&1
                 fi
-            /tmp/scripts/container_commands.sh:
+            /tmp/scripts/docker_commands.sh:
               owner: root
               group: root
               mode: '000400'

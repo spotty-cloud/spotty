@@ -1,4 +1,3 @@
-from argparse import ArgumentParser
 import boto3
 from spotty.aws_cli import AwsCli
 from spotty.commands.abstract_config import AbstractConfigCommand
@@ -14,11 +13,6 @@ class StartCommand(AbstractConfigCommand):
     @staticmethod
     def get_name() -> str:
         return 'start'
-
-    @staticmethod
-    def configure(parser: ArgumentParser):
-        AbstractConfigCommand.configure(parser)
-        parser.add_argument('script-name', metavar='SCRIPT_NAME', type=str, default='', nargs='?', help='Script name')
 
     @staticmethod
     def _validate_config(config):
@@ -62,13 +56,17 @@ class StartCommand(AbstractConfigCommand):
         delete_volume = volume['deleteOnTermination']
         ports = instance_config['ports']
         max_price = instance_config['maxPrice']
-        template = stack.prepare_template(ec2, snapshot_name, volume_size, delete_volume, ports, max_price, output)
+        docker_commands = instance_config['docker']['commands']
+
+        template = stack.prepare_template(ec2, snapshot_name, volume_size, delete_volume, ports, max_price,
+                                          docker_commands, output)
 
         # create stack
         instance_type = instance_config['instanceType']
         mount_dir = volume['directory']
         docker_config = instance_config['docker']
         remote_project_dir = project_config['remoteDir']
+
         res = stack.create_stack(ec2, template, instance_type, ami_name, mount_dir, bucket_name, remote_project_dir,
                                  docker_config)
 

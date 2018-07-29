@@ -53,7 +53,9 @@ def validate_instance_config(data):
                 {
                     Optional('image', default=''): str,
                     Optional('file', default=''): str,
+                    Optional('workingDir', default=''): str,
                     Optional('dataRoot', default=''): And(str, Use(lambda x: x.rstrip('/'))),
+                    Optional('commands', default=''): str,
                 },
                 And(lambda x: x['image'] or x['file'], error='Either "image" or "file" should be specified.'),
                 And(lambda x: not (x['image'] and x['file']), error='"image" and "file" cannot be specified together.'),
