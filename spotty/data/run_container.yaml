@@ -252,10 +252,10 @@ Resources:
 
                   # auto login into the Docker container for "ubuntu" user
                   cat <<EOF >> /home/ubuntu/.profile
-                  echo "You are inside the Docker container."
-                  echo "Use the \"exit\" command to get back to the host OS."
-                  sudo docker exec -it -w /root spotty /bin/bash
-                  EOF
+                echo "You are inside the Docker container."
+                echo "Use the \"exit\" command to get back to the host OS."
+                sudo docker exec -it -w /root spotty /bin/bash
+                EOF
 
                   # run user script
                   docker cp /tmp/scripts/container_commands.sh spotty:/tmp/run.sh

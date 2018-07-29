@@ -84,7 +84,8 @@ class StartCommand(AbstractConfigCommand):
             output.write('\n'
                          '--------------------\n'
                          'Instance is running.\n'
-                         'CloudWatch Log Group: %s.\n'
+                         'CloudWatch Log Group:\n'
+                         '  %s\n'
                          '\n'
                          'Use "spotty ssh" command to connect to the instance.\n'
                          '--------------------' % log_group)
