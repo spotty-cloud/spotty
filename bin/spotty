@@ -60,19 +60,14 @@ if not hasattr(args, 'command_class'):
     parser.print_usage()
     sys.exit(1)
 
-# create a command object
-try:
-    command = args.command_class(args)
-except ValueError as e:
-    parser.print_usage()
-    print(e)
-    sys.exit(1)
-
-writer = OutputWriter()
+output = OutputWriter()
 
 # run a command
 try:
-    command.run(writer)
+    command = args.command_class(args)
+    command.run(output)
 except ValueError as e:
-    print('\n--------------------\n%s\n--------------------' % str(e))
+    output.write('Error:\n'
+                 '------\n'
+                 '%s' % str(e))
     sys.exit(1)

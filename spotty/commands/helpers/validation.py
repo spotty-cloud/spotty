@@ -1,7 +1,6 @@
 from schema import Schema, And, Use, Optional, SchemaError, Or, Regex
 from spotty.commands.helpers.resources import is_valid_instance_type
 
-
 AMI_REGEX = r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$'
 
 
@@ -19,10 +18,15 @@ def validate_instance_config(data):
         'project': {
             'name': And(str, Regex(r'^[a-zA-Z0-9][a-zA-Z0-9-]{,26}[a-zA-Z0-9]$')),
             'remoteDir': And(str, Use(lambda x: x.rstrip('/'))),
-            Optional('syncFilters', default=[]): [{
-                Optional('exclude'): [And(str, len)],
-                Optional('include'): [And(str, len)],
-            }]
+            Optional('syncFilters', default=[]): [And(
+                {
+                    Optional('exclude'): [And(str, len)],
+                    Optional('include'): [And(str, len)],
+                },
+                And(lambda x: x, error='Either "exclude" or "include" filter should be specified.'),
+                And(lambda x: not ('exclude' in x and 'include' in x), error='"exclude" and "include" filters should '
+                                                                             'be specified as different list items.'),
+            )]
         },
         'instance': {
             'region': And(str, len),
