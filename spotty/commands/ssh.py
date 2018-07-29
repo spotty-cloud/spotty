@@ -39,4 +39,4 @@ class SshCommand(AbstractConfigCommand):
         # connect to the instance
         host = 'ubuntu@%s' % ip_address
         key_path = KeyPairResource(None, project_name, region).key_path
-        subprocess.call(['ssh', '-i', key_path, host])
+        subprocess.call(['ssh', '-i', key_path, '-o', 'StrictHostKeyChecking no', host])
