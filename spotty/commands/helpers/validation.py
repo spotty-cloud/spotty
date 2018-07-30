@@ -53,7 +53,7 @@ def validate_instance_config(data):
                 {
                     Optional('image', default=''): str,
                     Optional('file', default=''): str,
-                    Optional('workingDir', default=''): str,
+                    Optional('workingDir', default='/root'): str,
                     Optional('dataRoot', default=''): And(str, Use(lambda x: x.rstrip('/'))),
                     Optional('commands', default=''): str,
                 },
@@ -63,7 +63,7 @@ def validate_instance_config(data):
             Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
         },
         Optional('scripts'): {
-            str: And(str, len),
+            And(str, Regex(r'^[\w-]+$')): And(str, len),
         },
     })
 

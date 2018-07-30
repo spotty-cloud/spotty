@@ -230,6 +230,9 @@ Resources:
                   service docker restart
                 fi
 
+                # change access permissions for Docker scripts directory
+                chmod 777 /tmp/docker
+
                 # build docker image
                 DOCKER_IMAGE="${DockerImage}"
                 if [ -n "${DockerfilePath}" ] && [ -n "${ProjectDirectory}" ]; then
@@ -253,18 +256,18 @@ Resources:
 
                   # run docker container
                   docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAM \
-                    -v /root/.aws:/root/.aws --name spotty $DOCKER_IMAGE /bin/sh
+                    -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker --name spotty $DOCKER_IMAGE /bin/sh
 
-                  WORKING_DIR="/root"
+                  WORKING_DIR=""
                   if [ -n "${DockerWorkingDirectory}" ]; then
-                    WORKING_DIR="${DockerWorkingDirectory}"
+                    WORKING_DIR="-w ${DockerWorkingDirectory}"
                   fi
 
                   # run initial user commands
-                  docker cp /tmp/scripts/docker_commands.sh spotty:/tmp/run.sh
-                  docker exec -w $WORKING_DIR spotty /bin/bash -xe /tmp/run.sh > /var/log/docker-commands.log 2>&1
+                  docker exec $WORKING_DIR spotty /bin/bash -xe /tmp/docker/docker_commands.sh \
+                    > /var/log/docker-commands.log 2>&1
                 fi
-            /tmp/scripts/docker_commands.sh:
+            /tmp/docker/docker_commands.sh:
               owner: root
               group: root
               mode: '000400'

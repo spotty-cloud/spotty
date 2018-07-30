@@ -101,7 +101,7 @@ class StackResource(object):
         # set initial docker commands
         if docker_commands:
             template['Resources']['SpotFleet']['Metadata']['AWS::CloudFormation::Init'] \
-                ['docker_container_config']['files']['/tmp/scripts/docker_commands.sh']['content'] = docker_commands
+                ['docker_container_config']['files']['/tmp/docker/docker_commands.sh']['content'] = docker_commands
 
         return yaml.dump(template, Dumper=CfnYamlDumper)
 
