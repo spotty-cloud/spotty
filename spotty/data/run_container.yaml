@@ -81,6 +81,14 @@ Resources:
               # install jq
               apt-get install -y jq
 
+              # create directory for Docker scripts
+              mkdir -p /tmp/docker
+              chmod 777 /tmp/docker
+
+              # create directory for "spotty run" logs
+              mkdir -p /var/log/spotty-run
+              chmod 777 /var/log/spotty-run
+
               # install CloudWatch agent
               /usr/local/bin/cfn-init \
                 --stack ${AWS::StackName} \
@@ -229,9 +237,6 @@ Resources:
                     && mv /tmp/docker_daemon.json /etc/docker/daemon.json
                   service docker restart
                 fi
-
-                # change access permissions for Docker scripts directory
-                chmod 777 /tmp/docker
 
                 # build docker image
                 DOCKER_IMAGE="${DockerImage}"
