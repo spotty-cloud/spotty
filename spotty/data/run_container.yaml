@@ -219,7 +219,7 @@ Resources:
               content: !Sub |
                 if [ -n "${ProjectS3Bucket}" ] && [ -n "${ProjectDirectory}" ]; then
                   mkdir -p ${ProjectDirectory}
-                  aws s3 sync s3://${ProjectS3Bucket} ${ProjectDirectory} --delete
+                  aws s3 sync s3://${ProjectS3Bucket}/project ${ProjectDirectory} --delete
                 fi
           commands:
             mount_volume:

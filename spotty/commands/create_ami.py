@@ -15,6 +15,10 @@ class CreateAmiCommand(AbstractConfigCommand):
         return 'create-ami'
 
     @staticmethod
+    def get_description():
+        return 'Create AMI with NVIDIA Docker'
+
+    @staticmethod
     def _validate_config(config):
         return validate_ami_config(config)
 

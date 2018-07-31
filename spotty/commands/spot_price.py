@@ -13,6 +13,10 @@ class SpotPriceCommand(AbstractCommand):
         return 'spot-price'
 
     @staticmethod
+    def get_description():
+        return 'Get spot instance prices for particular instance type across all regions'
+
+    @staticmethod
     def configure(parser: ArgumentParser):
         parser.add_argument('--instance-type', '-t', type=str, required=True, help='Instance type')
 

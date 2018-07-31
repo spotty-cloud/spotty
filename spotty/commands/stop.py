@@ -13,6 +13,10 @@ class StopCommand(AbstractConfigCommand):
         return 'stop'
 
     @staticmethod
+    def get_description():
+        return 'Terminate running instance and delete its stack'
+
+    @staticmethod
     def _validate_config(config):
         return validate_instance_config(config)
 

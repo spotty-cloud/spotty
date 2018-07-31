@@ -12,6 +12,10 @@ class DeleteAmiCommand(AbstractConfigCommand):
         return 'delete-ami'
 
     @staticmethod
+    def get_description():
+        return 'Delete AMI with NVIDIA Docker'
+
+    @staticmethod
     def _validate_config(config):
         return validate_ami_config(config)
 

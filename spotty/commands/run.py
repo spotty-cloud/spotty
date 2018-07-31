@@ -16,6 +16,10 @@ class RunCommand(AbstractConfigCommand):
         return 'run'
 
     @staticmethod
+    def get_description():
+        return 'Run a script from configuration file inside the Docker container'
+
+    @staticmethod
     def _validate_config(config):
         return validate_instance_config(config)
 
@@ -46,24 +50,46 @@ class RunCommand(AbstractConfigCommand):
         info = stack.get_stack_info()
         ip_address = [row['OutputValue'] for row in info['Outputs'] if row['OutputKey'] == 'InstanceIpAddress'][0]
 
+        # tmux session name
+        session_name = self._args.session_name if self._args.session_name else 'spotty-script-%s' % script_name
+
+        # base64 encoded user script from the configuration file
+        script_base64 = base64.b64encode(self._config['scripts'][script_name].encode('utf-8')).decode('utf-8')
+
+        # remote path where the script will be uploaded
+        script_path = '/tmp/docker/%s.sh' % script_name
+
+        # log file for the script outputs
+        script_log_file = '/var/log/spotty-run/%s.log' % script_name
+
+        # command to attach user to existing tmux session
+        attach_session_cmd = subprocess.list2cmdline(['tmux', 'attach', '-t', session_name])
+
+        # command to upload user script to the instance
+        upload_script_cmd = subprocess.list2cmdline(['echo', script_base64, '|', 'base64', '-d', '>', script_path])
+
+        # command to log the time when user script started
+        start_time_cmd = subprocess.list2cmdline(['echo', '-e', '\\nScript started: `date \'+%Y-%m-%d %H:%M:%S\'`\\n',
+                                                  '>>', script_log_file])
+
+        # command to run user script inside the docker container
+        working_dir = instance_config['docker']['workingDir']
+        docker_cmd = subprocess.list2cmdline(['sudo', 'docker', 'exec', '-it', '-w', working_dir, 'spotty',
+                                              '/bin/bash', '-xe', script_path, '2>&1', '|', 'tee', '-a',
+                                              script_log_file])
+
+        # command to create new tmux session and run user script
+        new_session_cmd = subprocess.list2cmdline(['tmux', 'new', '-s', session_name,
+                                                   '%s && %s' % (start_time_cmd, docker_cmd)])
+
+        # composition of the commands: if user cannot be attached to the tmux session (assume the session doesn't
+        # exist), then we uploading user script to the instance, creating new tmux session and running that script
+        # inside the Docker container
+        remote_cmd = '%s || (%s && %s)' % (attach_session_cmd, upload_script_cmd, new_session_cmd)
+
+        # connect to the instance and run the command above
         host = 'ubuntu@%s' % ip_address
         key_path = KeyPairResource(None, project_name, region).key_path
-
-        # run a script or attach to already running one
-        session_name = self._args.session_name if self._args.session_name else 'spotty-script-%s' % script_name
-        script_base64 = base64.b64encode(self._config['scripts'][script_name].encode('utf-8')).decode('utf-8')
-        script_path = '/tmp/docker/%s.sh' % script_name
-        working_dir = instance_config['docker']['workingDir']
-
-        attach_session_cmd = subprocess.list2cmdline(['tmux', 'attach', '-t', session_name])
-        upload_script_cmd = subprocess.list2cmdline(['echo', script_base64, '|', 'base64', '-d', '>', script_path])
-        docker_cmd = subprocess.list2cmdline(['sudo', 'docker', 'exec', '-it', '-w', working_dir, 'spotty',
-                                              '/bin/bash', '-xe', script_path, '2>&1', '|', 'sudo', 'tee', '-a',
-                                              '/var/log/spotty-run/%s.log' % session_name])
-        new_session_cmd = subprocess.list2cmdline(['tmux', 'new', '-s', session_name, docker_cmd])
-
-
-        remote_cmd = '%s || (%s && %s)' % (attach_session_cmd, upload_script_cmd, new_session_cmd)
         ssh_command = ['ssh', '-i', key_path, '-o', 'StrictHostKeyChecking no', host, '-t', remote_cmd]
 
         subprocess.call(ssh_command)

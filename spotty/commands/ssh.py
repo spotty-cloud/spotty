@@ -15,6 +15,10 @@ class SshCommand(AbstractConfigCommand):
         return 'ssh'
 
     @staticmethod
+    def get_description():
+        return 'Connect to the running Docker container or to the instance itself'
+
+    @staticmethod
     def _validate_config(config):
         return validate_instance_config(config)
 

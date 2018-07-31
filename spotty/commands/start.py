@@ -15,6 +15,10 @@ class StartCommand(AbstractConfigCommand):
         return 'start'
 
     @staticmethod
+    def get_description():
+        return 'Run spot instance, sync the project and start the Docker container'
+
+    @staticmethod
     def _validate_config(config):
         return validate_instance_config(config)
 
@@ -43,7 +47,7 @@ class StartCommand(AbstractConfigCommand):
 
         # sync the project with S3
         project_filters = project_config['syncFilters']
-        AwsCli(region=region).s3_sync(self._project_dir, 's3://%s' % bucket_name, delete=True,
+        AwsCli(region=region).s3_sync(self._project_dir, 's3://%s/project' % bucket_name, delete=True,
                                       filters=project_filters)
 
         output.write('Preparing CloudFormation template...')
