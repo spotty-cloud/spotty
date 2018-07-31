@@ -4,8 +4,8 @@ from setuptools import setup, find_packages
 
 
 setup(name='spotty',
-      version='1.0.0',
-      description='Train models on AWS EC2 Spot Instances',
+      version='1.0.1',
+      description='Train deep learning models on AWS EC2 Spot Instances',
       url='http://github.com/apls777/spotty',
       author='Oleg Polosin',
       author_email='apls777@gmail.com',
@@ -21,7 +21,7 @@ setup(name='spotty',
       ],
       classifiers=[
           'Development Status :: 3 - Alpha',
-          'Intended Audience :: Science/Research'
+          'Intended Audience :: Science/Research',
           'Intended Audience :: Developers',
           'Intended Audience :: System Administrators',
           'Natural Language :: English',
