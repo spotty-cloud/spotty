@@ -18,7 +18,7 @@ class SpotPriceCommand(AbstractCommand):
 
     @staticmethod
     def configure(parser: ArgumentParser):
-        parser.add_argument('--instance-type', '-t', type=str, required=True, help='Instance type')
+        parser.add_argument('--instance-type', '-i', type=str, required=True, help='Instance type')
 
     def run(self, output: AbstractOutputWriter):
         # get all regions

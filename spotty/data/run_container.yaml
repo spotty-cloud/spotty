@@ -46,63 +46,77 @@ Parameters:
     Type: String
     Default: ''
 Resources:
-  SpotFleet:
-    Type: AWS::EC2::SpotFleet
+  SpotInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref SpotInstanceLaunchTemplate
+        Version: !GetAtt SpotInstanceLaunchTemplate.LatestVersionNumber
+
+  SpotInstanceLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
     DeletionPolicy: Retain
     Properties:
-      SpotFleetRequestConfigData:
-        IamFleetRole: !GetAtt SpotFleetRole.Arn
-        Type: request
-        TargetCapacity: 1
-        LaunchSpecifications:
-        - InstanceType: !Ref InstanceType
-          ImageId: !Ref ImageId
-          KeyName: !Ref KeyName
-          EbsOptimized: 'false'
-          IamInstanceProfile:
-            Arn: !GetAtt SpotFleetInstanceProfile.Arn
-          SecurityGroups:
-          - GroupId: !Ref InstanceSecurityGroup
-          UserData:
-            'Fn::Base64': !Sub |
-              #!/bin/bash -xe
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Ref ImageId
+        KeyName: !Ref KeyName
+        EbsOptimized: 'false'
+        IamInstanceProfile:
+          Arn: !GetAtt SpotInstanceProfile.Arn
+        SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+        InstanceInitiatedShutdownBehavior: terminate
+        InstanceMarketOptions:
+          MarketType: spot
+          SpotOptions:
+            SpotInstanceType: one-time
+            InstanceInterruptionBehavior: terminate
+        BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 10
+            DeleteOnTermination: true
+        UserData:
+          'Fn::Base64': !Sub |
+            #!/bin/bash -xe
 
-              # install CloudFormation tools
-              apt-get update
-              apt-get install -y python-setuptools
-              mkdir -p aws-cfn-bootstrap-latest
-              curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
-              easy_install aws-cfn-bootstrap-latest
+            # install CloudFormation tools
+            apt-get update
+            apt-get install -y python-setuptools
+            mkdir -p aws-cfn-bootstrap-latest
+            curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
+            easy_install aws-cfn-bootstrap-latest
 
-              # install AWS CLI
-              apt-get install -y awscli
-              aws configure set default.region ${AWS::Region}
+            # install AWS CLI
+            apt-get install -y awscli
+            aws configure set default.region ${AWS::Region}
 
-              # install jq
-              apt-get install -y jq
+            # install jq
+            apt-get install -y jq
 
-              # create directory for Docker scripts
-              mkdir -p /tmp/docker
-              chmod 777 /tmp/docker
+            # create directory for Docker scripts
+            mkdir -p /tmp/docker
+            chmod 777 /tmp/docker
 
-              # create directory for "spotty run" logs
-              mkdir -p /var/log/spotty-run
-              chmod 777 /var/log/spotty-run
+            # create directory for "spotty run" logs
+            mkdir -p /var/log/spotty-run
+            chmod 777 /var/log/spotty-run
 
-              # install CloudWatch agent
-              /usr/local/bin/cfn-init \
-                --stack ${AWS::StackName} \
-                --resource SpotFleet \
-                --region ${AWS::Region} \
-                -c cwlogs \
-                -v
+            # install CloudWatch agent
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource SpotInstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c cwlogs \
+              -v
 
-              /usr/local/bin/cfn-init \
-                --stack ${AWS::StackName} \
-                --resource SpotFleet \
-                --region ${AWS::Region} \
-                -c cfn_hup \
-                -v
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource SpotInstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c cfn_hup \
+              -v
     Metadata:
       'AWS::CloudFormation::Init':
         configSets:
@@ -124,31 +138,31 @@ Resources:
 
                 [/var/log/cloud-init-output.log]
                 file = /var/log/cloud-init-output.log
-                log_group_name = ${SpotFleetLogGroup}
+                log_group_name = ${SpotInstanceLogGroup}
                 log_stream_name = {instance_id}/cloud-init-output.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
 
                 [/var/log/cfn-init.log]
                 file = /var/log/cfn-init.log
-                log_group_name = ${SpotFleetLogGroup}
+                log_group_name = ${SpotInstanceLogGroup}
                 log_stream_name = {instance_id}/cfn-init.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
 
                 [/var/log/cfn-hup.log]
                 file = /var/log/cfn-hup.log
-                log_group_name = ${SpotFleetLogGroup}
+                log_group_name = ${SpotInstanceLogGroup}
                 log_stream_name = {instance_id}/cfn-hup.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
 
                 [/var/log/cfn-wire.log]
                 file = /var/log/cfn-wire.log
-                log_group_name = ${SpotFleetLogGroup}
+                log_group_name = ${SpotInstanceLogGroup}
                 log_stream_name = {instance_id}/cfn-wire.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
 
                 [/var/log/docker-commands.log]
                 file = /var/log/docker-commands.log
-                log_group_name = ${SpotFleetLogGroup}
+                log_group_name = ${SpotInstanceLogGroup}
                 log_stream_name = {instance_id}/docker-commands.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
               mode: '000400'
@@ -185,7 +199,7 @@ Resources:
                 [cfn-volume-attached-hook]
                 triggers=post.add
                 path=Resources.VolumeAttachment1.PhysicalResourceId
-                action=/usr/local/bin/cfn-init --stack ${AWS::StackName} --resource SpotFleet --region ${AWS::Region} -c init -v
+                action=/usr/local/bin/cfn-init --stack ${AWS::StackName} --resource SpotInstanceLaunchTemplate --region ${AWS::Region} -c init -v
                 runas=root
           commands:
             run_init:
@@ -280,27 +294,20 @@ Resources:
           commands:
             run_container:
               command: /bin/bash -xe /tmp/scripts/run_container.sh
-  SpotFleetLogGroup:
+
+  SpotInstanceLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Retain
     Properties:
       RetentionInDays: 1
-  SpotFleetRole:
-    Type: AWS::IAM::Role
+
+  SpotInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
     Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Principal:
-              Service:
-                - 'spotfleet.amazonaws.com'
-            Action:
-              - 'sts:AssumeRole'
       Path: '/'
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetRole
-  SpotFleetInstanceRole:
+      Roles:
+      - Ref: SpotInstanceRole
+  SpotInstanceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -340,12 +347,6 @@ Resources:
             - s3:DeleteObject
             Resource:
             - arn:aws:s3:::*
-  SpotFleetInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Path: '/'
-      Roles:
-      - Ref: SpotFleetInstanceRole
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -375,12 +376,12 @@ Resources:
     Type: AWS::EC2::Volume
     DeletionPolicy: Snapshot
     Properties:
-      AvailabilityZone: !GetAtt GetSpotInstance.AvailabilityZone
+      AvailabilityZone: !GetAtt SpotInstance.AvailabilityZone
   VolumeAttachment1:
     Type: AWS::EC2::VolumeAttachment
     Properties:
       Device: /dev/sda2
-      InstanceId: !Ref GetSpotInstance
+      InstanceId: !Ref SpotInstance
       VolumeId: !Ref Volume1
 
   # function to terminate the instance before detaching the volume
@@ -390,7 +391,7 @@ Resources:
     DependsOn: VolumeAttachment1
     Properties:
       ServiceToken: !GetAtt TerminateInstanceFunction.Arn
-      InstanceId: !Ref GetSpotInstance
+      InstanceId: !Ref SpotInstance
   TerminateInstanceFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -654,125 +655,10 @@ Resources:
       LogGroupName: !Join ['', ['/aws/lambda/', !Ref SetLogsRetentionFunction]]
       RetentionInDays: 1
 
-  # this function is waiting for an instance to be running and cancels the SpotFleet request
-  # (SpotFleet has "Retain" deletion policy because it takes 6 minutes to get from "cancelled_terminating"
-  # to "cancelled" state, and CF would be waiting all that time)
-  GetSpotInstance:
-    Type: Custom::SpotFleetInstance
-    Properties:
-      ServiceToken: !GetAtt GetSpotInstanceFunction.Arn
-      SpotFleetRequestId: !Ref SpotFleet
-  GetSpotInstanceFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Handler: index.handler
-      Role: !GetAtt GetSpotInstanceLambdaExecutionRole.Arn
-      Runtime: nodejs4.3
-      Timeout: 120
-      Code:
-        ZipFile: !Sub |
-          var AWS = require('aws-sdk');
-          var response = require('cfn-response');
-
-          exports.handler = function(event, context) {
-              console.log("Request received:\n", JSON.stringify(event));
-
-              var physicalId = event.PhysicalResourceId;
-
-              function success(data) {
-                  data = data || {}
-                  console.log('SUCCESS:\n', data);
-                  return response.send(event, context, response.SUCCESS, data, physicalId);
-              }
-
-              function failed(err) {
-                  console.log('FAILED:\n', err);
-                  return response.send(event, context, response.FAILED, err, physicalId);
-              }
-
-              // ignore delete request
-              if (event.RequestType === 'Delete') {
-                  console.log('Delete request is ignored');
-                  return success();
-              }
-
-              var spotFleetRequestId = event.ResourceProperties.SpotFleetRequestId;
-              if (!spotFleetRequestId) {
-                  return failed('SpotFleetRequestId required');
-              }
-
-              var ec2 = new AWS.EC2();
-
-              // waiting for an instance in the running state
-              ec2.waitFor('instanceRunning', {
-                  'Filters': [{
-                      'Name': 'tag:aws:ec2spot:fleet-request-id',
-                      'Values': [spotFleetRequestId]
-                  }]
-              })
-              .promise()
-              .then((data) => {
-                  console.log('"instanceRunning" Response:\n', JSON.stringify(data));
-
-                  var instance = data.Reservations[0].Instances[0];
-
-                  // cancel spot fleet request
-                  ec2.cancelSpotFleetRequests({
-                    SpotFleetRequestIds: [spotFleetRequestId],
-                    TerminateInstances: false
-                  })
-                  .promise()
-                  .then((data) => {
-                      console.log('"cancelSpotFleetRequests" Response:\n', JSON.stringify(data));
-
-                      physicalId = instance.InstanceId;
-                      success({
-                          'PublicIpAddress': instance.PublicIpAddress,
-                          'AvailabilityZone': instance.Placement.AvailabilityZone
-                      });
-                  })
-                  .catch((err) => failed(err));
-              })
-              .catch((err) => failed(err));
-          };
-  GetSpotInstanceLambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-              - lambda.amazonaws.com
-          Action:
-            - 'sts:AssumeRole'
-      Path: /
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
-      Policies:
-      - PolicyName: EC2Policy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-              - 'ec2:DescribeInstances'
-              - 'ec2:CancelSpotFleetRequests'
-              Resource: ['*']
-  GetSpotInstanceFunctionRetention:
-    Type: Custom::LogsRetention
-    DependsOn: GetSpotInstance
-    Properties:
-      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
-      LogGroupName: !Join ['', ['/aws/lambda/', !Ref GetSpotInstanceFunction]]
-      RetentionInDays: 1
-
 Outputs:
   InstanceId:
-    Value: !Ref GetSpotInstance
+    Value: !Ref SpotInstance
   InstanceIpAddress:
-    Value: !GetAtt GetSpotInstance.PublicIpAddress
+    Value: !GetAtt SpotInstance.PublicIp
   InstanceLogGroup:
-    Value: !Ref SpotFleetLogGroup
+    Value: !Ref SpotInstanceLogGroup

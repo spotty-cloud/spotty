@@ -95,12 +95,12 @@ class StackResource(object):
 
         # set maximum price
         if max_price:
-            template['Resources']['SpotFleet']['Properties']['SpotFleetRequestConfigData'] \
-                ['LaunchSpecifications'][0]['SpotPrice'] = max_price
+            template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData'] \
+                ['InstanceMarketOptions']['SpotOptions']['MaxPrice'] = max_price
 
         # set initial docker commands
         if docker_commands:
-            template['Resources']['SpotFleet']['Metadata']['AWS::CloudFormation::Init'] \
+            template['Resources']['SpotInstanceLaunchTemplate']['Metadata']['AWS::CloudFormation::Init'] \
                 ['docker_container_config']['files']['/tmp/docker/docker_commands.sh']['content'] = docker_commands
 
         return yaml.dump(template, Dumper=CfnYamlDumper)
