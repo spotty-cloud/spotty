@@ -33,6 +33,13 @@ def validate_instance_config(data):
             'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
             'amiName': And(str, len, Regex(AMI_REGEX)),
             Optional('keyName'): str,
+            Optional('rootVolumeSize', default=0): And(Or(int, str), Use(str),
+                                                       Regex(r'^\d+$', error='Incorrect value for "rootVolumeSize".'),
+                                                       Use(int),
+                                                       And(lambda x: x > 0,
+                                                           error='"rootVolumeSize" should be greater than 0 or should '
+                                                                 ' not be specified.'),
+                                                       ),
             Optional('maxPrice', default=0): And(Or(float, int, str), Use(str),
                                                  Regex(r'^\d+(\.\d{1,6})?$', error='Incorrect value for "maxPrice".'),
                                                  Use(float),

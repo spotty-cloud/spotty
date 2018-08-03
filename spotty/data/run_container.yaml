@@ -12,6 +12,9 @@ Parameters:
   ImageId:
     Description: AMI ID
     Type: AWS::EC2::Image::Id
+  RootVolumeSize:
+    Description: Root volume size
+    Type: String
   VolumeMountDirectory:
     Description: Directory where the volume should be mounted
     Type: String
@@ -75,7 +78,7 @@ Resources:
         BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
-            VolumeSize: 10
+            VolumeSize: !Ref RootVolumeSize
             DeleteOnTermination: true
         UserData:
           'Fn::Base64': !Sub |
