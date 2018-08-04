@@ -22,12 +22,12 @@ exports.handler = function(event, context) {
         return success();
     }
 
-    var ec2 = new AWS.EC2();
+    var ec2 = new AWS.EC2({region: event.ResourceProperties.Region});
 
     if (event.RequestType == 'Create' || event.RequestType == 'Update') {
-        var spotFleetRequestId = event.ResourceProperties.SpotFleetRequestId;
-        if (!spotFleetRequestId) {
-            return failed('SpotFleetRequestId required');
+        var instanceId = event.ResourceProperties.InstanceId;
+        if (!instanceId) {
+            return failed('InstanceId required');
         }
 
         var imageName = event.ResourceProperties.ImageName;
@@ -35,18 +35,11 @@ exports.handler = function(event, context) {
             return failed('ImageName required');
         }
 
-        ec2.describeSpotFleetInstances({SpotFleetRequestId: spotFleetRequestId})
-        .promise()
-        .then((data) => {
-            console.log("Spot Instances Response:\n", JSON.stringify(data));
-
-            var instanceId = data.ActiveInstances[0].InstanceId;
-
-            return ec2.createImage({
-                InstanceId: instanceId,
-                Name: imageName
-            }).promise()
+        ec2.createImage({
+            InstanceId: instanceId,
+            Name: imageName
         })
+        .promise()
         .then((data) => {
             console.log('Creating image:\n', JSON.stringify(data));
 
@@ -68,15 +61,12 @@ exports.handler = function(event, context) {
         .then((data) => {
             console.log('Image tagged:\n', JSON.stringify(data[0]));
             console.log('Image available:\n', JSON.stringify(data[1]));
-            console.log('Cancelling Spot Request...');
+            console.log('Terminating the instance...');
 
-            return ec2.cancelSpotFleetRequests({
-                SpotFleetRequestIds: [spotFleetRequestId],
-                TerminateInstances: true
-            }).promise()
+            return ec2.terminateInstances({InstanceIds: [instanceId]}).promise()
         })
         .then((data) => {
-            console.log('Spot Request cancelled:\n', data);
+            console.log('"terminateInstances" Response:\n', JSON.stringify(data));
             success();
         })
         .catch((err) => failed(err));

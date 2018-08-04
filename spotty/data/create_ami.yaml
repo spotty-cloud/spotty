@@ -72,58 +72,66 @@ Resources:
       ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
       LogGroupName: !Join ['', ['/aws/lambda/', !Ref FindBaseAMIFunction]]
 
-  SpotFleet:
-    Type: AWS::EC2::SpotFleet
+  SpotInstance:
+    Type: AWS::EC2::Instance
     Properties:
-      SpotFleetRequestConfigData:
-        IamFleetRole: !GetAtt IAMFleetRole.Arn
-        Type: request
-        TargetCapacity: 1
-        LaunchSpecifications:
-        - InstanceType: !Ref InstanceType
-          ImageId: !Ref FindBaseAMI
-          KeyName: !Ref KeyName
-          EbsOptimized: 'false'
-          BlockDeviceMappings:
-          - DeviceName: /dev/sda1
-            Ebs:
-              DeleteOnTermination: true
-              VolumeType: gp2
-              VolumeSize: 10
-          IamInstanceProfile:
-            Arn: !GetAtt LogRoleInstanceProfile.Arn
-          UserData:
-            'Fn::Base64': !Sub |
-              #!/bin/bash -x
+      LaunchTemplate:
+        LaunchTemplateId: !Ref SpotInstanceLaunchTemplate
+        Version: !GetAtt SpotInstanceLaunchTemplate.LatestVersionNumber
 
-              # install CloudFormation tools
-              apt-get update
-              apt-get -y install python-setuptools
-              mkdir aws-cfn-bootstrap-latest
-              curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
-              easy_install aws-cfn-bootstrap-latest
+  SpotInstanceLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Ref FindBaseAMI
+        KeyName: !Ref KeyName
+        EbsOptimized: 'false'
+        IamInstanceProfile:
+          Arn: !GetAtt LogRoleInstanceProfile.Arn
+        InstanceInitiatedShutdownBehavior: terminate
+        InstanceMarketOptions:
+          MarketType: spot
+          SpotOptions:
+            SpotInstanceType: one-time
+            InstanceInterruptionBehavior: terminate
+        BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp2
+            DeleteOnTermination: true
+        UserData:
+          'Fn::Base64': !Sub |
+            #!/bin/bash -x
 
-              # install CloudWatch agent
-              /usr/local/bin/cfn-init \
-                --stack ${AWS::StackName} \
-                --resource SpotFleet \
-                --region ${AWS::Region} \
-                -c cwlogs
+            # install CloudFormation tools
+            apt-get update
+            apt-get -y install python-setuptools
+            mkdir aws-cfn-bootstrap-latest
+            curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
+            easy_install aws-cfn-bootstrap-latest
 
-              # install Docker and goofys
-              /usr/local/bin/cfn-init \
-                --stack ${AWS::StackName} \
-                --resource SpotFleet \
-                --region ${AWS::Region} \
-                -c init \
-                -v
+            # install CloudWatch agent
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource SpotInstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c cwlogs
 
-              # send signal to create an AMI
-              /usr/local/bin/cfn-signal \
-                -e $? \
-                --stack ${AWS::StackName} \
-                --region ${AWS::Region} \
-                --resource InstanceReadyWaitCondition
+            # install Docker and goofys
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource SpotInstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c init \
+              -v
+
+            # send signal to create an AMI
+            /usr/local/bin/cfn-signal \
+              -e $? \
+              --stack ${AWS::StackName} \
+              --region ${AWS::Region} \
+              --resource InstanceReadyWaitCondition
     Metadata:
       'AWS::CloudFormation::Init':
         configSets:
@@ -180,13 +188,13 @@ Resources:
 
                 [/var/log/cloud-init-output.log]
                 file = /var/log/cloud-init-output.log
-                log_group_name = ${SpotFleetLogGroup}
+                log_group_name = ${SpotInstanceLogGroup}
                 log_stream_name = {instance_id}/cloud-init-output.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
 
                 [/var/log/cfn-init.log]
                 file = /var/log/cfn-init.log
-                log_group_name = ${SpotFleetLogGroup}
+                log_group_name = ${SpotInstanceLogGroup}
                 log_stream_name = {instance_id}/cfn-init.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
               mode: '000400'
@@ -203,25 +211,10 @@ Resources:
           commands:
             run_cw_agent:
               command: '/bin/bash -xe /tmp/cwlogs/run.sh'
-  SpotFleetLogGroup:
+  SpotInstanceLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       RetentionInDays: 7
-  IAMFleetRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: 'Allow'
-            Principal:
-              Service:
-                - 'spotfleet.amazonaws.com'
-            Action:
-              - 'sts:AssumeRole'
-      Path: '/'
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetRole
   LogRole:
     Type: AWS::IAM::Role
     Properties:
@@ -257,6 +250,7 @@ Resources:
 
   InstanceReadyWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
+    DependsOn: SpotInstance
     CreationPolicy:
       ResourceSignal:
         Timeout: PT20M
@@ -265,7 +259,7 @@ Resources:
     DependsOn: InstanceReadyWaitCondition
     Properties:
       ServiceToken: !GetAtt CreateAMIFunction.Arn
-      SpotFleetRequestId: !Ref SpotFleet
+      InstanceId: !Ref SpotInstance
       ImageName: !Ref ImageName
       IgnoreFunction: !Ref IgnoreCreateAMIFunction
   CreateAMIFunction:
@@ -279,11 +273,11 @@ Resources:
           console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
           function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
           if(event.ResourceProperties.IgnoreFunction=='true'){console.log('AMI not created (the function is ignored)');return success()}
-          var ec2=new AWS.EC2();if(event.RequestType=='Create'||event.RequestType=='Update'){var spotFleetRequestId=event.ResourceProperties.SpotFleetRequestId;if(!spotFleetRequestId){return failed('SpotFleetRequestId required')}
+          var ec2=new AWS.EC2({region:event.ResourceProperties.Region});if(event.RequestType=='Create'||event.RequestType=='Update'){var instanceId=event.ResourceProperties.InstanceId;if(!instanceId){return failed('InstanceId required')}
           var imageName=event.ResourceProperties.ImageName;if(!imageName){return failed('ImageName required')}
-          ec2.describeSpotFleetInstances({SpotFleetRequestId:spotFleetRequestId}).promise().then((data)=>{console.log("Spot Instances Response:\n",JSON.stringify(data));var instanceId=data.ActiveInstances[0].InstanceId;return ec2.createImage({InstanceId:instanceId,Name:imageName}).promise()}).then((data)=>{console.log('Creating image:\n',JSON.stringify(data));physicalId=data.ImageId;var tagsPromise=ec2.createTags({Resources:[data.ImageId],Tags:[{Key:'spotty:stack-id',Value:event.StackId}]}).promise()
+          ec2.createImage({InstanceId:instanceId,Name:imageName}).promise().then((data)=>{console.log('Creating image:\n',JSON.stringify(data));physicalId=data.ImageId;var tagsPromise=ec2.createTags({Resources:[data.ImageId],Tags:[{Key:'spotty:stack-id',Value:event.StackId}]}).promise()
           var imageAvailablePromise=ec2.waitFor('imageAvailable',{ImageIds:[data.ImageId]}).promise()
-          return Promise.all([tagsPromise,imageAvailablePromise])}).then((data)=>{console.log('Image tagged:\n',JSON.stringify(data[0]));console.log('Image available:\n',JSON.stringify(data[1]));console.log('Cancelling Spot Request...');return ec2.cancelSpotFleetRequests({SpotFleetRequestIds:[spotFleetRequestId],TerminateInstances:!0}).promise()}).then((data)=>{console.log('Spot Request cancelled:\n',data);success()}).catch((err)=>failed(err))}else if(event.RequestType=='Delete'){if(!physicalId){console.log('AMI ID not specified')
+          return Promise.all([tagsPromise,imageAvailablePromise])}).then((data)=>{console.log('Image tagged:\n',JSON.stringify(data[0]));console.log('Image available:\n',JSON.stringify(data[1]));console.log('Terminating the instance...');return ec2.terminateInstances({InstanceIds:[instanceId]}).promise()}).then((data)=>{console.log('"terminateInstances" Response:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}else if(event.RequestType=='Delete'){if(!physicalId){console.log('AMI ID not specified')
           return success()}else if(physicalId.indexOf('ami-')!==0){console.log('Physical ID is not an AMI ID')
           return success()}
           console.log('Searching AMI with ID='+physicalId);ec2.describeImages({ImageIds:[physicalId]}).promise().then((data)=>{if(!data.Images.length){throw new Error('No images found')}
@@ -320,8 +314,7 @@ Resources:
               - 'ec2:DeregisterImage'
               - 'ec2:DescribeSnapshots'
               - 'ec2:DeleteSnapshot'
-              - 'ec2:DescribeSpotFleetInstances'
-              - 'ec2:CancelSpotFleetRequests'
+              - 'ec2:TerminateInstances'
               - 'ec2:CreateTags'
               Resource: ['*']
   CreateAMIFunctionRetention:

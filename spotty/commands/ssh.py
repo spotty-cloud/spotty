@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 import boto3
 import subprocess
 from spotty.commands.abstract_config import AbstractConfigCommand
+from spotty.commands.helpers.resources import get_instance_ip_address
 from spotty.commands.helpers.validation import validate_instance_config
 from spotty.commands.project_resources.key_pair import KeyPairResource
 from spotty.commands.project_resources.stack import StackResource
@@ -36,17 +37,10 @@ class SshCommand(AbstractConfigCommand):
         project_name = project_config['name']
         region = instance_config['region']
 
-        cf = boto3.client('cloudformation', region_name=region)
-
-        stack = StackResource(cf, project_name, region)
-
-        # check that the stack exists
-        if not stack.stack_exists():
-            raise ValueError('Stack "%s" doesn\'t exists.' % stack.name)
-
         # get instance IP address
-        info = stack.get_stack_info()
-        ip_address = [row['OutputValue'] for row in info['Outputs'] if row['OutputKey'] == 'InstanceIpAddress'][0]
+        stack = StackResource(None, project_name, region)
+        ec2 = boto3.client('ec2', region_name=region)
+        ip_address = get_instance_ip_address(ec2, stack.name)
 
         # connect to the instance
         host = 'ubuntu@%s' % ip_address

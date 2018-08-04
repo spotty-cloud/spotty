@@ -10,6 +10,7 @@ from spotty.commands.spot_price import SpotPriceCommand
 from spotty.commands.ssh import SshCommand
 from spotty.commands.stop import StopCommand
 from spotty.commands.start import StartCommand
+from spotty.commands.sync import SyncCommand
 from spotty.commands.writers.output_writrer import OutputWriter
 
 
@@ -21,6 +22,7 @@ commands = [
     StopCommand,
     SshCommand,
     RunCommand,
+    SyncCommand,
     CreateAmiCommand,
     DeleteAmiCommand,
     SpotPriceCommand,

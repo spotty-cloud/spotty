@@ -1,6 +1,6 @@
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.helpers.resources import wait_for_status_changed
+from spotty.commands.helpers.resources import wait_stack_status_changed
 from spotty.commands.helpers.validation import validate_ami_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
@@ -43,7 +43,8 @@ class DeleteAmiCommand(AbstractConfigCommand):
 
         # ask user to confirm the deletion
         ami_id = res['Images'][0]['ImageId']
-        confirm = input('AMI "%s" (ID=%s) will be deleted. Type "y" to confirm: '
+        confirm = input('AMI "%s" (ID=%s) will be deleted.\n'
+                        'Type "y" to confirm: '
                         % (ami_name, ami_id))
         if confirm != 'y':
             output.write('You didn\'t confirm the operation.')
@@ -56,8 +57,9 @@ class DeleteAmiCommand(AbstractConfigCommand):
         output.write('Waiting for the AMI to be deleted...')
 
         # wait for the deletion to be completed
-        status, stack = wait_for_status_changed(cf, stack_id=stack_id, waiting_status='DELETE_IN_PROGRESS',
-                                                output=output)
+        status, stack = wait_stack_status_changed(cf, stack_id=stack_id, waiting_status='DELETE_IN_PROGRESS',
+                                                  resource_messages=[],
+                                                  resource_success_status='DELETE_COMPLETE', output=output)
 
         if status == 'DELETE_COMPLETE':
             output.write('\n'

@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 import boto3
 import subprocess
 from spotty.commands.abstract_config import AbstractConfigCommand
+from spotty.commands.helpers.resources import get_instance_ip_address
 from spotty.commands.helpers.validation import validate_instance_config
 from spotty.commands.project_resources.key_pair import KeyPairResource
 from spotty.commands.project_resources.stack import StackResource
@@ -39,16 +40,10 @@ class RunCommand(AbstractConfigCommand):
         if script_name not in self._config['scripts']:
             raise ValueError('Script "%s" is not defined in the configuration file.' % script_name)
 
-        cf = boto3.client('cloudformation', region_name=region)
-        stack = StackResource(cf, project_name, region)
-
-        # check that the stack exists
-        if not stack.stack_exists():
-            raise ValueError('Stack "%s" doesn\'t exists.' % stack.name)
-
         # get instance IP address
-        info = stack.get_stack_info()
-        ip_address = [row['OutputValue'] for row in info['Outputs'] if row['OutputKey'] == 'InstanceIpAddress'][0]
+        stack = StackResource(None, project_name, region)
+        ec2 = boto3.client('ec2', region_name=region)
+        ip_address = get_instance_ip_address(ec2, stack.name)
 
         # tmux session name
         session_name = self._args.session_name if self._args.session_name else 'spotty-script-%s' % script_name

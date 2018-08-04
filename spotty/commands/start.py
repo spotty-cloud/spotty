@@ -1,7 +1,7 @@
 import boto3
 from spotty.aws_cli import AwsCli
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.helpers.resources import wait_for_status_changed
+from spotty.commands.helpers.resources import wait_stack_status_changed
 from spotty.commands.helpers.validation import validate_instance_config
 from spotty.commands.project_resources.bucket import BucketResource
 from spotty.commands.project_resources.stack import StackResource
@@ -54,7 +54,7 @@ class StartCommand(AbstractConfigCommand):
         if root_volume_size and root_volume_size < image_volume_size:
             raise ValueError('Root volume size cannot be less than the size of AMI (%dGB).' % image_volume_size)
         elif not root_volume_size:
-            root_volume_size = image_volume_size
+            root_volume_size = image_volume_size + 5
 
         # create bucket for the project
         project_bucket = BucketResource(s3, project_name, region)
@@ -92,9 +92,18 @@ class StartCommand(AbstractConfigCommand):
 
         output.write('Waiting for the stack to be created...')
 
+        resource_messages = [
+            ('SpotInstanceProfile', 'creating IAM role for the instance'),
+            ('SpotInstance', 'launching the instance'),
+            ('Volume1', 'creating the volume'),
+            ('VolumeAttachment1', 'attaching the volume to the instance'),
+            ('DockerReadyWaitCondition', 'waiting for the Docker container to be ready'),
+        ]
+
         # wait for the stack to be created
-        status, info = wait_for_status_changed(cf, stack_id=res['StackId'], waiting_status='CREATE_IN_PROGRESS',
-                                               output=output)
+        status, info = wait_stack_status_changed(cf, stack_id=res['StackId'], waiting_status='CREATE_IN_PROGRESS',
+                                                 resource_messages=resource_messages,
+                                                 resource_success_status='CREATE_COMPLETE', output=output)
 
         if status == 'CREATE_COMPLETE':
             ip_address = [row['OutputValue'] for row in info['Outputs'] if row['OutputKey'] == 'InstanceIpAddress'][0]

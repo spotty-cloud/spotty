@@ -146,7 +146,7 @@ class StackResource(object):
             TemplateBody=template,
             Parameters=[{'ParameterKey': key, 'ParameterValue': value} for key, value in params.items()],
             Capabilities=['CAPABILITY_IAM'],
-            OnFailure='DELETE',
+            OnFailure='DO_NOTHING',
         )
 
         return res

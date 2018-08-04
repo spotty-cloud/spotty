@@ -1,7 +1,7 @@
 import yaml
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.helpers.resources import is_gpu_instance, wait_for_status_changed
+from spotty.commands.helpers.resources import is_gpu_instance, wait_stack_status_changed
 from spotty.commands.helpers.validation import validate_ami_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.utils import data_dir, random_string
@@ -49,7 +49,7 @@ class CreateAmiCommand(AbstractConfigCommand):
         key_name = self._config['instance'].get('keyName', '')
         if not key_name:
             del template['Parameters']['KeyName']
-            del template['Resources']['SpotFleet']['Properties']['SpotFleetRequestConfigData']['LaunchSpecifications'][0]['KeyName']
+            del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['KeyName']
 
         # create stack
         params = [
@@ -70,9 +70,17 @@ class CreateAmiCommand(AbstractConfigCommand):
 
         output.write('Waiting for the AMI to be created...')
 
+        resource_messages = [
+            ('LogRoleInstanceProfile', 'creating IAM role for the instance'),
+            ('SpotInstance', 'launching the instance'),
+            ('InstanceReadyWaitCondition', 'installing NVIDIA Docker'),
+            ('CreateAMI', 'creating AMI and terminating the instance'),
+        ]
+
         # wait for the stack to be created
-        status, stack = wait_for_status_changed(cf, stack_id=res['StackId'], waiting_status='CREATE_IN_PROGRESS',
-                                                output=output)
+        status, stack = wait_stack_status_changed(cf, stack_id=res['StackId'], waiting_status='CREATE_IN_PROGRESS',
+                                                  resource_messages=resource_messages,
+                                                  resource_success_status='CREATE_COMPLETE', output=output)
 
         if status == 'CREATE_COMPLETE':
             ami_id = [row['OutputValue'] for row in stack['Outputs'] if row['OutputKey'] == 'NewAMI'][0]
@@ -80,7 +88,7 @@ class CreateAmiCommand(AbstractConfigCommand):
             output.write('\n'
                          '--------------------\n'
                          'AMI "%s" (ID=%s) was successfully created.\n'
-                         'Use "spotty start" command to run Spot instance.\n'
+                         'Use "spotty start" command to run a Spot Instance.\n'
                          '--------------------' % (ami_name, ami_id))
         else:
             raise ValueError('Stack "%s" was not created.\n'

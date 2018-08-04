@@ -58,7 +58,6 @@ Resources:
 
   SpotInstanceLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
-    DeletionPolicy: Retain
     Properties:
       LaunchTemplateData:
         InstanceType: !Ref InstanceType
@@ -127,7 +126,7 @@ Resources:
             - cwlogs_config
           cfn_hup:
             - cfn_hup_config
-          init:
+          start_docker:
             - stop_cfn_hup_config
             - mount_volume_config
             - sync_project_config
@@ -184,6 +183,13 @@ Resources:
               command: '/bin/bash -xe /tmp/cwlogs/run.sh'
         cfn_hup_config:
           files:
+            /tmp/scripts/start_docker.sh:
+              owner: root
+              group: root
+              mode: '000400'
+              content: !Sub |
+                /usr/local/bin/cfn-init --stack ${AWS::StackName} --resource SpotInstanceLaunchTemplate --region ${AWS::Region} -c start_docker -v
+                /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --region ${AWS::Region} --resource DockerReadyWaitCondition
             /etc/cfn/cfn-hup.conf:
               owner: root
               group: root
@@ -202,7 +208,7 @@ Resources:
                 [cfn-volume-attached-hook]
                 triggers=post.add
                 path=Resources.VolumeAttachment1.PhysicalResourceId
-                action=/usr/local/bin/cfn-init --stack ${AWS::StackName} --resource SpotInstanceLaunchTemplate --region ${AWS::Region} -c init -v
+                action=/bin/bash -x /tmp/scripts/start_docker.sh
                 runas=root
           commands:
             run_init:
@@ -657,6 +663,13 @@ Resources:
       ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
       LogGroupName: !Join ['', ['/aws/lambda/', !Ref SetLogsRetentionFunction]]
       RetentionInDays: 1
+
+  DockerReadyWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: VolumeAttachment1
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT10M
 
 Outputs:
   InstanceId:

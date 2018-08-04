@@ -30,11 +30,44 @@ def get_snapshot(ec2, snapshot_name: str):
     return snapshot
 
 
-def wait_for_status_changed(cf, stack_id, waiting_status, output: AbstractOutputWriter, delay=15):
+def get_instance_ip_address(ec2, stack_name):
+    instances_info = ec2.describe_instances(Filters=[
+        {'Name': 'tag:aws:cloudformation:stack-name', 'Values': [stack_name]},
+        {'Name': 'instance-state-name', 'Values': ['running']},
+    ])
+
+    if not len(instances_info['Reservations']):
+        raise ValueError('Instance is not running.\n'
+                         'Use "spotty start" command to run an instance.')
+
+    ip_address = instances_info['Reservations'][0]['Instances'][0]['PublicIpAddress']
+
+    return ip_address
+
+
+def wait_stack_status_changed(cf, stack_id, waiting_status, resource_messages, resource_success_status,
+                              output: AbstractOutputWriter, delay=5):
     current_status = waiting_status
     stack = None
+
+    resource_messages = iter(resource_messages)
+    resource_name = None
+
     while current_status == waiting_status:
         sleep(delay)
+
+        # print current resource message
+        stack_resources = cf.list_stack_resources(StackName=stack_id)
+        resource_statuses = dict([(row['LogicalResourceId'], row['ResourceStatus'])
+                                  for row in stack_resources['StackResourceSummaries']])
+
+        while (resource_name is None) or (resource_name and
+                                          resource_statuses.get(resource_name, '') == resource_success_status):
+            (resource_name, resource_msg) = next(resource_messages, (False, False))
+            if resource_name:
+                output.write('  - %s...' % resource_msg)
+
+        # get the latest status of the stack
         try:
             res = cf.describe_stacks(StackName=stack_id)
         except EndpointConnectionError:
