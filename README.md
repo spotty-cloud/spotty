@@ -1,153 +1,208 @@
-cloud-training
-==============
+# Spotty
 
-This package provides a command line interface to help you to train your TensorFlow models on AWS spot instances.
+Spotty helps you to train deep learning models on [AWS Spot Instances](https://aws.amazon.com/ec2/spot/).
 
-### Installation ###
+You don't need to spend time on:
+- manually starting Spot Instances
+- installation of NVIDIA drivers
+- managing snapshots and AMIs
+- detaching remote processes from your SSH sessions
 
-To install the cloud-training use [pip](http://www.pip-installer.org/en/latest/) package manger:
+Just start an instance using the following command:
+```bash
+$ spotty start
+```
+It will run a Spot Instance, restore snapshots if any, synchronize the project with the instance 
+and start Docker container with the environment.
 
-    $ pip install --upgrade cloud-training
+Then train your model:
+```bash
+$ spotty run train
+```
+It runs your custom training command inside the Docker container. The remote connection uses 
+[tmux](https://github.com/tmux/tmux/wiki), so you can close the connection and come back to the running process any time later.
+
+Connect to the container if necessary:
+```bash
+$ spotty ssh
+```
+It uses [tmux](https://github.com/tmux/tmux/wiki) session, so you can always detach the session using
+`Crtl`+`b`, then `d` combination of keys and attach that session later using `$ spotty ssh` command again.
+
+## Installation
+
+To install Spotty use [pip](http://www.pip-installer.org/en/latest/) package manger:
+
+    $ pip install --upgrade spotty
 
 Requirements:
   * Python 3
   * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html))
 
-### Available commands ###
+## Configuration
 
-  * Configure the tool:
-    ~~~
-    $ cloud-training configure
-    ~~~
+By default, Spotty is looking for `spotty.yaml` file in the root directory of the project.
+Here is a basic example of such file:
 
-  * Get current spot prices for instances:
-    ~~~
-    $ cloud-training spot-price [--instance-type <instance_type>] [--region <region_name>] [--all-regions]
-    ~~~
+```yaml
+project:
+  name: MyProjectName
+  remoteDir: /workspace/project
+instance:
+  region: us-east-2
+  instanceType: p2.xlarge
+  amiName: SpottyAMI
+  volumes:
+    - snapshotName: MySnapshotName
+      directory: /workspace
+      size: 10
+  docker:
+    image: tensorflow/tensorflow:latest-gpu-py3
+```
 
-  * Train the model using AWS spot instance:
-    ~~~
-    $ cloud-training --model <model_name> [--project-dir <project_dir>] train [--instance-type <instance_type>] [--conda-env <environment_name>] [--session <session_name>]
-    ~~~
+### Available Parameters
 
-  * Get the latest trained model from AWS S3:
-    ~~~
-    $ cloud-training --model <model_name> [--project-dir <project_dir>] sync-session
-    ~~~
+__`project`__ section:
+- __`name`__ - the name of your project. It will be used to create S3 bucket and CloudFormation stack to run 
+an instance.
+- __`remoteDir`__ - directory where your project will be stored on the instance. It's usually a directory 
+on the attached volume (see "instance" section).
+- __`syncFilters`__ _(optional)_ - filters to skip some directories or files during synchronization. By default, all project files 
+will be synced with the instance. Example:
+    ```yaml
+    syncFilters:
+      - exclude:
+          - .idea/*
+          - .git/*
+          - data/*
+      - include:
+          - data/test/*
+      - exclude:
+          - data/test/config
+    ```
+    
+    It will skip ".idea/", ".git/" and "data/" directories except "data/test/" directory. All files from "data/test/" 
+    directory will be synced with the instance except "data/test/config" file.
+    
+    You can read more about filters 
+    here: [Use of Exclude and Include Filter](https://docs.aws.amazon.com/cli/latest/reference/s3/index.html#use-of-exclude-and-include-filters). 
 
-  * Shutdown the instances and cancel the spot requests:
-    ~~~
-    $ cloud-training --model <model_name> [--project-dir <project_dir>] shutdown
-    ~~~
-
-
-### Required Project Sctructure ###
-
-In the current version of the tool the project must have the following structure:
-
-    ProjectName/
-        data/
-            ...
-        package_name/
-            models/
-                my_model_1/
-                    train.py
-                ...
-            ...
-        training/
-            my_model_1/
-                session_name_1/
-                    checkpoints/
-                    ...
-                ...
-            ...
-        cloud_training.json
+__`instance`__ section:
+- __`region`__ - region where your are going to run the instance (you can use command `spotty spot-price` to find the 
+cheapest region),
+- __`instanceType`__ - type of the instance to run. You can find more information about 
+types of GPU instances here: 
+[Recommended GPU Instances](https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html).
+- __`amiName`__ - name of your future or already existing AMI with NVIDIA Docker. Use command `spotty create-ami` to 
+automatically build an AMI. This AMI will be used to run your application inside the Docker container.
+- __`maxPrice`__ _(optional)_ - The maximum price per hour that you are willing to pay for a Spot Instance. By default, it's 
+On-Demand price for chosen instance type. Read more here: 
+[Spot Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html).
+- __`rootVolumeSize`__ _(optional)_ - size of the root volume in GB. The root volume will be destroyed once 
+the instance is terminated. Use attached volumes to store the data you need to keep (see "volumes" parameter below).
+- __`volumes`__ - the list of volumes to attach to the instance _(only one volume is supported at the moment)_:
+    - __`snapshotName`__ _(optional)_ - name of the snapshot to restore. If a snapshot with this name doesn't exists, it will be
+    created from new volume once the instance is terminated.
+    - __`directory`__ - directory where the volume should mounted,
+    - __`size`__ _(optional)_ - size of the volume in GB. Size of the volume cannot be less then the size of existing snapshot, but
+    can always be increased.
+    - __`deletionPolicy`__ _(optional)_ - if this parameter is set to "__delete__", the volume will be removed without creating 
+    a snapshot. The default value for this parameter is "__snapshot__": once the instance is terminated, original snapshot 
+    will be removed (if it exists), new snapshot with the same name will be created and then the volume will 
+    be removed.
+- __`docker`__ - Docker configuration:
+    - __`image`__ _(optional)_ - the name of the Docker image that contains environment for your project. For example, 
+    you could use [TensorFlow image for GPU]((https://hub.docker.com/r/tensorflow/tensorflow/)) 
+    (`tensorflow/tensorflow:latest-gpu-py3`). It already contains NumPy, SciPy, scikit-learn, pandas, Jupyter Notebook and 
+    TensorFlow itself. If you need to use your own image, you can specify the path to your Dockerfile in the 
+    __`file`__ parameter (see below), or push your image to the [Docker Hub](https://hub.docker.com/) and use its name.
+    - __`file`__ _(optional)_ - relative path to your custom Dockerfile. For example, you could take TensorFlow image as a 
+    base one and add [AWS CLI](https://github.com/aws/aws-cli) there to be able to download your datasets from S3:
+        ```dockerfile
+        FROM tensorflow/tensorflow:latest-gpu-py3
         
-  * `data/` contains all your training data,
-  * `package_name/` contains the project code,
-  * `package_name/models/my_model_1/` contains the code of the "my_model_1" model,
-  * `package_name/models/my_model_1/train.py` is the script which is being used for training, it must have "--session" parameter,
-  * `training/my_model_1/` contains the sessions for the "my_model_1" model,
-  * `training/my_model_1/session_name_1/` contains all outputs for a particular session,
-  * `training/my_model_1/checkpoints/` contains TensorFlow checkpoint files, see [Saving and Restoring](https://www.tensorflow.org/programmers_guide/saved_model),
-  * `cloud_training.json` is the configuration file which must contain the project name and the package name is JSON format:
+        RUN pip install --upgrade \
+          pip \
+          awscli
+        ```
+    - __`workingDir`__ _(optional)_ - working directory for your custom scripts (see "scripts" section below),
+    - __`dataRoot`__ _(optional)_ - directory where Docker will store all downloaded and built images. You could cache 
+    images on your attached volume to avoid downloading them from internet or building your custom image from scratch 
+    every time when you start an instance.
+    - __`commands`__ _(optional)_ - commands which should be performed once your container is started. For example, you 
+    could download your datasets from S3 bucket to the project directory (see "project" section):
+        ```yaml
+        commands: |
+          aws s3 sync s3://my-bucket/datasets/my-dataset /workspace/project/data
+        ```
+- __`ports`__ _(optional)_ - list of ports to open. For example:
+    ```yaml
+    ports: [6006, 8888]
+    ```
+    It will open ports 6006 for Jupyter Notebook and 8008 for TensorBoard. 
 
-        {
-          "project_name": "ProjectName",
-          "package_name": "package_name"
-        }
+__`scripts`__ section _(optional)_:
+- This section contains customs scripts which can be run using `spotty run <SCRIPT_NAME>`
+command. The following example defines scripts `train`, `jupyter` and `tensorflow`:
+                
+    ```yaml
+    project:
+      ...
+    instance:
+      ...
+    scripts:
+      train: |
+        PYTHONPATH=/workspace/project
+        python /workspace/project/model/train.py --num-layers 3
+      jupyter: |
+        /run_jupyter.sh --allow-root
+      tensorboard: |
+        tensorboard --logdir /workspace/outputs
+    ```
 
+## Available Commands
 
-### How it works ###
+  - `$ spotty start`
+  
+    Runs a Spot Instance, synchronizes the project with that instance and starts a Docker container.
 
-1. `configure` command:
+  - `$ spotty stop`
 
-    Before using the cloud-training you need to configure it. During the configuration you will 
-    be asked for the following things:
-      * **AWS Access Key ID**
-      * **AWS Secret Access Key**
-      * **Region name** - AWS region name where you have created a S3 bucket and where you plan to run instances. 
-      See [AWS Regions and Endpoints](http://docs.aws.amazon.com/general/latest/gr/rande.html).
-      * **S3 bucket name** - Bucket which will be used to synchronize the project with an EC2 instance 
-      and where an EC2 instance will save checkpoints. It has format <bucket_name>/<path> without trailing slash. 
-      If the bucket will be located in a different region, it may cause the additional charges for the data 
-      transferring between S3 and EC2.
-      * **Image ID** - AMI with installed TensorFlow, it has the format ami-xxxxxxxx. See below how to create an AMI.
-      * **Root EBS volume snapshot ID** - Snapshot which is being used for AMI, it has the format snap-xxxxxxxxxxxxxxxxx.
-      * **Root EBS volume size (GB)** - Size of an AMI snapshot in GB.
-      * **Training EBS volume size (GB)** - Size of an additional volume used for the project code and the training data.
-      * **EC2 key pair name** - Name of an existing key pair to have an access to the running instance.
-      * **Default instance type** - Instance type which will be used by default for commands "train" and "spot-price". 
-      See [Amazon EC2 Instance Types](https://aws.amazon.com/ec2/instance-types/).
+    Terminates the running instance and deletes its CloudFormation stack.
 
-2. `train` command:
+  - `$ spotty run <SCRIPT_NAME> [--session-name <SESSION_NAME>]`
 
-    * **During the command:**
-        1. All the files in the data directory will be zipped one by one.
-        2. The package directory, the zip files from the data directory 
-        and the particular session (if it was specified) will be synced with S3. The "aws sync"
-        command is being used, so it will transfer the files only once.
-        3. Spot instance will be run (you will be asked for the maximum price for the specified instance type).
-        4. It returns you the IP address of the instance and the session name which you will use for the "sync-session".
+    Runs a custom script inside the Docker container (see "scripts" section in [Available Parameters](#Available-Parameters)).
+    
+    Use `Crtl`+`b`, then `d` combination of keys to be detached from SSH session. The script will keep running. 
+    Call `$ spotty run <SCRIPT_NAME>` again to be reattached to the running script. 
+    Read more about tmux here: [tmux Wiki](https://github.com/tmux/tmux/wiki).
+    
+    If you need to run the same script several times in parallel, use the `--session-name` parameter to
+    specify different names for tmux sessions.
 
-    * **After the command**:
-        1. The instance copies the project from S3, unzips the files from the data directory and runs the training.
-        2. TensorBoard will be started on 6006 port.
-        3. The instance constantly syncs the session directory (checkpoints and other outputs) with S3.
+  - `$ spotty ssh [--host-os]`
 
-3. `sync-session` command:
+    Connects to the running Docker container or to the instance itself. Use the `--host-os` parameter to connect to the 
+    host OS instead of the Docker container.
 
-    Use this command to get the latest trained model from S3. This command gets the checkpoint file first, 
-    finds the name of the last checkpoint and downloads it to your local machine.
+  - `$ spotty sync`
 
-4. `shutdown` command:
+    Synchronizes the project with the running instance. First time it happens automatically once you start an instance, 
+    but you always can use this command to update the project if an instance is already running.
 
-    This command finds the running instance for the training model and terminates it. 
-    The spot request will be cancelled automatically.
+  - `$ spotty create-ami`
+    
+    Create AMI with NVIDIA Docker. You need to call this command only one time when you start using Spotty, then you 
+    can reuse created AMI for all your projects.
+  
+  - `$ spotty delete-ami`
+    
+    Deletes an AMI that was created using the command above.
+  
+  - `$ spotty spot-price [--instance-type <instance_type>]`
 
-5. `spot-price` command:
+    Returns Spot Instance prices for particular instance type across all AWS regions. Results will be sorted by price.
 
-    This command checks the current prices for spot instances in different regions. It helps you to
-    find the region with the lowest price for the desired instance type.
-
-
-### AMI ###
-
-To create an AMI I used [this](https://medium.com/@rogerxujiang/setting-up-a-gpu-instance-for-deep-learning-on-aws-795343e16e44) 
-and [this](http://mortada.net/tips-for-running-tensorflow-with-gpu-support-on-aws.html) article.
-
-You can create your own AMI or use my one: **ami-a396bac6** (us-east-2 region). 
-
-I installed there Anaconda 3 with "nlp" environment which contains TensorFlow 1.4.0-rc0. 
-TensorFlow was compiled with the compute capability 3.7 (see [CUDA GPUs](https://developer.nvidia.com/cuda-gpus)), 
-so the image can be used for any p2.* instance. If you want to use this image for g3.* instances, 
-you can recompile TensorFlow and install it for another environment.
-
-Example of a training command:
-
-    $ cloud-training --model token_classes train --conda-env nlp
-
-This command should be run from the project directory. Or you can use `--project-dir` parameter 
-to specify the absolute or the relative path to the project directory.
-
-To continue training of an existing session use `--session` parameter.
+All the commands have parameter `--config` that can be used to specify a path to configuration file. By default it's 
+looking for a file `spotty.yaml` in the current working directory.

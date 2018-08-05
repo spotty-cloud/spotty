@@ -1,0 +1,680 @@
+Description: Create an AMI from an EC2 Spot instance
+Parameters:
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+  InstanceType:
+    Description: Instance type to launch EC2 Spot instance
+    Type: String
+  KeyName:
+    Description: Key name to get an access o the instance
+    Type: AWS::EC2::KeyPair::KeyName
+  ImageId:
+    Description: AMI ID
+    Type: AWS::EC2::Image::Id
+  RootVolumeSize:
+    Description: Root volume size
+    Type: String
+  VolumeMountDirectory:
+    Description: Directory where the volume should be mounted
+    Type: String
+    Default: ''
+  DockerDataRootDirectory:
+    Description: Docker data root directory
+    Type: String
+    Default: ''
+  DockerImage:
+    Description: Docker image to run
+    Type: String
+    Default: ''
+  DockerfilePath:
+    Description: Dockerfile to build and to use instead of the image
+    Type: String
+    Default: ''
+  DockerNvidiaRuntime:
+    Description: Run Docker container with NVIDIA runtime
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+  DockerWorkingDirectory:
+    Description: Working directory inside Docker container
+    Type: String
+    Default: ''
+  ProjectS3Bucket:
+    Description: S3 bucket with the project
+    Type: String
+    Default: ''
+  ProjectDirectory:
+    Description: Destination directory for the project
+    Type: String
+    Default: ''
+Resources:
+  SpotInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref SpotInstanceLaunchTemplate
+        Version: !GetAtt SpotInstanceLaunchTemplate.LatestVersionNumber
+
+  SpotInstanceLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Ref ImageId
+        KeyName: !Ref KeyName
+        EbsOptimized: 'false'
+        IamInstanceProfile:
+          Arn: !GetAtt SpotInstanceProfile.Arn
+        SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+        InstanceInitiatedShutdownBehavior: terminate
+        InstanceMarketOptions:
+          MarketType: spot
+          SpotOptions:
+            SpotInstanceType: one-time
+            InstanceInterruptionBehavior: terminate
+        BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: !Ref RootVolumeSize
+            DeleteOnTermination: true
+        UserData:
+          'Fn::Base64': !Sub |
+            #!/bin/bash -xe
+
+            # install CloudFormation tools
+            apt-get update
+            apt-get install -y python-setuptools
+            mkdir -p aws-cfn-bootstrap-latest
+            curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
+            easy_install aws-cfn-bootstrap-latest
+
+            # install AWS CLI
+            apt-get install -y awscli
+            aws configure set default.region ${AWS::Region}
+
+            # install jq
+            apt-get install -y jq
+
+            # create directory for Docker scripts
+            mkdir -p /tmp/docker
+            chmod 777 /tmp/docker
+
+            # create directory for "spotty run" logs
+            mkdir -p /var/log/spotty-run
+            chmod 777 /var/log/spotty-run
+
+            # install CloudWatch agent
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource SpotInstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c cwlogs \
+              -v
+
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource SpotInstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c cfn_hup \
+              -v
+    Metadata:
+      'AWS::CloudFormation::Init':
+        configSets:
+          cwlogs:
+            - cwlogs_config
+          cfn_hup:
+            - cfn_hup_config
+          start_docker:
+            - stop_cfn_hup_config
+            - mount_volume_config
+            - sync_project_config
+            - docker_container_config
+        cwlogs_config:
+          files:
+            /tmp/cwlogs/logs.conf:
+              content: !Sub |
+                [general]
+                state_file= /var/awslogs/agent-state
+
+                [/var/log/cloud-init-output.log]
+                file = /var/log/cloud-init-output.log
+                log_group_name = ${SpotInstanceLogGroup}
+                log_stream_name = {instance_id}/cloud-init-output.log
+                datetime_format = %d/%b/%Y:%H:%M:%S
+
+                [/var/log/cfn-init.log]
+                file = /var/log/cfn-init.log
+                log_group_name = ${SpotInstanceLogGroup}
+                log_stream_name = {instance_id}/cfn-init.log
+                datetime_format = %d/%b/%Y:%H:%M:%S
+
+                [/var/log/cfn-hup.log]
+                file = /var/log/cfn-hup.log
+                log_group_name = ${SpotInstanceLogGroup}
+                log_stream_name = {instance_id}/cfn-hup.log
+                datetime_format = %d/%b/%Y:%H:%M:%S
+
+                [/var/log/cfn-wire.log]
+                file = /var/log/cfn-wire.log
+                log_group_name = ${SpotInstanceLogGroup}
+                log_stream_name = {instance_id}/cfn-wire.log
+                datetime_format = %d/%b/%Y:%H:%M:%S
+
+                [/var/log/docker-commands.log]
+                file = /var/log/docker-commands.log
+                log_group_name = ${SpotInstanceLogGroup}
+                log_stream_name = {instance_id}/docker-commands.log
+                datetime_format = %d/%b/%Y:%H:%M:%S
+              mode: '000400'
+              owner: root
+              group: root
+            /tmp/cwlogs/run.sh:
+              content: !Sub |
+                curl https://s3.amazonaws.com//aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -O
+                chmod +x ./awslogs-agent-setup.py
+                ./awslogs-agent-setup.py -n -r ${AWS::Region} -c /tmp/cwlogs/logs.conf
+              mode: '000400'
+              owner: root
+              group: root
+          commands:
+            run_cw_agent:
+              command: '/bin/bash -xe /tmp/cwlogs/run.sh'
+        cfn_hup_config:
+          files:
+            /tmp/scripts/start_docker.sh:
+              owner: root
+              group: root
+              mode: '000400'
+              content: !Sub |
+                /usr/local/bin/cfn-init --stack ${AWS::StackName} --resource SpotInstanceLaunchTemplate --region ${AWS::Region} -c start_docker -v
+                /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --region ${AWS::Region} --resource DockerReadyWaitCondition
+            /etc/cfn/cfn-hup.conf:
+              owner: root
+              group: root
+              mode: '000400'
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+                interval=1
+                verbose=true
+            /etc/cfn/hooks.d/cfn-volume-attached.conf:
+              owner: root
+              group: root
+              mode: '000400'
+              content: !Sub |
+                [cfn-volume-attached-hook]
+                triggers=post.add
+                path=Resources.VolumeAttachment1.PhysicalResourceId
+                action=/bin/bash -x /tmp/scripts/start_docker.sh
+                runas=root
+          commands:
+            run_init:
+              command: '/usr/local/bin/cfn-hup -v'
+        stop_cfn_hup_config:
+          commands:
+            stop_cfn_hup:
+              command: 'kill -9 `pgrep cfn-hup`'
+        mount_volume_config:
+          files:
+            /tmp/scripts/mount_volume.sh:
+              owner: root
+              group: root
+              mode: '000400'
+              content: !Sub |
+                if [ -n "${VolumeMountDirectory}" ]; then
+                  mkfs -t ext4 /dev/xvdb
+                  mkdir -p ${VolumeMountDirectory}
+                  mount /dev/xvdb ${VolumeMountDirectory}
+                  chown -R ubuntu:ubuntu ${VolumeMountDirectory}
+                fi
+          commands:
+            mount_volume:
+              command: '/bin/bash -xe /tmp/scripts/mount_volume.sh'
+        sync_project_config:
+          files:
+            /tmp/scripts/sync_project.sh:
+              owner: root
+              group: root
+              mode: '000400'
+              content: !Sub |
+                if [ -n "${ProjectS3Bucket}" ] && [ -n "${ProjectDirectory}" ]; then
+                  mkdir -p ${ProjectDirectory}
+                  aws s3 sync s3://${ProjectS3Bucket}/project ${ProjectDirectory} --delete
+                fi
+          commands:
+            mount_volume:
+              command: '/bin/bash -xe /tmp/scripts/sync_project.sh'
+        docker_container_config:
+          files:
+            /tmp/scripts/run_container.sh:
+              owner: root
+              group: root
+              mode: '000400'
+              content: !Sub |
+                # change docker data root directory
+                if [ -n "${DockerDataRootDirectory}" ]; then
+                  jq '. + { "data-root": "${DockerDataRootDirectory}" }' /etc/docker/daemon.json > /tmp/docker_daemon.json \
+                    && mv /tmp/docker_daemon.json /etc/docker/daemon.json
+                  service docker restart
+                fi
+
+                # build docker image
+                DOCKER_IMAGE="${DockerImage}"
+                if [ -n "${DockerfilePath}" ] && [ -n "${ProjectDirectory}" ]; then
+                  DOCKER_IMAGE=spotty:`date +%s`
+                  docker build \
+                    -t $DOCKER_IMAGE \
+                    -f ${ProjectDirectory}/${DockerfilePath} \
+                    ${ProjectDirectory}
+                fi
+
+                if [ -n "$DOCKER_IMAGE" ]; then
+                  VOLUME_PARAM=""
+                  if [ -n "${VolumeMountDirectory}" ]; then
+                    VOLUME_PARAM="-v ${VolumeMountDirectory}:${VolumeMountDirectory}"
+                  fi
+
+                  NVIDIA_RUNTIME=""
+                  if [ "${DockerNvidiaRuntime}" == "true" ]; then
+                    NVIDIA_RUNTIME="--runtime=nvidia"
+                  fi
+
+                  # run docker container
+                  docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAM \
+                    -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker --name spotty $DOCKER_IMAGE /bin/sh
+
+                  WORKING_DIR=""
+                  if [ -n "${DockerWorkingDirectory}" ]; then
+                    WORKING_DIR="-w ${DockerWorkingDirectory}"
+                  fi
+
+                  # run initial user commands
+                  docker exec $WORKING_DIR spotty /bin/bash -xe /tmp/docker/docker_commands.sh \
+                    > /var/log/docker-commands.log 2>&1
+                fi
+            /tmp/docker/docker_commands.sh:
+              owner: root
+              group: root
+              mode: '000400'
+              content: 'echo "Nothing to do"'
+          commands:
+            run_container:
+              command: /bin/bash -xe /tmp/scripts/run_container.sh
+
+  SpotInstanceLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      RetentionInDays: 1
+
+  SpotInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+      - Ref: SpotInstanceRole
+  SpotInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: '/'
+      Policies:
+      - PolicyName: LogRolePolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:Create*
+            - logs:PutLogEvents
+            - s3:GetObject
+            Resource:
+            - arn:aws:logs:*:*:*
+            - arn:aws:s3:::*
+      - PolicyName: S3RolePolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:ListAllMyBuckets
+            - s3:GetBucketLocation
+            - s3:ListBucket
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            Resource:
+            - arn:aws:s3:::*
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcId
+      GroupDescription: Spotty security group
+      SecurityGroupEgress:
+      - CidrIp: 0.0.0.0/0
+        IpProtocol: -1
+        FromPort: 0
+        ToPort: 65535
+      - CidrIpv6: ::/0
+        IpProtocol: -1
+        FromPort: 0
+        ToPort: 65535
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+      - CidrIpv6: ::/0
+        IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+
+  Volume1:
+    Type: AWS::EC2::Volume
+    DeletionPolicy: Snapshot
+    Properties:
+      AvailabilityZone: !GetAtt SpotInstance.AvailabilityZone
+  VolumeAttachment1:
+    Type: AWS::EC2::VolumeAttachment
+    Properties:
+      Device: /dev/sda2
+      InstanceId: !Ref SpotInstance
+      VolumeId: !Ref Volume1
+
+  # function to terminate the instance before detaching the volume
+  # (otherwise the volume will be in busy state, because it's mounted to the instance)
+  TerminateInstance:
+    Type: Custom::InstanceTermination
+    DependsOn: VolumeAttachment1
+    Properties:
+      ServiceToken: !GetAtt TerminateInstanceFunction.Arn
+      InstanceId: !Ref SpotInstance
+  TerminateInstanceFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt TerminateInstanceLambdaExecutionRole.Arn
+      Runtime: nodejs4.3
+      Timeout: 30
+      Code:
+        ZipFile: !Sub |
+          var aws = require("aws-sdk");
+          var response = require('cfn-response');
+
+          exports.handler = function(event, context) {
+              console.log("request received:\n" + JSON.stringify(event));
+
+              var physicalId = event.PhysicalResourceId;
+
+              function success(data) {
+                  data = data || {}
+                  console.log('SUCCESS:\n', data);
+                  return response.send(event, context, response.SUCCESS, data, physicalId);
+              }
+
+              function failed(err) {
+                  console.log('FAILED:\n', err);
+                  return response.send(event, context, response.FAILED, err, physicalId);
+              }
+
+              // ignore non-delete requests
+              if (event.RequestType !== 'Delete') {
+                  console.log('Non-delete request is ignored');
+                  return success();
+              }
+
+              var instanceId = event.ResourceProperties.InstanceId;
+              if (!instanceId) {
+                  return failed('InstanceId required');
+              }
+
+              var ec2 = new aws.EC2({region: event.ResourceProperties.Region});
+
+              ec2.terminateInstances({InstanceIds: [instanceId]})
+              .promise()
+              .then((data) => {
+                  console.log('"terminateInstances" Response:\n', JSON.stringify(data));
+                  success();
+              })
+              .catch((err) => failed(err));
+          };
+  TerminateInstanceLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+              - lambda.amazonaws.com
+          Action:
+            - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+      Policies:
+      - PolicyName: EC2Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+              - 'ec2:TerminateInstances'
+              Resource: ['*']
+  TerminateInstanceFunctionRetention:
+    Type: Custom::LogsRetention
+    DependsOn: TerminateInstance
+    Properties:
+      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
+      LogGroupName: !Join ['', ['/aws/lambda/', !Ref TerminateInstanceFunction]]
+      RetentionInDays: 1
+
+  # function to delete the snapshot which was used to create the volume
+  DeleteSnapshot:
+    Type: Custom::SnapshotDeletion
+    DependsOn: Volume1
+    Properties:
+      ServiceToken: !GetAtt DeleteSnapshotFunction.Arn
+      SnapshotId: ''
+  DeleteSnapshotFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt DeleteSnapshotLambdaExecutionRole.Arn
+      Runtime: nodejs4.3
+      Timeout: 30
+      Code:
+        ZipFile: !Sub |
+          var aws = require("aws-sdk");
+          var response = require('cfn-response');
+
+          exports.handler = function(event, context) {
+              console.log("request received:\n" + JSON.stringify(event));
+
+              var physicalId = event.PhysicalResourceId;
+
+              function success(data) {
+                  data = data || {}
+                  console.log('SUCCESS:\n', data);
+                  return response.send(event, context, response.SUCCESS, data, physicalId);
+              }
+
+              function failed(err) {
+                  console.log('FAILED:\n', err);
+                  return response.send(event, context, response.FAILED, err, physicalId);
+              }
+
+              // ignore non-delete requests
+              if (event.RequestType !== 'Delete') {
+                  console.log('Non-delete request is ignored');
+                  return success();
+              }
+
+              var snapshotId = event.ResourceProperties.SnapshotId;
+              if (!snapshotId) {
+                  console.log('Nothing to delete');
+                  return success();
+              }
+
+              var ec2 = new aws.EC2({region: event.ResourceProperties.Region});
+
+              ec2.deleteSnapshot({SnapshotId: snapshotId})
+              .promise()
+              .then((data) => {
+                  console.log('"deleteSnapshot" Response:\n', JSON.stringify(data));
+                  success();
+              })
+              .catch((err) => failed(err));
+          };
+  DeleteSnapshotLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+              - lambda.amazonaws.com
+          Action:
+            - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+      Policies:
+      - PolicyName: EC2Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+              - 'ec2:DeleteSnapshot'
+              Resource: ['*']
+  DeleteSnapshotFunctionRetention:
+    Type: Custom::LogsRetention
+    DependsOn: DeleteSnapshot
+    Properties:
+      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
+      LogGroupName: !Join ['', ['/aws/lambda/', !Ref DeleteSnapshotFunction]]
+      RetentionInDays: 1
+
+  # function to set logs retention for a log group to 1 day (for lambdas by default they never expire)
+  SetLogsRetentionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt SetLogsRetentionLambdaExecutionRole.Arn
+      Runtime: nodejs4.3
+      Timeout: 30
+      Code:
+        ZipFile: !Sub |
+          var aws = require("aws-sdk");
+          var response = require('cfn-response');
+
+          exports.handler = function(event, context) {
+              console.log("request received:\n" + JSON.stringify(event));
+
+              var physicalId = event.PhysicalResourceId;
+
+              function success(data) {
+                  data = data || {}
+                  console.log('SUCCESS:\n', data);
+                  return response.send(event, context, response.SUCCESS, data, physicalId);
+              }
+
+              function failed(err) {
+                  console.log('FAILED:\n', err);
+                  return response.send(event, context, response.FAILED, err, physicalId);
+              }
+
+              // ignore non-create requests
+              if (event.RequestType !== 'Create') {
+                  console.log('Non-create request is ignored');
+                  return success();
+              }
+
+              var logGroupName = event.ResourceProperties.LogGroupName;
+              if (!logGroupName) {
+                  return failed('LogGroupName required');
+              }
+
+              var retentionInDays = event.ResourceProperties.RetentionInDays;
+              if (!retentionInDays) {
+                  return failed('RetentionInDays required');
+              }
+
+              var cloudwatchlogs = new aws.CloudWatchLogs();
+
+              cloudwatchlogs.putRetentionPolicy({
+                  logGroupName: logGroupName,
+                  retentionInDays: retentionInDays
+              })
+              .promise()
+              .then((data) => {
+                  console.log('"putRetentionPolicy" Response:\n', JSON.stringify(data));
+                  success();
+              })
+              .catch((err) => failed(err));
+          };
+  SetLogsRetentionLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+              - lambda.amazonaws.com
+          Action:
+            - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+      Policies:
+      - PolicyName: CloudWatchLogsPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+              - logs:PutRetentionPolicy
+              Resource:
+              - arn:aws:logs:*:*:*
+  SetLogsRetentionFunctionRetention:
+    Type: Custom::LogsRetention
+    Properties:
+      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
+      LogGroupName: !Join ['', ['/aws/lambda/', !Ref SetLogsRetentionFunction]]
+      RetentionInDays: 1
+
+  DockerReadyWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: VolumeAttachment1
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT10M
+
+Outputs:
+  InstanceId:
+    Value: !Ref SpotInstance
+  InstanceIpAddress:
+    Value: !GetAtt SpotInstance.PublicIp
+  InstanceLogGroup:
+    Value: !Ref SpotInstanceLogGroup
