@@ -51,7 +51,7 @@ def validate_instance_config(data):
                     Optional('snapshotName', default=''): str,
                     'directory': And(str, Use(lambda x: x.rstrip('/'))),
                     Optional('size', default=0): And(int, lambda x: x > 0),
-                    Optional('deleteOnTermination', default=False): bool,
+                    Optional('deletionPolicy', default='snapshot'): And(str, lambda x: x in ['snapshot', 'delete']),
                 }],
                 And(len, error='Volume configuration is required.'),
                 And(lambda x: len(x) == 1, error='Only one volume is supported at the moment.'),

@@ -73,12 +73,12 @@ class StartCommand(AbstractConfigCommand):
         volume = instance_config['volumes'][0]
         snapshot_name = volume['snapshotName']
         volume_size = volume['size']
-        delete_volume = volume['deleteOnTermination']
+        deletion_policy = volume['deletionPolicy']
         ports = instance_config['ports']
         max_price = instance_config['maxPrice']
         docker_commands = instance_config['docker']['commands']
 
-        template = stack.prepare_template(ec2, snapshot_name, volume_size, delete_volume, ports, max_price,
+        template = stack.prepare_template(ec2, snapshot_name, volume_size, deletion_policy, ports, max_price,
                                           docker_commands, output)
 
         # create stack

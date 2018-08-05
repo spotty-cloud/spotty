@@ -36,46 +36,44 @@ class StackResource(object):
 
         return res['Stacks'][0]
 
-    def prepare_template(self, ec2, snapshot_name: str, volume_size: int, delete_volume: bool, ports: list,
+    def prepare_template(self, ec2, snapshot_name: str, volume_size: int, deletion_policy: str, ports: list,
                          max_price, docker_commands, output: AbstractOutputWriter):
         # read and update CF template
         with open(data_dir('run_container.yaml')) as f:
             template = yaml.load(f, Loader=CfnYamlLoader)
 
-        if snapshot_name:
-            # get snapshot
-            snapshot = get_snapshot(ec2, snapshot_name)
+        # get snapshot info
+        snapshot_info = get_snapshot(ec2, snapshot_name) if snapshot_name else {}
+        if not snapshot_info and not volume_size:
+            raise ValueError('Size of new volume or name of existing snapshot is required.')
 
-            if not snapshot and not volume_size:
-                raise ValueError('Size of new volume or name of existing snapshot is required.')
+        if snapshot_info:
+            # check size of the volume
+            if volume_size:
+                if volume_size < snapshot_info['VolumeSize']:
+                    raise ValueError('Requested size of the volume (%dGB) is less than size of the snapshot (%dGB).'
+                                     % (volume_size, snapshot_info['VolumeSize']))
+                elif volume_size > snapshot_info['VolumeSize']:
+                    output.write('Size of the snapshot will be increased from %dGB to %dGB.'
+                                 % (snapshot_info['VolumeSize'], volume_size))
 
-            if not snapshot and not delete_volume:
-                # set tag for new volume (future snapshot name)
-                template['Resources']['Volume1']['Properties']['Tags'] = [{'Key': 'Name', 'Value': snapshot_name}]
+            # set snapshot ID
+            template['Resources']['Volume1']['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
 
-            if snapshot:
-                # check size of the volume
-                if volume_size:
-                    if volume_size < snapshot['VolumeSize']:
-                        raise ValueError('Requested size of the volume (%dGB) is less than size of the snapshot (%dGB).'
-                                         % (volume_size, snapshot['VolumeSize']))
-                    elif volume_size > snapshot['VolumeSize']:
-                        output.write('Size of the snapshot will be increased from %dGB to %dGB.'
-                                     % (snapshot['VolumeSize'], volume_size))
-
-                # set snapshot ID
-                template['Resources']['Volume1']['Properties']['SnapshotId'] = snapshot['SnapshotId']
-
-                if not delete_volume:
-                    # delete the original snapshot before new snapshot will be created
-                    template['Resources']['DeleteSnapshot']['Properties']['SnapshotId'] = snapshot['SnapshotId']
+            # delete the original snapshot before new snapshot will be created
+            if deletion_policy == 'snapshot':
+                template['Resources']['DeleteSnapshot']['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
 
         # set size of the volume
         if volume_size:
             template['Resources']['Volume1']['Properties']['Size'] = volume_size
 
+        # set tag for new volume (future snapshot name)
+        if snapshot_name:
+            template['Resources']['Volume1']['Properties']['Tags'] = [{'Key': 'Name', 'Value': snapshot_name}]
+
         # update deletion policy of the volume
-        if delete_volume:
+        if deletion_policy == 'delete':
             template['Resources']['Volume1']['DeletionPolicy'] = 'Delete'
 
         # add ports to the security group
