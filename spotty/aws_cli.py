@@ -13,7 +13,7 @@ class AwsCli(object):
         self._profile = profile
         self._region = region
 
-    def s3_sync(self, from_path: str, to_path: str, delete=False, filters=None) -> str:
+    def s3_sync(self, from_path: str, to_path: str, delete=False, filters=None, capture_output=True) -> str:
         args = ['s3', 'sync', from_path, to_path]
 
         if delete:
@@ -33,9 +33,9 @@ class AwsCli(object):
                     for path in sync_filter['include']:
                         args += ['--include', path]
 
-        return self._run(args, False)
+        return self._run(args, False, capture_output=capture_output)
 
-    def _run(self, args: list, json_format=True):
+    def _run(self, args: list, json_format=True, capture_output=True):
         command_args = ['aws']
         if self._profile:
             command_args += ['--profile', self._profile]
@@ -50,15 +50,19 @@ class AwsCli(object):
 
         logging.debug('AWS command: ' + subprocess.list2cmdline(command_args))
 
-        res = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        output = res.stdout.decode('utf-8')
+        if capture_output:
+            res = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output = res.stdout.decode('utf-8')
 
-        logging.debug('AWS command output: ' + output)
+            logging.debug('AWS command output: ' + output)
 
-        if res.returncode:
-            raise AwsCommandError(output)
+            if res.returncode:
+                raise AwsCommandError(output)
 
-        if json_format:
-            output = json.loads(output)
+            if json_format:
+                output = json.loads(output)
+        else:
+            subprocess.run(command_args)
+            output = None
 
         return output
