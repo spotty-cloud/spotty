@@ -205,6 +205,7 @@ Resources:
                 curl https://s3.amazonaws.com//aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -O
                 chmod +x ./awslogs-agent-setup.py
                 ./awslogs-agent-setup.py -n -r ${AWS::Region} -c /tmp/cwlogs/logs.conf
+                systemctl disable awslogs
               mode: '000400'
               owner: root
               group: root

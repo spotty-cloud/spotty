@@ -88,3 +88,13 @@ def validate_ami_config(data):
     }, ignore_extra_keys=True)
 
     return _validate(schema, data)
+
+
+def validate_logs_config(data):
+    schema = Schema({
+        'instance': {
+            'region': And(str, len),
+        },
+    }, ignore_extra_keys=True)
+
+    return _validate(schema, data)
