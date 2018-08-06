@@ -65,7 +65,7 @@ class StartCommand(AbstractConfigCommand):
         # sync the project with S3
         project_filters = project_config['syncFilters']
         AwsCli(region=region).s3_sync(self._project_dir, 's3://%s/project' % bucket_name, delete=True,
-                                      filters=project_filters)
+                                      filters=project_filters, capture_output=False)
 
         output.write('Preparing CloudFormation template...')
 

@@ -1,8 +1,8 @@
-var aws = require("aws-sdk");
+var aws = require('aws-sdk');
 var response = require('cfn-response');
 
 exports.handler = function(event, context) {
-    console.log("request received:\n" + JSON.stringify(event));
+    console.log('Request received:\n' + JSON.stringify(event));
 
     var physicalId = event.PhysicalResourceId;
 
@@ -31,11 +31,23 @@ exports.handler = function(event, context) {
 
     var ec2 = new aws.EC2({region: event.ResourceProperties.Region});
 
-    ec2.deleteSnapshot({SnapshotId: snapshotId})
+    ec2.describeSnapshots({Filters: [{Name: 'snapshot-id',  Values: [snapshotId]}]})
     .promise()
     .then((data) => {
-        console.log('"deleteSnapshot" Response:\n', JSON.stringify(data));
-        success();
+        console.log('"describeSnapshots" response:\n', JSON.stringify(data));
+
+        if (data.Snapshots.length) {
+            ec2.deleteSnapshot({SnapshotId: snapshotId})
+            .promise()
+            .then((data) => {
+                console.log('"deleteSnapshot" response:\n', JSON.stringify(data));
+                success();
+            })
+            .catch((err) => failed(err));
+        } else {
+            console.log('Snapshot not found');
+            success();
+        }
     })
     .catch((err) => failed(err));
 };

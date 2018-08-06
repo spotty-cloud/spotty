@@ -6,11 +6,11 @@ from spotty.commands.helpers.resources import is_valid_instance_type
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
-class SpotPriceCommand(AbstractCommand):
+class SpotPricesCommand(AbstractCommand):
 
     @staticmethod
     def get_name() -> str:
-        return 'spot-price'
+        return 'spot-prices'
 
     @staticmethod
     def get_description():
