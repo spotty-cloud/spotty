@@ -58,7 +58,7 @@ class RunCommand(AbstractConfigCommand):
         script_log_file = '/var/log/spotty-run/%s.log' % script_name
 
         # command to attach user to existing tmux session
-        attach_session_cmd = subprocess.list2cmdline(['tmux', 'attach', '-t', session_name])
+        attach_session_cmd = subprocess.list2cmdline(['tmux', 'attach', '-t', session_name, '>', '/dev/null', '2>&1'])
 
         # command to upload user script to the instance
         upload_script_cmd = subprocess.list2cmdline(['echo', script_base64, '|', 'base64', '-d', '>', script_path])

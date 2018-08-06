@@ -56,8 +56,13 @@ def wait_stack_status_changed(cf, stack_id, waiting_status, resource_messages, r
     while current_status == waiting_status:
         sleep(delay)
 
-        # print current resource message
-        stack_resources = cf.list_stack_resources(StackName=stack_id)
+        # display resource creation progress
+        try:
+            stack_resources = cf.list_stack_resources(StackName=stack_id)
+        except EndpointConnectionError:
+            output.write('Connection problem')
+            continue
+
         resource_statuses = dict([(row['LogicalResourceId'], row['ResourceStatus'])
                                   for row in stack_resources['StackResourceSummaries']])
 
