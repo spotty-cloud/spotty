@@ -36,8 +36,8 @@ class StopCommand(AbstractConfigCommand):
             raise ValueError('Stack "%s" doesn\'t exists.' % stack.name)
 
         # get stack ID
-        info = stack.get_stack_info()
-        stack_id = info['StackId']
+        stack_info = stack.get_stack_info()
+        stack_id = stack_info['StackId']
 
         # delete the stack
         stack.delete_stack()
@@ -45,16 +45,16 @@ class StopCommand(AbstractConfigCommand):
         output.write('Waiting for the stack to be deleted...')
 
         resource_messages = [
-            ('DeleteSnapshot', 'deleting the original volume snapshot'),
+            ('DeleteSnapshot', 'deleting the original snapshot'),
             ('TerminateInstance', 'terminating the instance'),
             ('VolumeAttachment1', 'detaching the volume'),
             ('Volume1', 'creating snapshot and deleting the volume'),
         ]
 
         # wait for the deletion to be completed
-        status, stack = wait_stack_status_changed(cf, stack_id=stack_id, waiting_status='DELETE_IN_PROGRESS',
-                                                  resource_messages=resource_messages,
-                                                  resource_success_status='DELETE_COMPLETE', output=output)
+        status, stack_info = wait_stack_status_changed(cf, stack_id=stack_id, waiting_status='DELETE_IN_PROGRESS',
+                                                       resource_messages=resource_messages,
+                                                       resource_success_status='DELETE_COMPLETE', output=output)
 
         if status == 'DELETE_COMPLETE':
             output.write('\n'
@@ -63,4 +63,4 @@ class StopCommand(AbstractConfigCommand):
                          '--------------------')
         else:
             raise ValueError('Stack "%s" was not deleted.\n'
-                             'See CloudFormation and CloudWatch logs for details.' % stack_id)
+                             'See CloudFormation and CloudWatch logs for details.' % stack.name)

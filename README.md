@@ -88,7 +88,7 @@ will be synced with the instance. Example:
     here: [Use of Exclude and Include Filter](https://docs.aws.amazon.com/cli/latest/reference/s3/index.html#use-of-exclude-and-include-filters). 
 
 __`instance`__ section:
-- __`region`__ - region where your are going to run the instance (you can use command `spotty spot-price` to find the 
+- __`region`__ - region where your are going to run the instance (you can use command `spotty spot-prices` to find the 
 cheapest region),
 - __`instanceType`__ - type of the instance to run. You can find more information about 
 types of GPU instances here: 
@@ -193,14 +193,14 @@ command. The following example defines scripts `train`, `jupyter` and `tensorflo
 
   - `$ spotty create-ami`
     
-    Create AMI with NVIDIA Docker. You need to call this command only one time when you start using Spotty, then you 
+    Creates AMI with NVIDIA Docker. You need to call this command only one time when you start using Spotty, then you 
     can reuse created AMI for all your projects.
   
   - `$ spotty delete-ami`
     
     Deletes an AMI that was created using the command above.
   
-  - `$ spotty spot-price [--instance-type <instance_type>]`
+  - `$ spotty spot-prices [--instance-type <INSTANCE_TYPE>]`
 
     Returns Spot Instance prices for particular instance type across all AWS regions. Results will be sorted by price.
 
