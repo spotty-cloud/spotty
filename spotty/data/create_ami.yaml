@@ -1,4 +1,4 @@
-Description: Create an AMI from an EC2 Spot instance
+Description: Spotty NVIDIA Docker AMI
 Parameters:
   InstanceType:
     Description: Instance type to launch EC2 Spot instance

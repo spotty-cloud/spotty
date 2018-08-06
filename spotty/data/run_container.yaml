@@ -1,10 +1,10 @@
-Description: Create an AMI from an EC2 Spot instance
+Description: Spotty EC2 Spot Instance
 Parameters:
   VpcId:
     Description: VPC ID
     Type: AWS::EC2::VPC::Id
   InstanceType:
-    Description: Instance type to launch EC2 Spot instance
+    Description: Instance type to launch EC2 Spot Instance
     Type: String
   KeyName:
     Description: Key name to get an access o the instance
@@ -225,9 +225,10 @@ Resources:
               mode: '000400'
               content: !Sub |
                 if [ -n "${VolumeMountDirectory}" ]; then
-                  mkfs -t ext4 /dev/xvdb
+                  DEVICE=/dev/xvdb
+                  blkid -o value -s TYPE $DEVICE || mkfs -t ext4 $DEVICE
                   mkdir -p ${VolumeMountDirectory}
-                  mount /dev/xvdb ${VolumeMountDirectory}
+                  mount $DEVICE ${VolumeMountDirectory}
                   chown -R ubuntu:ubuntu ${VolumeMountDirectory}
                 fi
           commands:
@@ -242,7 +243,7 @@ Resources:
               content: !Sub |
                 if [ -n "${ProjectS3Bucket}" ] && [ -n "${ProjectDirectory}" ]; then
                   mkdir -p ${ProjectDirectory}
-                  aws s3 sync s3://${ProjectS3Bucket}/project ${ProjectDirectory} --delete
+                  aws s3 sync s3://${ProjectS3Bucket}/project ${ProjectDirectory}
                 fi
           commands:
             mount_volume:
