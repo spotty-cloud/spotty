@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='spotty',
-      version='1.0.3',
+      version='1.0.4',
       description='Train deep learning models on AWS EC2 Spot Instances',
       url='http://github.com/apls777/spotty',
       author='Oleg Polosin',
