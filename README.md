@@ -167,7 +167,7 @@ command. The following example defines scripts `train`, `jupyter` and `tensorflo
 
   - `$ spotty stop`
 
-    Terminates the running instance and deletes its CloudFormation stack.
+    Terminates the running instance and creates snapshots of the attached volumes.
 
   - `$ spotty run <SCRIPT_NAME> [--session-name <SESSION_NAME>]`
 
