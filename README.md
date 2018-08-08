@@ -51,7 +51,6 @@ project:
 instance:
   region: us-east-2
   instanceType: p2.xlarge
-  amiName: SpottyAMI
   volumes:
     - snapshotName: MySnapshotName
       directory: /workspace
@@ -93,9 +92,9 @@ cheapest region),
 - __`instanceType`__ - type of the instance to run. You can find more information about 
 types of GPU instances here: 
 [Recommended GPU Instances](https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html).
-- __`amiName`__ - name of your future or already existing AMI with NVIDIA Docker. Use command `spotty create-ami` to 
-automatically build an AMI. This AMI will be used to run your application inside the Docker container.
-- __`maxPrice`__ _(optional)_ - The maximum price per hour that you are willing to pay for a Spot Instance. By default, it's 
+- __`amiName`__ _(optional)_ - name of the AMI with NVIDIA Docker (default value is "SpottyAMI"). Use 
+`spotty create-ami` command to create it. This AMI will be used to run your application inside the Docker container.
+- __`maxPrice`__ _(optional)_ - the maximum price per hour that you are willing to pay for a Spot Instance. By default, it's 
 On-Demand price for chosen instance type. Read more here: 
 [Spot Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html).
 - __`rootVolumeSize`__ _(optional)_ - size of the root volume in GB. The root volume will be destroyed once 
@@ -168,7 +167,7 @@ command. The following example defines scripts `train`, `jupyter` and `tensorflo
 
   - `$ spotty stop`
 
-    Terminates the running instance and deletes its CloudFormation stack.
+    Terminates the running instance and creates snapshots of the attached volumes.
 
   - `$ spotty run <SCRIPT_NAME> [--session-name <SESSION_NAME>]`
 
