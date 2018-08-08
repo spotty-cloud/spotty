@@ -1,7 +1,8 @@
 from schema import Schema, And, Use, Optional, SchemaError, Or, Regex
 from spotty.commands.helpers.resources import is_valid_instance_type
 
-AMI_REGEX = r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$'
+AMI_NAME_REGEX = r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$'
+DEFAULT_AMI_NAME = 'SpottyAMI'
 
 
 def _validate(schema: Schema, data):
@@ -31,8 +32,8 @@ def validate_instance_config(data):
         'instance': {
             'region': And(str, len),
             'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
-            'amiName': And(str, len, Regex(AMI_REGEX)),
-            Optional('keyName'): str,
+            Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
+            Optional('keyName', default=''): str,
             Optional('rootVolumeSize', default=0): And(Or(int, str), Use(str),
                                                        Regex(r'^\d+$', error='Incorrect value for "rootVolumeSize".'),
                                                        Use(int),
@@ -69,7 +70,7 @@ def validate_instance_config(data):
             ),
             Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
         },
-        Optional('scripts'): {
+        Optional('scripts', default={}): {
             And(str, Regex(r'^[\w-]+$')): And(str, len),
         },
     })
@@ -82,8 +83,8 @@ def validate_ami_config(data):
         'instance': {
             'region': And(str, len),
             'instanceType': And(str, len),
-            'amiName': And(str, len, Regex(AMI_REGEX)),
-            Optional('keyName'): str,
+            Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
+            Optional('keyName', default=''): str,
         },
     }, ignore_extra_keys=True)
 

@@ -51,7 +51,6 @@ project:
 instance:
   region: us-east-2
   instanceType: p2.xlarge
-  amiName: SpottyAMI
   volumes:
     - snapshotName: MySnapshotName
       directory: /workspace
