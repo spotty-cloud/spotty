@@ -1,8 +1,8 @@
 import yaml
 from botocore.exceptions import WaiterError, EndpointConnectionError
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
-from spotty.commands.helpers.resources import get_snapshot, get_ami_id, is_gpu_instance
-from spotty.commands.project_resources.key_pair import KeyPairResource
+from spotty.helpers.resources import get_snapshot, get_ami_id, is_gpu_instance
+from spotty.project_resources.key_pair import KeyPairResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.utils import data_dir
 
@@ -61,8 +61,8 @@ class StackResource(object):
             template['Resources']['Volume1']['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
 
             # delete the original snapshot before new snapshot will be created
-            if deletion_policy == 'snapshot':
-                template['Resources']['DeleteSnapshot']['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
+            # if deletion_policy == 'snapshot':
+            #     template['Resources']['DeleteSnapshot']['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
 
         # set size of the volume
         if volume_size:

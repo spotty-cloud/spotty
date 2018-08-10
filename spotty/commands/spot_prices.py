@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 import boto3
 import datetime
 from spotty.commands.abstract import AbstractCommand
-from spotty.commands.helpers.resources import is_valid_instance_type
+from spotty.helpers.resources import is_valid_instance_type
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
