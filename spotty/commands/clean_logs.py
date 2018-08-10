@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.helpers.validation import validate_logs_config
+from spotty.helpers.validation import validate_logs_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
