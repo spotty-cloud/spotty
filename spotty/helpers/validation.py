@@ -52,10 +52,14 @@ def validate_instance_config(data):
                     Optional('snapshotName', default=''): str,
                     'directory': And(str, Use(lambda x: x.rstrip('/'))),
                     Optional('size', default=0): And(int, lambda x: x > 0),
-                    Optional('deletionPolicy', default='snapshot'): And(str, lambda x: x in ['snapshot', 'delete']),
+                    Optional('deletionPolicy',
+                             default='update_snapshot'): And(str, lambda x: x in ['update_snapshot', 'create_snapshot',
+                                                                                  'delete'],
+                                                             error='Incorrect value for "deletionPolicy".'
+                                                             ),
                 }],
                 And(len, error='Volume configuration is required.'),
-                And(lambda x: len(x) == 1, error='Only one volume is supported at the moment.'),
+                And(lambda x: len(x) < 12, error='Maximum 11 volumes are supported at the moment.'),
             ),
             'docker': And(
                 {
