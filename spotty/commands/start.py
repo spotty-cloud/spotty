@@ -70,24 +70,20 @@ class StartCommand(AbstractConfigCommand):
         output.write('Preparing CloudFormation template...')
 
         # prepare CloudFormation template
-        volume = instance_config['volumes'][0]
-        snapshot_name = volume['snapshotName']
-        volume_size = volume['size']
-        deletion_policy = volume['deletionPolicy']
+        volumes = instance_config['volumes']
         ports = instance_config['ports']
         max_price = instance_config['maxPrice']
         docker_commands = instance_config['docker']['commands']
 
-        template = stack.prepare_template(ec2, snapshot_name, volume_size, deletion_policy, ports, max_price,
-                                          docker_commands, output)
+        template = stack.prepare_template(ec2, volumes, ports, max_price, docker_commands, output)
 
         # create stack
         instance_type = instance_config['instanceType']
-        mount_dir = volume['directory']
+        mount_dirs = [volume['directory'] for volume in volumes]
         docker_config = instance_config['docker']
         remote_project_dir = project_config['remoteDir']
 
-        res = stack.create_stack(ec2, template, instance_type, ami_name, root_volume_size, mount_dir, bucket_name,
+        res = stack.create_stack(ec2, template, instance_type, ami_name, root_volume_size, mount_dirs, bucket_name,
                                  remote_project_dir, docker_config)
 
         output.write('Waiting for the stack to be created...')

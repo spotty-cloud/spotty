@@ -36,45 +36,76 @@ class StackResource(object):
 
         return res['Stacks'][0]
 
-    def prepare_template(self, ec2, snapshot_name: str, volume_size: int, deletion_policy: str, ports: list,
-                         max_price, docker_commands, output: AbstractOutputWriter):
+    def prepare_template(self, ec2, volumes: list, ports: list, max_price, docker_commands,
+                         output: AbstractOutputWriter):
         # read and update CF template
         with open(data_dir('run_container.yaml')) as f:
             template = yaml.load(f, Loader=CfnYamlLoader)
 
-        # get snapshot info
-        snapshot_info = get_snapshot(ec2, snapshot_name) if snapshot_name else {}
-        if not snapshot_info and not volume_size:
-            raise ValueError('Size of new volume or name of existing snapshot is required.')
+        # ending letters for the devices (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html)
+        device_letters = 'fghijklmnop'
 
-        if snapshot_info:
-            # check size of the volume
+        # attach volumes
+        block_devices = []
+        create_snapshots = {}
+        for i, volume in enumerate(volumes):
+            block_device = {
+                'DeviceName': '/dev/sd' + device_letters[i],
+                'Ebs': {
+                    'DeleteOnTermination': False,
+                },
+            }
+
+            snapshot_name = volume['snapshotName']
+            volume_size = volume['size']
+            deletion_policy = volume['deletionPolicy']
+
+            # get snapshot info
+            snapshot_info = get_snapshot(ec2, snapshot_name) if snapshot_name else {}
+            if not snapshot_info and not volume_size:
+                raise ValueError('Size of new volume or name of existing snapshot is required.')
+
+            if snapshot_info:
+                # check size of the volume
+                if volume_size:
+                    if volume_size < snapshot_info['VolumeSize']:
+                        raise ValueError('Requested size of the volume (%dGB) is less than size of the snapshot (%dGB).'
+                                         % (volume_size, snapshot_info['VolumeSize']))
+                    elif volume_size > snapshot_info['VolumeSize']:
+                        output.write('Size of the snapshot will be increased from %dGB to %dGB.'
+                                     % (snapshot_info['VolumeSize'], volume_size))
+
+                # set snapshot ID
+                block_device['Ebs']['SnapshotId'] = snapshot_info['SnapshotId']
+
+                # delete the original snapshot before new snapshot will be created
+                # if deletion_policy == 'snapshot':
+                #     template['Resources']['DeleteSnapshot']['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
+
+            # set size of the volume
             if volume_size:
-                if volume_size < snapshot_info['VolumeSize']:
-                    raise ValueError('Requested size of the volume (%dGB) is less than size of the snapshot (%dGB).'
-                                     % (volume_size, snapshot_info['VolumeSize']))
-                elif volume_size > snapshot_info['VolumeSize']:
-                    output.write('Size of the snapshot will be increased from %dGB to %dGB.'
-                                 % (snapshot_info['VolumeSize'], volume_size))
+                block_device['Ebs']['VolumeSize'] = volume_size
 
-            # set snapshot ID
-            template['Resources']['Volume1']['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
+            # set tag for new volume (future snapshot name)
+            # if snapshot_name:
+            #     template['Resources']['Volume1']['Properties']['Tags'] = [{'Key': 'Name', 'Value': snapshot_name}]
 
-            # delete the original snapshot before new snapshot will be created
-            # if deletion_policy == 'snapshot':
-            #     template['Resources']['DeleteSnapshot']['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
+            if deletion_policy == 'delete':
+                # delete the volume on termination
+                block_device['Ebs']['DeleteOnTermination'] = True
+            else:
+                # create snapshots on termination
+                create_snapshots[block_device['DeviceName']] = {
+                    'mode': 'create' if deletion_policy == 'create_snapshot' else 'update',
+                    'snapshotName': snapshot_name,
+                    'snapshotId': snapshot_info['SnapshotId'] if snapshot_info else '',
+                }
 
-        # set size of the volume
-        if volume_size:
-            template['Resources']['Volume1']['Properties']['Size'] = volume_size
+            block_devices.append(block_device)
 
-        # set tag for new volume (future snapshot name)
-        if snapshot_name:
-            template['Resources']['Volume1']['Properties']['Tags'] = [{'Key': 'Name', 'Value': snapshot_name}]
-
-        # update deletion policy of the volume
-        if deletion_policy == 'delete':
-            template['Resources']['Volume1']['DeletionPolicy'] = 'Delete'
+        template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData'] \
+            ['BlockDeviceMappings'] = block_devices
+        template['Resources']['CreateSnapshots']['Properties']['Devices'] = create_snapshots
 
         # add ports to the security group
         for port in set(ports):
@@ -104,7 +135,7 @@ class StackResource(object):
         return yaml.dump(template, Dumper=CfnYamlDumper)
 
     def create_stack(self, ec2, template: str, instance_type: str, ami_name: str, root_volume_size: int,
-                     mount_dir: str, bucket_name: str, remote_project_dir: str, docker_config: dict):
+                     mount_dirs: list, bucket_name: str, remote_project_dir: str, docker_config: dict):
         # get default VPC ID
         res = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
         if not len(res['Vpcs']):
@@ -129,7 +160,7 @@ class StackResource(object):
             'KeyName': key_name,
             'ImageId': ami_id,
             'RootVolumeSize': str(root_volume_size),
-            'VolumeMountDirectory': mount_dir,
+            'VolumeMountDirectories': ('"%s"' % '" "'.join(mount_dirs)) if mount_dirs else '',
             'DockerDataRootDirectory': docker_config['dataRoot'],
             'DockerImage': docker_config.get('image', ''),
             'DockerfilePath': docker_config.get('file', ''),
