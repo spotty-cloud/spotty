@@ -91,8 +91,6 @@ class StartCommand(AbstractConfigCommand):
         resource_messages = [
             ('SpotInstanceProfile', 'creating IAM role for the instance'),
             ('SpotInstance', 'launching the instance'),
-            ('Volume1', 'creating the volume'),
-            ('VolumeAttachment1', 'attaching the volume to the instance'),
             ('DockerReadyWaitCondition', 'waiting for the Docker container to be ready'),
         ]
 

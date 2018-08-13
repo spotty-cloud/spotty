@@ -82,7 +82,7 @@ Resources:
             DeleteOnTermination: true
         UserData:
           'Fn::Base64': !Sub |
-            #!/bin/bash -xe
+            #!/bin/bash -x
 
             # install CloudFormation tools
             apt-get update
@@ -91,15 +91,7 @@ Resources:
             curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
             easy_install aws-cfn-bootstrap-latest
 
-            # install CloudWatch agent
-            /usr/local/bin/cfn-init \
-              --stack ${AWS::StackName} \
-              --resource SpotInstanceLaunchTemplate \
-              --region ${AWS::Region} \
-              -c cwlogs \
-              -v
-
-            # prepare the instance
+            # prepare the instance and run Docker container
             /usr/local/bin/cfn-init \
               --stack ${AWS::StackName} \
               --resource SpotInstanceLaunchTemplate \
@@ -107,22 +99,19 @@ Resources:
               -c init \
               -v
 
-            # sync the project and start Docker conatainer
-            /usr/local/bin/cfn-init \
+            # send signal that the Docker container is ready or failed
+            /usr/local/bin/cfn-signal \
+              -e $? \
               --stack ${AWS::StackName} \
-              --resource SpotInstanceLaunchTemplate \
               --region ${AWS::Region} \
-              -c start_docker \
-              -v
+              --resource DockerReadyWaitCondition
     Metadata:
       'AWS::CloudFormation::Init':
         configSets:
-          cwlogs:
-            - cwlogs_config
           init:
+            - cwlogs_config
             - prepare_instance_config
             - mount_volumes_config
-          start_docker:
             - sync_project_config
             - docker_container_config
         cwlogs_config:
@@ -261,7 +250,7 @@ Resources:
                   VOLUME_PARAMS=""
                   for mount_dir in ${!MOUNT_DIRS[*]}
                   do
-                    VOLUME_PARAMS="VOLUME_PARAMS -v $mount_dir:$mount_dir"
+                    VOLUME_PARAMS="$VOLUME_PARAMS -v $mount_dir:$mount_dir"
                   done
 
                   NVIDIA_RUNTIME=""
