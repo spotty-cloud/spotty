@@ -2,19 +2,27 @@ var aws = require('aws-sdk');
 var response = require('cfn-response');
 
 exports.handler = function(event, context) {
-    console.log('Request received:\n' + JSON.stringify(event));
+    console.log('Request received:\n', JSON.stringify(event));
 
     var physicalId = event.PhysicalResourceId;
 
     function success(data) {
         data = data || {};
         console.log('SUCCESS:\n', data);
-        return response.send(event, context, response.SUCCESS, data, physicalId);
+
+        // temporary delay in response to get the logs
+        setTimeout(function() {
+            response.send(event, context, response.SUCCESS, data, physicalId);
+        }, 5000);
     }
 
     function failed(err) {
         console.log('FAILED:\n', err);
-        return response.send(event, context, response.FAILED, err, physicalId);
+
+        // temporary delay in response to get the logs
+        setTimeout(function() {
+            response.send(event, context, response.FAILED, err, physicalId);
+        }, 5000);
     }
 
     // ignore non-delete requests
@@ -33,8 +41,8 @@ exports.handler = function(event, context) {
 
     ec2.describeVolumes({
         Filters: [
-            {Name: 'tag:aws:cloudformation:stack-id', Values: [event.StackId]},
-            {Name: 'attachment.delete-on-termination', Values: ['false']}
+            {Name: 'tag:spotty:stack-id', Values: [event.StackId]},
+            {Name: 'tag:spotty:volume:delete-on-termination', Values: ['false']}
         ]
     })
     .promise()
@@ -44,7 +52,9 @@ exports.handler = function(event, context) {
         var volumePromises = [];
         for (var i = 0; i < data.Volumes.length; i++) {
             var volume = data.Volumes[i],
-                deviceName = volume.Attachments[0].Device;
+                deviceName = volume.Tags.filter(function (el) {
+                    return el.Key == 'spotty:volume:device';
+                })[0].Value;
 
             if (!(deviceName in devices)) {
                 throw 'Device "' + deviceName + '" not found';
