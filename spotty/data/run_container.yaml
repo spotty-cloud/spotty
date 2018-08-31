@@ -426,7 +426,7 @@ Resources:
       Handler: index.handler
       Role: !GetAtt CreateSnapshotsLambdaExecutionRole.Arn
       Runtime: nodejs4.3
-      Timeout: 30
+      Timeout: 300
       Code:
         ZipFile: |
           var aws=require('aws-sdk');var response=require('cfn-response');exports.handler=function(event,context){console.log('Request received:\n',JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{};console.log('SUCCESS:\n',data);setTimeout(function(){response.send(event,context,response.SUCCESS,data,physicalId)},5000)}
@@ -437,7 +437,7 @@ Resources:
           var mode=devices[deviceName].mode,snapshotName=devices[deviceName].snapshotName,origSnapshotId=devices[deviceName].snapshotId;var snapshotPromise=ec2.createSnapshot({VolumeId:volume.VolumeId}).promise().then((data)=>{console.log('"createSnapshot" response:\n',JSON.stringify(data));return ec2.waitFor('snapshotCompleted',{SnapshotIds:[data.SnapshotId]}).promise()});var origSnapshotPromise=snapshotPromise.then((data)=>{console.log('"snapshotCompleted" response:\n',JSON.stringify(data));if(data.Snapshots[0].State!='completed'){throw 'Snapshot is not completed'}
           var describeSnapshotsPromise;if(origSnapshotId){describeSnapshotsPromise=ec2.describeSnapshots({Filters:[{Name:'snapshot-id',Values:[origSnapshotId]}]}).promise().then((data)=>{console.log('"describeSnapshots" response:\n',JSON.stringify(data));var updateSnapshotPromise;if(data.Snapshots.length){switch(mode){case 'update':updateSnapshotPromise=ec2.deleteSnapshot({SnapshotId:origSnapshotId}).promise();break;case 'create':updateSnapshotPromise=ec2.createTags({Resources:[origSnapshotId],Tags:[{Key:'Name',Value:snapshotName+'-'+Math.floor(Date.now()/60000)}],}).promise();break;default:throw 'Mode "'+mode+'" not supported'}}else{console.log('Original snapshot not found')}
           return updateSnapshotPromise})}else{console.log('Original snapshot not specified')}
-          return describeSnapshotsPromise});var volumePromise=Promise.all([snapshotPromise,origSnapshotPromise]).then(function(data){var snapshotsResp=data[0];return ec2.createTags({Resources:[snapshotsResp.Snapshots[0].SnapshotId],Tags:[{Key:'Name',Value:snapshotName}]}).promise()}).then((data)=>{ec2.deleteVolume({VolumeId:volume.VolumeId})});volumePromises.push(volumePromise)}
+          return describeSnapshotsPromise});var volumePromise=Promise.all([snapshotPromise,origSnapshotPromise]).then(function(data){console.log('Snapshots responses:\n',JSON.stringify(data));var snapshotsResp=data[0];return ec2.createTags({Resources:[snapshotsResp.Snapshots[0].SnapshotId],Tags:[{Key:'Name',Value:snapshotName}]}).promise()}).then((data)=>{console.log('"createTags" responses:\n',JSON.stringify(data));return ec2.deleteVolume({VolumeId:volume.VolumeId}).promise()});volumePromises.push(volumePromise)}
           return Promise.all(volumePromises)}).then((data)=>{console.log('"deleteVolume" responses:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}
   CreateSnapshotsLambdaExecutionRole:
     Type: AWS::IAM::Role
