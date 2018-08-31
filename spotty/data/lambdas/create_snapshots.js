@@ -123,13 +123,15 @@ exports.handler = function(event, context) {
             // tag new snapshot and delete the volume
             var volumePromise = Promise.all([snapshotPromise, origSnapshotPromise])
                 .then(function(data) {
+                    console.log('Snapshots responses:\n', JSON.stringify(data));
                     var snapshotsResp = data[0];
                     return ec2.createTags({
                         Resources: [snapshotsResp.Snapshots[0].SnapshotId],
                         Tags: [{Key: 'Name', Value: snapshotName}]
                     }).promise();
                 }).then((data) => {
-                    ec2.deleteVolume({VolumeId: volume.VolumeId});
+                    console.log('"createTags" responses:\n', JSON.stringify(data));
+                    return ec2.deleteVolume({VolumeId: volume.VolumeId}).promise();
                 });
 
             volumePromises.push(volumePromise);
