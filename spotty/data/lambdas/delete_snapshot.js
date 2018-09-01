@@ -35,7 +35,7 @@ exports.handler = function(event, context) {
     .then((data) => {
         console.log('"describeSnapshots" response:\n', JSON.stringify(data));
 
-        if (data.Snapshots.length) {
+        if (!data.Snapshots.length) {
             console.log('Snapshot not found');
             return null;
         }
