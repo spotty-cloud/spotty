@@ -46,13 +46,24 @@ class StackResource(object):
         device_letters = 'fghijklmnop'
 
         # attach volumes
-        block_devices = []
-        create_snapshots = {}
         for i, volume in enumerate(volumes):
-            block_device = {
-                'DeviceName': '/dev/sd' + device_letters[i],
-                'Ebs': {
-                    'DeleteOnTermination': False,
+            device_letter = device_letters[i]
+            volume_resource_name = 'Volume' + device_letter.upper()
+            attachment_resource_name = 'VolumeAttachment' + device_letter.upper()
+
+            volume_resource = {
+                'Type': 'AWS::EC2::Volume',
+                'Properties': {
+                    'AvailabilityZone': {'Fn::GetAtt': ['SpotInstance', 'AvailabilityZone']},
+                },
+            }
+
+            attachment_resource = {
+                'Type': 'AWS::EC2::VolumeAttachment',
+                'Properties': {
+                    'Device': '/dev/sd' + device_letter,
+                    'InstanceId': {'Ref': 'SpotInstance'},
+                    'VolumeId': {'Ref': volume_resource_name},
                 },
             }
 
@@ -76,36 +87,68 @@ class StackResource(object):
                                      % (snapshot_info['VolumeSize'], volume_size))
 
                 # set snapshot ID
-                block_device['Ebs']['SnapshotId'] = snapshot_info['SnapshotId']
+                orig_snapshot_id = snapshot_info['SnapshotId']
+                volume_resource['Properties']['SnapshotId'] = orig_snapshot_id
 
-                # delete the original snapshot before new snapshot will be created
-                # if deletion_policy == 'snapshot':
-                #     template['Resources']['DeleteSnapshot']['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
+                # rename or delete the original snapshot on stack deletion
+                if deletion_policy == 'create_snapshot':
+                    # rename the original snapshot once new snapshot is created
+                    s_renaming_resource_name = 'RenameSnapshot' + device_letter.upper()
+                    template['Resources'][s_renaming_resource_name] = {
+                        'Type': 'Custom::SnapshotRenaming',
+                        'Properties': {
+                            'ServiceToken': {'Fn::GetAtt': ['RenameSnapshotFunction', 'Arn']},
+                            'SnapshotId': orig_snapshot_id,
+                        },
+                    }
+                    volume_resource['DependsOn'] = s_renaming_resource_name
+
+                    # make sure that the lambda to update log group retention was called after the log group was created
+                    template['Resources']['RenameSnapshotFunctionRetention']['DependsOn'] += [s_renaming_resource_name]
+
+                elif deletion_policy == 'update_snapshot':
+                    # delete the original snapshot once new snapshot is created
+                    s_deletion_resource_name = 'DeleteSnapshot' + device_letter.upper()
+                    template['Resources'][s_deletion_resource_name] = {
+                        'Type': 'Custom::SnapshotDeletion',
+                        'Properties': {
+                            'ServiceToken': {'Fn::GetAtt': ['DeleteSnapshotFunction', 'Arn']},
+                            'SnapshotId': orig_snapshot_id,
+                        },
+                    }
+                    volume_resource['DependsOn'] = s_deletion_resource_name
+
+                    # make sure that the lambda to update log group retention was called after the log group was created
+                    template['Resources']['DeleteSnapshotFunctionRetention']['DependsOn'] += [s_deletion_resource_name]
 
             # set size of the volume
             if volume_size:
-                block_device['Ebs']['VolumeSize'] = volume_size
+                volume_resource['Properties']['Size'] = volume_size
 
             # set tag for new volume (future snapshot name)
-            # if snapshot_name:
-            #     template['Resources']['Volume1']['Properties']['Tags'] = [{'Key': 'Name', 'Value': snapshot_name}]
+            if snapshot_name:
+                volume_resource['Properties']['Tags'] = [{'Key': 'Name', 'Value': snapshot_name}]
 
             if deletion_policy == 'delete':
                 # delete the volume on termination
-                block_device['Ebs']['DeleteOnTermination'] = True
-            else:
+                volume_resource['DeletionPolicy'] = 'Delete'
+            elif deletion_policy in ['create_snapshot', 'update_snapshot']:
                 # create snapshots on termination
-                create_snapshots[block_device['DeviceName']] = {
-                    'mode': 'create' if deletion_policy == 'create_snapshot' else 'update',
-                    'snapshotName': snapshot_name,
-                    'snapshotId': snapshot_info['SnapshotId'] if snapshot_info else '',
-                }
+                volume_resource['DeletionPolicy'] = 'Snapshot'
 
-            block_devices.append(block_device)
+            # instance termination lambda should depend on all volume attachments
+            template['Resources']['TerminateInstance']['DependsOn'] += [attachment_resource_name]
 
-        template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData'] \
-            ['BlockDeviceMappings'] = block_devices
-        template['Resources']['CreateSnapshots']['Properties']['Devices'] = create_snapshots
+            # add volume resources to the template
+            template['Resources'][volume_resource_name] = volume_resource
+            template['Resources'][attachment_resource_name] = attachment_resource
+
+        # delete log group retention lambda calls
+        if not template['Resources']['DeleteSnapshotFunctionRetention']['DependsOn']:
+            del template['Resources']['DeleteSnapshotFunctionRetention']
+
+        if not template['Resources']['RenameSnapshotFunctionRetention']['DependsOn']:
+            del template['Resources']['RenameSnapshotFunctionRetention']
 
         # add ports to the security group
         for port in set(ports):
