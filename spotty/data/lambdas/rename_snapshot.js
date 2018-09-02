@@ -40,7 +40,17 @@ exports.handler = function(event, context) {
             return null;
         }
 
-        return ec2.deleteSnapshot({SnapshotId: snapshotId}).promise();
+        var snapshotName = data.Snapshots[0].Tags.filter(function (el) {
+            return el.Key == 'Name';
+        })[0].Value;
+
+        var snapshotDate = data.Snapshots[0].StartTime,
+            newSnapshotName = snapshotName.substring(0, 244) + '-' + Math.floor(snapshotDate.getTime() / 1000);
+
+        return ec2.createTags({
+            Resources: [snapshotId],
+            Tags: [{Key: 'Name', Value: newSnapshotName}],
+        }).promise();
     })
     .then((data) => {
         console.log('"deleteSnapshot" response:\n', JSON.stringify(data));

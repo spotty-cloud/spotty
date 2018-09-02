@@ -1,7 +1,8 @@
 from argparse import ArgumentParser
+from time import time
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.helpers.validation import validate_logs_config
+from spotty.helpers.validation import validate_logs_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
@@ -13,7 +14,7 @@ class CleanLogsCommand(AbstractConfigCommand):
 
     @staticmethod
     def get_description():
-        return 'Delete CloudFormation log groups with Spotty prefixes'
+        return 'Delete expired CloudFormation log groups with Spotty prefixes'
 
     @staticmethod
     def _validate_config(config):
@@ -23,7 +24,7 @@ class CleanLogsCommand(AbstractConfigCommand):
     def configure(parser: ArgumentParser):
         AbstractConfigCommand.configure(parser)
         parser.add_argument('--delete-all', '-a', action='store_true', help='Delete all Spotty log groups, '
-                                                                            'not just empty ones')
+                                                                            'not just expired ones')
 
     def run(self, output: AbstractOutputWriter):
         region = self._config['instance']['region']
@@ -51,9 +52,10 @@ class CleanLogsCommand(AbstractConfigCommand):
                     delete = True
                     if only_empty:
                         delete = False
-                        res = logs.describe_log_streams(logGroupName=log_group['logGroupName'], limit=1)
-                        if not len(res['logStreams']):
+                        days_passed = (int(time()) - log_group['creationTime'] // 1000) // 86400
+                        if ('retentionInDays' in log_group) and (days_passed >= log_group['retentionInDays']):
                             delete = True
+
                     if delete:
                         output.write('[x] %s' % log_group['logGroupName'])
                         logs.delete_log_group(logGroupName=log_group['logGroupName'])

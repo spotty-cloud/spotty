@@ -1,8 +1,8 @@
 import yaml
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.helpers.resources import is_gpu_instance, wait_stack_status_changed
-from spotty.commands.helpers.validation import validate_ami_config
+from spotty.helpers.resources import is_gpu_instance, wait_stack_status_changed
+from spotty.helpers.validation import validate_ami_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.utils import data_dir, random_string
 from cfn_tools import CfnYamlLoader, CfnYamlDumper

@@ -1,8 +1,8 @@
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.helpers.resources import wait_stack_status_changed
-from spotty.commands.helpers.validation import validate_instance_config
-from spotty.commands.project_resources.stack import StackResource
+from spotty.helpers.resources import wait_stack_status_changed
+from spotty.helpers.validation import validate_instance_config
+from spotty.project_resources.stack import StackResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
@@ -45,10 +45,8 @@ class StopCommand(AbstractConfigCommand):
         output.write('Waiting for the stack to be deleted...')
 
         resource_messages = [
-            ('DeleteSnapshot', 'deleting the original snapshot'),
             ('TerminateInstance', 'terminating the instance'),
-            ('VolumeAttachment1', 'detaching the volume'),
-            ('Volume1', 'creating snapshot and deleting the volume'),
+            ('_', 'creating snapshots and deleting the volumes'),
         ]
 
         # wait for the deletion to be completed
