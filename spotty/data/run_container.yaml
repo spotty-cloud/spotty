@@ -3,6 +3,9 @@ Parameters:
   VpcId:
     Description: VPC ID
     Type: AWS::EC2::VPC::Id
+  InstanceProfileArn:
+    Description: Instance Profile ARN
+    Type: String
   InstanceType:
     Description: Instance type to launch EC2 Spot Instance
     Type: String
@@ -65,7 +68,7 @@ Resources:
         KeyName: !Ref KeyName
         EbsOptimized: 'false'
         IamInstanceProfile:
-          Arn: !GetAtt SpotInstanceProfile.Arn
+          Arn: !Ref InstanceProfileArn
         SecurityGroupIds:
         - !Ref InstanceSecurityGroup
         InstanceInitiatedShutdownBehavior: terminate
@@ -232,6 +235,9 @@ Resources:
                   jq '. + { "data-root": "${DockerDataRootDirectory}" }' /etc/docker/daemon.json > /tmp/docker_daemon.json \
                     && mv /tmp/docker_daemon.json /etc/docker/daemon.json
                   service docker restart
+
+                  # remove all containers
+                  docker rm $(docker ps -aq)
                 fi
 
                 # build docker image
@@ -263,11 +269,15 @@ Resources:
 
                   # run docker container
                   docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAMS \
-                    -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker --name spotty $DOCKER_IMAGE /bin/sh
+                    -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker -v ${ProjectDirectory}:${ProjectDirectory} \
+                    --name spotty $DOCKER_IMAGE /bin/sh
 
                   WORKING_DIR=""
                   if [ -n "${DockerWorkingDirectory}" ]; then
                     WORKING_DIR="-w ${DockerWorkingDirectory}"
+
+                    # create working directory if it doesn't exist
+                    docker exec spotty mkdir -p ${DockerWorkingDirectory}
                   fi
 
                   # run initial user commands
@@ -288,53 +298,6 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       RetentionInDays: 1
-
-  SpotInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Path: '/'
-      Roles:
-      - Ref: SpotInstanceRole
-  SpotInstanceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - ec2.amazonaws.com
-          Action:
-          - sts:AssumeRole
-      Path: '/'
-      Policies:
-      - PolicyName: LogRolePolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - logs:Create*
-            - logs:PutLogEvents
-            - s3:GetObject
-            Resource:
-            - arn:aws:logs:*:*:*
-            - arn:aws:s3:::*
-      - PolicyName: S3RolePolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - s3:ListAllMyBuckets
-            - s3:GetBucketLocation
-            - s3:ListBucket
-            - s3:GetObject
-            - s3:PutObject
-            - s3:DeleteObject
-            Resource:
-            - arn:aws:s3:::*
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup

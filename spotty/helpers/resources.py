@@ -1,5 +1,5 @@
 from time import sleep
-from botocore.exceptions import EndpointConnectionError
+from botocore.exceptions import EndpointConnectionError, WaiterError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
@@ -45,32 +45,43 @@ def get_instance_ip_address(ec2, stack_name):
     return ip_address
 
 
+def stack_exists(cf, stack_name):
+    res = True
+    try:
+        cf.get_waiter('stack_exists').wait(StackName=stack_name, WaiterConfig={'MaxAttempts': 1})
+    except WaiterError:
+        res = False
+
+    return res
+
+
 def wait_stack_status_changed(cf, stack_id, waiting_status, resource_messages, resource_success_status,
                               output: AbstractOutputWriter, delay=5):
     current_status = waiting_status
     stack = None
 
-    resource_messages = iter(resource_messages)
+    resource_messages = iter(resource_messages) if resource_messages else None
     resource_name = None
 
     while current_status == waiting_status:
         sleep(delay)
 
         # display resource creation progress
-        try:
-            stack_resources = cf.list_stack_resources(StackName=stack_id)
-        except EndpointConnectionError:
-            output.write('Connection problem')
-            continue
+        if resource_messages:
+            try:
+                stack_resources = cf.list_stack_resources(StackName=stack_id)
+            except EndpointConnectionError:
+                output.write('Connection problem')
+                continue
 
-        resource_statuses = dict([(row['LogicalResourceId'], row['ResourceStatus'])
-                                  for row in stack_resources['StackResourceSummaries']])
+            resource_statuses = dict([(row['LogicalResourceId'], row['ResourceStatus'])
+                                      for row in stack_resources['StackResourceSummaries']])
 
-        while (resource_name is None) or (resource_name and
-                                          resource_statuses.get(resource_name, '') == resource_success_status):
-            (resource_name, resource_msg) = next(resource_messages, (False, False))
-            if resource_name:
-                output.write('  - %s...' % resource_msg)
+            while (resource_name is None) or (resource_name and
+                                              resource_statuses.get(resource_name, '') == resource_success_status):
+                (resource_name, resource_msg) = next(resource_messages, (False, False))
+                if resource_name:
+                    output.write('  - %s...' % resource_msg)
 
         # get the latest status of the stack
         try:

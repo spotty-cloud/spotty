@@ -47,10 +47,10 @@ def validate_instance_config(data):
                                                  And(lambda x: x > 0, error='"maxPrice" should be greater than 0 or '
                                                                             'should  not be specified.'),
                                                  ),
-            'volumes': And(
+            Optional('volumes', default=[]): And(
                 [{
                     Optional('snapshotName', default=''): str,
-                    'directory': And(str, Use(lambda x: x.rstrip('/'))),
+                    'directory': And(str, lambda x: x.startswith('/'), Use(lambda x: x.rstrip('/'))),
                     Optional('size', default=0): And(int, lambda x: x > 0),
                     Optional('deletionPolicy',
                              default='update_snapshot'): And(str, lambda x: x in ['update_snapshot', 'create_snapshot',
@@ -58,14 +58,13 @@ def validate_instance_config(data):
                                                              error='Incorrect value for "deletionPolicy".'
                                                              ),
                 }],
-                And(len, error='Volume configuration is required.'),
                 And(lambda x: len(x) < 12, error='Maximum 11 volumes are supported at the moment.'),
             ),
             'docker': And(
                 {
                     Optional('image', default=''): str,
                     Optional('file', default=''): str,
-                    Optional('workingDir', default='/root'): str,
+                    Optional('workingDir', default='/root'): And(str, lambda x: x.startswith('/')),
                     Optional('dataRoot', default=''): And(str, Use(lambda x: x.rstrip('/'))),
                     Optional('commands', default=''): str,
                 },

@@ -4,6 +4,7 @@ from spotty.commands.abstract_config import AbstractConfigCommand
 from spotty.helpers.resources import wait_stack_status_changed
 from spotty.helpers.validation import validate_instance_config
 from spotty.project_resources.bucket import BucketResource
+from spotty.project_resources.instance_profile import create_or_update_instance_profile
 from spotty.project_resources.stack import StackResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
@@ -60,16 +61,19 @@ class StartCommand(AbstractConfigCommand):
         project_bucket = BucketResource(s3, project_name, region)
         bucket_name = project_bucket.create_bucket(output)
 
+        # sync the project with S3
         output.write('Syncing the project with S3...')
 
-        # sync the project with S3
         project_filters = project_config['syncFilters']
         AwsCli(region=region).s3_sync(self._project_dir, 's3://%s/project' % bucket_name, delete=True,
                                       filters=project_filters, capture_output=False)
 
-        output.write('Preparing CloudFormation template...')
+        # create or update instance profile
+        instance_profile_arn = create_or_update_instance_profile(cf, output)
 
         # prepare CloudFormation template
+        output.write('Preparing CloudFormation template...')
+
         volumes = instance_config['volumes']
         ports = instance_config['ports']
         max_price = instance_config['maxPrice']
@@ -83,13 +87,12 @@ class StartCommand(AbstractConfigCommand):
         docker_config = instance_config['docker']
         remote_project_dir = project_config['remoteDir']
 
-        res = stack.create_stack(ec2, template, instance_type, ami_name, root_volume_size, mount_dirs, bucket_name,
-                                 remote_project_dir, docker_config)
+        res = stack.create_stack(ec2, template, instance_profile_arn, instance_type, ami_name, root_volume_size,
+                                 mount_dirs, bucket_name, remote_project_dir, docker_config)
 
         output.write('Waiting for the stack to be created...')
 
         resource_messages = [
-            ('SpotInstanceProfile', 'creating IAM role for the instance'),
             ('SpotInstance', 'launching the instance'),
             ('DockerReadyWaitCondition', 'waiting for the Docker container to be ready'),
         ]

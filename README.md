@@ -99,16 +99,17 @@ On-Demand price for chosen instance type. Read more here:
 [Spot Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html).
 - __`rootVolumeSize`__ _(optional)_ - size of the root volume in GB. The root volume will be destroyed once 
 the instance is terminated. Use attached volumes to store the data you need to keep (see "volumes" parameter below).
-- __`volumes`__ - the list of volumes to attach to the instance _(only one volume is supported at the moment)_:
-    - __`snapshotName`__ _(optional)_ - name of the snapshot to restore. If a snapshot with this name doesn't exists, it will be
-    created from new volume once the instance is terminated.
-    - __`directory`__ - directory where the volume should mounted,
+- __`volumes`__ _(optional)_ - the list of volumes to attach to the instance:
+    - __`snapshotName`__ _(optional)_ - name of the snapshot to restore. If a snapshot with this name doesn't exists, 
+    it will be created from the volume once the instance is terminated.
+    - __`directory`__ - directory where the volume will be mounted,
     - __`size`__ _(optional)_ - size of the volume in GB. Size of the volume cannot be less then the size of existing snapshot, but
     can always be increased.
-    - __`deletionPolicy`__ _(optional)_ - if this parameter is set to "__delete__", the volume will be removed without creating 
-    a snapshot. The default value for this parameter is "__snapshot__": once the instance is terminated, original snapshot 
-    will be removed (if it exists), new snapshot with the same name will be created and then the volume will 
-    be removed.
+    - __`deletionPolicy`__ _(optional)_ - possible values include: "__update_snapshot__" _(value by default)_, 
+    "__create_snapshot__" and  "__delete__". If this parameter is set to "__update_snapshot__", new snapshot with the 
+    same name will be created and the original snapshot will be deleted. For "__create_snapshot__" value, new snapshot 
+    will be created and the original snapshot will be renamed. For "__delete__" value, the volume will be deleted without 
+    creating a snapshot.
 - __`docker`__ - Docker configuration:
     - __`image`__ _(optional)_ - the name of the Docker image that contains environment for your project. For example, 
     you could use [TensorFlow image for GPU]((https://hub.docker.com/r/tensorflow/tensorflow/)) 
