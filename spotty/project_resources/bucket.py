@@ -11,13 +11,13 @@ class BucketResource(object):
 
     def _find_bucket(self):
         res = self._s3.list_buckets()
-        buckets = [bucket for bucket in res['Buckets']
-                   if bucket['Name'].startswith(self._bucket_prefix) and bucket['Name'].endswith(self._region)]
+        buckets = [bucket['Name'] for bucket in res['Buckets']
+                   if bucket['Name'].startswith(self._bucket_prefix + '-') and bucket['Name'].endswith(self._region)]
 
         if len(buckets) > 1:
             raise ValueError('Found several buckets in the same region: %s.' % ', '.join(buckets))
 
-        bucket_name = buckets[0]['Name'] if len(buckets) else False
+        bucket_name = buckets[0] if len(buckets) else False
 
         return bucket_name
 

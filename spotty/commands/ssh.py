@@ -2,10 +2,10 @@ from argparse import ArgumentParser
 import boto3
 import subprocess
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.commands.helpers.resources import get_instance_ip_address
-from spotty.commands.helpers.validation import validate_instance_config
-from spotty.commands.project_resources.key_pair import KeyPairResource
-from spotty.commands.project_resources.stack import StackResource
+from spotty.helpers.resources import get_instance_ip_address
+from spotty.helpers.validation import validate_instance_config
+from spotty.project_resources.key_pair import KeyPairResource
+from spotty.project_resources.stack import StackResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 

@@ -3,6 +3,9 @@ Parameters:
   VpcId:
     Description: VPC ID
     Type: AWS::EC2::VPC::Id
+  InstanceProfileArn:
+    Description: Instance Profile ARN
+    Type: String
   InstanceType:
     Description: Instance type to launch EC2 Spot Instance
     Type: String
@@ -15,8 +18,8 @@ Parameters:
   RootVolumeSize:
     Description: Root volume size
     Type: String
-  VolumeMountDirectory:
-    Description: Directory where the volume should be mounted
+  VolumeMountDirectories:
+    Description: Directories where the volumes should be mounted (bash array)
     Type: String
     Default: ''
   DockerDataRootDirectory:
@@ -65,7 +68,7 @@ Resources:
         KeyName: !Ref KeyName
         EbsOptimized: 'false'
         IamInstanceProfile:
-          Arn: !GetAtt SpotInstanceProfile.Arn
+          Arn: !Ref InstanceProfileArn
         SecurityGroupIds:
         - !Ref InstanceSecurityGroup
         InstanceInitiatedShutdownBehavior: terminate
@@ -81,7 +84,7 @@ Resources:
             DeleteOnTermination: true
         UserData:
           'Fn::Base64': !Sub |
-            #!/bin/bash -xe
+            #!/bin/bash -x
 
             # install CloudFormation tools
             apt-get update
@@ -90,45 +93,27 @@ Resources:
             curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
             easy_install aws-cfn-bootstrap-latest
 
-            # install AWS CLI
-            apt-get install -y awscli
-            aws configure set default.region ${AWS::Region}
-
-            # install jq
-            apt-get install -y jq
-
-            # create directory for Docker scripts
-            mkdir -p /tmp/docker
-            chmod 777 /tmp/docker
-
-            # create directory for "spotty run" logs
-            mkdir -p /var/log/spotty-run
-            chmod 777 /var/log/spotty-run
-
-            # install CloudWatch agent
+            # prepare the instance and run Docker container
             /usr/local/bin/cfn-init \
               --stack ${AWS::StackName} \
               --resource SpotInstanceLaunchTemplate \
               --region ${AWS::Region} \
-              -c cwlogs \
+              -c init \
               -v
 
-            /usr/local/bin/cfn-init \
+            # send signal that the Docker container is ready or failed
+            /usr/local/bin/cfn-signal \
+              -e $? \
               --stack ${AWS::StackName} \
-              --resource SpotInstanceLaunchTemplate \
               --region ${AWS::Region} \
-              -c cfn_hup \
-              -v
+              --resource DockerReadyWaitCondition
     Metadata:
       'AWS::CloudFormation::Init':
         configSets:
-          cwlogs:
+          init:
             - cwlogs_config
-          cfn_hup:
-            - cfn_hup_config
-          start_docker:
-            - stop_cfn_hup_config
-            - mount_volume_config
+            - prepare_instance_config
+            - mount_volumes_config
             - sync_project_config
             - docker_container_config
         cwlogs_config:
@@ -181,59 +166,49 @@ Resources:
           commands:
             run_cw_agent:
               command: '/bin/bash -xe /tmp/cwlogs/run.sh'
-        cfn_hup_config:
+        prepare_instance_config:
           files:
-            /tmp/scripts/start_docker.sh:
+            /tmp/scripts/prepare_instance.sh:
               owner: root
               group: root
               mode: '000400'
               content: !Sub |
-                /usr/local/bin/cfn-init --stack ${AWS::StackName} --resource SpotInstanceLaunchTemplate --region ${AWS::Region} -c start_docker -v
-                /usr/local/bin/cfn-signal -e $? --stack ${AWS::StackName} --region ${AWS::Region} --resource DockerReadyWaitCondition
-            /etc/cfn/cfn-hup.conf:
-              owner: root
-              group: root
-              mode: '000400'
-              content: !Sub |
-                [main]
-                stack=${AWS::StackId}
-                region=${AWS::Region}
-                interval=1
-                verbose=true
-            /etc/cfn/hooks.d/cfn-volume-attached.conf:
-              owner: root
-              group: root
-              mode: '000400'
-              content: !Sub |
-                [cfn-volume-attached-hook]
-                triggers=post.add
-                path=Resources.VolumeAttachment1.PhysicalResourceId
-                action=/bin/bash -x /tmp/scripts/start_docker.sh
-                runas=root
-          commands:
-            run_init:
-              command: '/usr/local/bin/cfn-hup -v'
-        stop_cfn_hup_config:
-          commands:
-            stop_cfn_hup:
-              command: 'kill -9 `pgrep cfn-hup`'
-        mount_volume_config:
-          files:
-            /tmp/scripts/mount_volume.sh:
-              owner: root
-              group: root
-              mode: '000400'
-              content: !Sub |
-                if [ -n "${VolumeMountDirectory}" ]; then
-                  DEVICE=/dev/xvdb
-                  blkid -o value -s TYPE $DEVICE || mkfs -t ext4 $DEVICE
-                  mkdir -p ${VolumeMountDirectory}
-                  mount $DEVICE ${VolumeMountDirectory}
-                  chown -R ubuntu:ubuntu ${VolumeMountDirectory}
-                fi
+                # install AWS CLI
+                apt-get install -y awscli
+                aws configure set default.region ${AWS::Region}
+
+                # install jq
+                apt-get install -y jq
+
+                # create directory for "spotty run" logs
+                mkdir -p /var/log/spotty-run
+                chmod 777 /var/log/spotty-run
           commands:
             mount_volume:
-              command: '/bin/bash -xe /tmp/scripts/mount_volume.sh'
+              command: '/bin/bash -xe /tmp/scripts/prepare_instance.sh'
+        mount_volumes_config:
+          files:
+            /tmp/scripts/mount_volumes.sh:
+              owner: root
+              group: root
+              mode: '000400'
+              content: !Sub |
+                DEVICE_LETTERS=(f g h i j k l m n o p)
+                MOUNT_DIRS=(${VolumeMountDirectories})
+
+                for i in ${!!MOUNT_DIRS[*]}
+                do
+                  DEVICE=/dev/xvd${!DEVICE_LETTERS[$i]}
+                  MOUNT_DIR=${!MOUNT_DIRS[$i]}
+
+                  blkid -o value -s TYPE $DEVICE || mkfs -t ext4 $DEVICE
+                  mkdir -p $MOUNT_DIR
+                  mount $DEVICE $MOUNT_DIR
+                  chown -R ubuntu:ubuntu $MOUNT_DIR
+                done
+          commands:
+            mount_volumes:
+              command: '/bin/bash -xe /tmp/scripts/mount_volumes.sh'
         sync_project_config:
           files:
             /tmp/scripts/sync_project.sh:
@@ -260,6 +235,9 @@ Resources:
                   jq '. + { "data-root": "${DockerDataRootDirectory}" }' /etc/docker/daemon.json > /tmp/docker_daemon.json \
                     && mv /tmp/docker_daemon.json /etc/docker/daemon.json
                   service docker restart
+
+                  # remove all containers
+                  docker rm $(docker ps -aq)
                 fi
 
                 # build docker image
@@ -273,23 +251,33 @@ Resources:
                 fi
 
                 if [ -n "$DOCKER_IMAGE" ]; then
-                  VOLUME_PARAM=""
-                  if [ -n "${VolumeMountDirectory}" ]; then
-                    VOLUME_PARAM="-v ${VolumeMountDirectory}:${VolumeMountDirectory}"
-                  fi
+                  MOUNT_DIRS=(${VolumeMountDirectories})
+                  VOLUME_PARAMS=""
+                  for mount_dir in ${!MOUNT_DIRS[*]}
+                  do
+                    VOLUME_PARAMS="$VOLUME_PARAMS -v $mount_dir:$mount_dir"
+                  done
 
                   NVIDIA_RUNTIME=""
                   if [ "${DockerNvidiaRuntime}" == "true" ]; then
                     NVIDIA_RUNTIME="--runtime=nvidia"
                   fi
 
+                  # create directory for Docker scripts
+                  mkdir -p /tmp/docker
+                  chmod 777 /tmp/docker
+
                   # run docker container
-                  docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAM \
-                    -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker --name spotty $DOCKER_IMAGE /bin/sh
+                  docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAMS \
+                    -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker -v ${ProjectDirectory}:${ProjectDirectory} \
+                    --name spotty $DOCKER_IMAGE /bin/sh
 
                   WORKING_DIR=""
                   if [ -n "${DockerWorkingDirectory}" ]; then
                     WORKING_DIR="-w ${DockerWorkingDirectory}"
+
+                    # create working directory if it doesn't exist
+                    docker exec spotty mkdir -p ${DockerWorkingDirectory}
                   fi
 
                   # run initial user commands
@@ -310,53 +298,6 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       RetentionInDays: 1
-
-  SpotInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Path: '/'
-      Roles:
-      - Ref: SpotInstanceRole
-  SpotInstanceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - ec2.amazonaws.com
-          Action:
-          - sts:AssumeRole
-      Path: '/'
-      Policies:
-      - PolicyName: LogRolePolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - logs:Create*
-            - logs:PutLogEvents
-            - s3:GetObject
-            Resource:
-            - arn:aws:logs:*:*:*
-            - arn:aws:s3:::*
-      - PolicyName: S3RolePolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - s3:ListAllMyBuckets
-            - s3:GetBucketLocation
-            - s3:ListBucket
-            - s3:GetObject
-            - s3:PutObject
-            - s3:DeleteObject
-            Resource:
-            - arn:aws:s3:::*
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -382,23 +323,11 @@ Resources:
         FromPort: 22
         ToPort: 22
 
-  Volume1:
-    Type: AWS::EC2::Volume
-    DeletionPolicy: Snapshot
-    Properties:
-      AvailabilityZone: !GetAtt SpotInstance.AvailabilityZone
-  VolumeAttachment1:
-    Type: AWS::EC2::VolumeAttachment
-    Properties:
-      Device: /dev/sda2
-      InstanceId: !Ref SpotInstance
-      VolumeId: !Ref Volume1
-
   # function to terminate the instance before detaching the volume
   # (otherwise the volume will be in busy state, because it's mounted to the instance)
   TerminateInstance:
     Type: Custom::InstanceTermination
-    DependsOn: VolumeAttachment1
+    DependsOn: []
     Properties:
       ServiceToken: !GetAtt TerminateInstanceFunction.Arn
       InstanceId: !Ref SpotInstance
@@ -411,46 +340,12 @@ Resources:
       Timeout: 30
       Code:
         ZipFile: !Sub |
-          var aws = require("aws-sdk");
-          var response = require('cfn-response');
-
-          exports.handler = function(event, context) {
-              console.log("request received:\n" + JSON.stringify(event));
-
-              var physicalId = event.PhysicalResourceId;
-
-              function success(data) {
-                  data = data || {}
-                  console.log('SUCCESS:\n', data);
-                  return response.send(event, context, response.SUCCESS, data, physicalId);
-              }
-
-              function failed(err) {
-                  console.log('FAILED:\n', err);
-                  return response.send(event, context, response.FAILED, err, physicalId);
-              }
-
-              // ignore non-delete requests
-              if (event.RequestType !== 'Delete') {
-                  console.log('Non-delete request is ignored');
-                  return success();
-              }
-
-              var instanceId = event.ResourceProperties.InstanceId;
-              if (!instanceId) {
-                  return failed('InstanceId required');
-              }
-
-              var ec2 = new aws.EC2({region: event.ResourceProperties.Region});
-
-              ec2.terminateInstances({InstanceIds: [instanceId]})
-              .promise()
-              .then((data) => {
-                  console.log('"terminateInstances" Response:\n', JSON.stringify(data));
-                  success();
-              })
-              .catch((err) => failed(err));
-          };
+          var aws=require("aws-sdk");var response=require('cfn-response');exports.handler=function(event,context){console.log("request received:\n"+JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{}
+          console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
+          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
+          if(event.RequestType!=='Delete'){console.log('Non-delete request is ignored');return success()}
+          var instanceId=event.ResourceProperties.InstanceId;if(!instanceId){return failed('InstanceId required')}
+          var ec2=new aws.EC2({region:event.ResourceProperties.Region});ec2.terminateInstances({InstanceIds:[instanceId]}).promise().then((data)=>{console.log('"terminateInstances" Response:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}
   TerminateInstanceLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -484,13 +379,7 @@ Resources:
       LogGroupName: !Join ['', ['/aws/lambda/', !Ref TerminateInstanceFunction]]
       RetentionInDays: 1
 
-  # function to delete the snapshot which was used to create the volume
-  DeleteSnapshot:
-    Type: Custom::SnapshotDeletion
-    DependsOn: Volume1
-    Properties:
-      ServiceToken: !GetAtt DeleteSnapshotFunction.Arn
-      SnapshotId: ''
+  # function to delete the snapshot that was used to create the volume
   DeleteSnapshotFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -500,59 +389,12 @@ Resources:
       Timeout: 30
       Code:
         ZipFile: !Sub |
-          var aws = require('aws-sdk');
-          var response = require('cfn-response');
-
-          exports.handler = function(event, context) {
-              console.log('Request received:\n' + JSON.stringify(event));
-
-              var physicalId = event.PhysicalResourceId;
-
-              function success(data) {
-                  data = data || {}
-                  console.log('SUCCESS:\n', data);
-                  return response.send(event, context, response.SUCCESS, data, physicalId);
-              }
-
-              function failed(err) {
-                  console.log('FAILED:\n', err);
-                  return response.send(event, context, response.FAILED, err, physicalId);
-              }
-
-              // ignore non-delete requests
-              if (event.RequestType !== 'Delete') {
-                  console.log('Non-delete request is ignored');
-                  return success();
-              }
-
-              var snapshotId = event.ResourceProperties.SnapshotId;
-              if (!snapshotId) {
-                  console.log('Nothing to delete');
-                  return success();
-              }
-
-              var ec2 = new aws.EC2({region: event.ResourceProperties.Region});
-
-              ec2.describeSnapshots({Filters: [{Name: 'snapshot-id',  Values: [snapshotId]}]})
-              .promise()
-              .then((data) => {
-                  console.log('"describeSnapshots" response:\n', JSON.stringify(data));
-
-                  if (data.Snapshots.length) {
-                      ec2.deleteSnapshot({SnapshotId: snapshotId})
-                      .promise()
-                      .then((data) => {
-                          console.log('"deleteSnapshot" response:\n', JSON.stringify(data));
-                          success();
-                      })
-                      .catch((err) => failed(err));
-                  } else {
-                      console.log('Snapshot not found');
-                      success();
-                  }
-              })
-              .catch((err) => failed(err));
-          };
+          var aws=require('aws-sdk');var response=require('cfn-response');exports.handler=function(event,context){console.log('Request received:\n',JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{};console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
+          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
+          if(event.RequestType!=='Delete'){console.log('Non-delete request is ignored');return success()}
+          var snapshotId=event.ResourceProperties.SnapshotId;if(!snapshotId){return failed('SnapshotId required')}
+          var ec2=new aws.EC2({region:event.ResourceProperties.Region});ec2.describeSnapshots({Filters:[{Name:'snapshot-id',Values:[snapshotId]}]}).promise().then((data)=>{console.log('"describeSnapshots" response:\n',JSON.stringify(data));if(!data.Snapshots.length){console.log('Snapshot not found');return null}
+          return ec2.deleteSnapshot({SnapshotId:snapshotId}).promise()}).then((data)=>{console.log('"deleteSnapshot" response:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}
   DeleteSnapshotLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -581,10 +423,60 @@ Resources:
               Resource: ['*']
   DeleteSnapshotFunctionRetention:
     Type: Custom::LogsRetention
-    DependsOn: DeleteSnapshot
+    DependsOn: []
     Properties:
       ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
       LogGroupName: !Join ['', ['/aws/lambda/', !Ref DeleteSnapshotFunction]]
+      RetentionInDays: 1
+
+  # function to rename the snapshot that was used to create the volume
+  RenameSnapshotFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt RenameSnapshotLambdaExecutionRole.Arn
+      Runtime: nodejs4.3
+      Timeout: 30
+      Code:
+        ZipFile: !Sub |
+          var aws=require('aws-sdk');var response=require('cfn-response');exports.handler=function(event,context){console.log('Request received:\n',JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{};console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
+          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
+          if(event.RequestType!=='Delete'){console.log('Non-delete request is ignored');return success()}
+          var snapshotId=event.ResourceProperties.SnapshotId;if(!snapshotId){return failed('SnapshotId required')}
+          var ec2=new aws.EC2({region:event.ResourceProperties.Region});ec2.describeSnapshots({Filters:[{Name:'snapshot-id',Values:[snapshotId]}]}).promise().then((data)=>{console.log('"describeSnapshots" response:\n',JSON.stringify(data));if(!data.Snapshots.length){console.log('Snapshot not found');return null}
+          var snapshotName=data.Snapshots[0].Tags.filter(function(el){return el.Key=='Name'})[0].Value;var snapshotDate=data.Snapshots[0].StartTime,newSnapshotName=snapshotName.substring(0,244)+'-'+Math.floor(snapshotDate.getTime()/1000);return ec2.createTags({Resources:[snapshotId],Tags:[{Key:'Name',Value:newSnapshotName}],}).promise()}).then((data)=>{console.log('"deleteSnapshot" response:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}
+  RenameSnapshotLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+              - lambda.amazonaws.com
+          Action:
+            - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+      Policies:
+      - PolicyName: EC2Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+              - 'ec2:DescribeSnapshots'
+              - 'ec2:CreateTags'
+              Resource: ['*']
+  RenameSnapshotFunctionRetention:
+    Type: Custom::LogsRetention
+    DependsOn: []
+    Properties:
+      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
+      LogGroupName: !Join ['', ['/aws/lambda/', !Ref RenameSnapshotFunction]]
       RetentionInDays: 1
 
   # function to set logs retention for a log group to 1 day (for lambdas by default they never expire)
@@ -596,55 +488,14 @@ Resources:
       Runtime: nodejs4.3
       Timeout: 30
       Code:
-        ZipFile: !Sub |
-          var aws = require("aws-sdk");
-          var response = require('cfn-response');
-
-          exports.handler = function(event, context) {
-              console.log("request received:\n" + JSON.stringify(event));
-
-              var physicalId = event.PhysicalResourceId;
-
-              function success(data) {
-                  data = data || {}
-                  console.log('SUCCESS:\n', data);
-                  return response.send(event, context, response.SUCCESS, data, physicalId);
-              }
-
-              function failed(err) {
-                  console.log('FAILED:\n', err);
-                  return response.send(event, context, response.FAILED, err, physicalId);
-              }
-
-              // ignore non-create requests
-              if (event.RequestType !== 'Create') {
-                  console.log('Non-create request is ignored');
-                  return success();
-              }
-
-              var logGroupName = event.ResourceProperties.LogGroupName;
-              if (!logGroupName) {
-                  return failed('LogGroupName required');
-              }
-
-              var retentionInDays = event.ResourceProperties.RetentionInDays;
-              if (!retentionInDays) {
-                  return failed('RetentionInDays required');
-              }
-
-              var cloudwatchlogs = new aws.CloudWatchLogs();
-
-              cloudwatchlogs.putRetentionPolicy({
-                  logGroupName: logGroupName,
-                  retentionInDays: retentionInDays
-              })
-              .promise()
-              .then((data) => {
-                  console.log('"putRetentionPolicy" Response:\n', JSON.stringify(data));
-                  success();
-              })
-              .catch((err) => failed(err));
-          };
+        ZipFile: |
+          var aws=require("aws-sdk");var response=require('cfn-response');exports.handler=function(event,context){console.log("request received:\n"+JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{}
+          console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
+          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
+          if(event.RequestType!=='Create'){console.log('Non-create request is ignored');return success()}
+          var logGroupName=event.ResourceProperties.LogGroupName;if(!logGroupName){return failed('LogGroupName required')}
+          var retentionInDays=event.ResourceProperties.RetentionInDays;if(!retentionInDays){return failed('RetentionInDays required')}
+          var cloudwatchlogs=new aws.CloudWatchLogs();cloudwatchlogs.putRetentionPolicy({logGroupName:logGroupName,retentionInDays:retentionInDays}).promise().then((data)=>{console.log('"putRetentionPolicy" Response:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}
   SetLogsRetentionLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -680,7 +531,7 @@ Resources:
 
   DockerReadyWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
-    DependsOn: VolumeAttachment1
+    DependsOn: SpotInstance
     CreationPolicy:
       ResourceSignal:
         Timeout: PT10M
