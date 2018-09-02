@@ -1,7 +1,7 @@
 import yaml
-from botocore.exceptions import WaiterError, EndpointConnectionError
+from botocore.exceptions import EndpointConnectionError
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
-from spotty.helpers.resources import get_snapshot, get_ami_id, is_gpu_instance
+from spotty.helpers.resources import get_snapshot, get_ami_id, is_gpu_instance, stack_exists
 from spotty.project_resources.key_pair import KeyPairResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.utils import data_dir
@@ -20,13 +20,7 @@ class StackResource(object):
         return self._stack_name
 
     def stack_exists(self):
-        res = True
-        try:
-            self._cf.get_waiter('stack_exists').wait(StackName=self._stack_name, WaiterConfig={'MaxAttempts': 1})
-        except WaiterError:
-            res = False
-
-        return res
+        return stack_exists(self._cf, self._stack_name)
 
     def get_stack_info(self):
         try:
@@ -83,8 +77,8 @@ class StackResource(object):
                         raise ValueError('Requested size of the volume (%dGB) is less than size of the snapshot (%dGB).'
                                          % (volume_size, snapshot_info['VolumeSize']))
                     elif volume_size > snapshot_info['VolumeSize']:
-                        output.write('Size of the snapshot will be increased from %dGB to %dGB.'
-                                     % (snapshot_info['VolumeSize'], volume_size))
+                        output.write('  - size of the "%s" snapshot will be increased from %dGB to %dGB'
+                                     % (snapshot_name, snapshot_info['VolumeSize'], volume_size))
 
                 # set snapshot ID
                 orig_snapshot_id = snapshot_info['SnapshotId']
@@ -177,8 +171,9 @@ class StackResource(object):
 
         return yaml.dump(template, Dumper=CfnYamlDumper)
 
-    def create_stack(self, ec2, template: str, instance_type: str, ami_name: str, root_volume_size: int,
-                     mount_dirs: list, bucket_name: str, remote_project_dir: str, docker_config: dict):
+    def create_stack(self, ec2, template: str, instance_profile_arn: str, instance_type: str, ami_name: str,
+                     root_volume_size: int, mount_dirs: list, bucket_name: str, remote_project_dir: str,
+                     docker_config: dict):
         # get default VPC ID
         res = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
         if not len(res['Vpcs']):
@@ -199,6 +194,7 @@ class StackResource(object):
         # create stack
         params = {
             'VpcId': vpc_id,
+            'InstanceProfileArn': instance_profile_arn,
             'InstanceType': instance_type,
             'KeyName': key_name,
             'ImageId': ami_id,

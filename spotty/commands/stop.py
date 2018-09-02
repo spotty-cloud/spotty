@@ -45,8 +45,8 @@ class StopCommand(AbstractConfigCommand):
         output.write('Waiting for the stack to be deleted...')
 
         resource_messages = [
-            ('SpotInstance', 'terminating the instance'),
-            ('CreateSnapshots', 'creating snapshots and deleting the volumes'),
+            ('TerminateInstance', 'terminating the instance'),
+            ('_', 'creating snapshots and deleting the volumes'),
         ]
 
         # wait for the deletion to be completed
