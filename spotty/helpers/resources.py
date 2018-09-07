@@ -3,20 +3,6 @@ from botocore.exceptions import EndpointConnectionError, WaiterError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
-def get_ami_id(ec2, ami_name: str):
-    res = ec2.describe_images(Filters=[
-        {'Name': 'name', 'Values': [ami_name]},
-    ])
-
-    # check that the only one image with such name exists
-    if len(res['Images']) > 1:
-        raise ValueError('Several images with Name=%s found.' % ami_name)
-
-    ami_id = res['Images'][0]['ImageId'] if len(res['Images']) else False
-
-    return ami_id
-
-
 def get_snapshot(ec2, snapshot_name: str):
     res = ec2.describe_snapshots(Filters=[
         {'Name': 'tag:Name', 'Values': [snapshot_name]},
