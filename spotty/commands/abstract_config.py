@@ -15,13 +15,18 @@ class AbstractConfigCommand(AbstractCommand):
         if not config_path:
             config_path = 'spotty.yaml'
 
-        if not os.path.isabs(config_path):
-            config_path = os.path.abspath(os.path.join(os.getcwd(), config_path))
+        if os.path.isabs(config_path):
+            config_abs_path = config_path
+        else:
+            config_abs_path = os.path.abspath(os.path.join(os.getcwd(), config_path))
 
-        self._project_dir = os.path.dirname(config_path)
+        if not os.path.exists(config_abs_path):
+            raise ValueError('Configuration file "%s" not found.' % config_path)
+
+        self._project_dir = os.path.dirname(config_abs_path)
 
         # load project config file
-        self._config = self._validate_config(self._load_config(config_path))
+        self._config = self._validate_config(self._load_config(config_abs_path))
 
     @staticmethod
     def configure(parser: ArgumentParser):

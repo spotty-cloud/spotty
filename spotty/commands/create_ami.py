@@ -39,7 +39,7 @@ class CreateAmiCommand(AbstractConfigCommand):
         ])
 
         if len(res['Images']):
-            raise ValueError('Image with Name=%s already exists.' % ami_name)
+            raise ValueError('AMI with name "%s" already exists.' % ami_name)
 
         # read and update CF template
         with open(data_dir('create_ami.yaml')) as f:
@@ -59,7 +59,7 @@ class CreateAmiCommand(AbstractConfigCommand):
         if key_name:
             params.append({'ParameterKey': 'KeyName', 'ParameterValue': key_name})
 
-        stack_name = 'spotty-ami-' + random_string(8)
+        stack_name = 'spotty-nvidia-docker-ami-%s' % random_string(8)
         res = cf.create_stack(
             StackName=stack_name,
             TemplateBody=yaml.dump(template, Dumper=CfnYamlDumper),
@@ -71,10 +71,10 @@ class CreateAmiCommand(AbstractConfigCommand):
         output.write('Waiting for the AMI to be created...')
 
         resource_messages = [
-            ('LogRoleInstanceProfile', 'creating IAM role for the instance'),
+            ('InstanceProfile', 'creating IAM role for the instance'),
             ('SpotInstance', 'launching the instance'),
             ('InstanceReadyWaitCondition', 'installing NVIDIA Docker'),
-            ('CreateAMI', 'creating AMI and terminating the instance'),
+            ('AMICreatedWaitCondition', 'creating AMI and terminating the instance'),
         ]
 
         # wait for the stack to be created
