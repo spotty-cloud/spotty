@@ -40,23 +40,6 @@ class StartCommand(AbstractConfigCommand):
             raise ValueError('Stack "%s" already exists.\n'
                              'Use "spotty stop" command to delete the stack.' % stack.name)
 
-        # check that AMI exists
-        ami_name = instance_config['amiName']
-        ami_info = ec2.describe_images(Filters=[
-            {'Name': 'name', 'Values': [ami_name]},
-        ])
-        if not len(ami_info['Images']):
-            raise ValueError('AMI "%s" doesn\'t exist. Use "spotty create-ami" command to create an AMI'
-                             'with NVIDIA Docker.' % ami_name)
-
-        # check root volume size
-        root_volume_size = instance_config['rootVolumeSize']
-        image_volume_size = ami_info['Images'][0]['BlockDeviceMappings'][0]['Ebs']['VolumeSize']
-        if root_volume_size and root_volume_size < image_volume_size:
-            raise ValueError('Root volume size cannot be less than the size of AMI (%dGB).' % image_volume_size)
-        elif not root_volume_size:
-            root_volume_size = image_volume_size + 5
-
         # create bucket for the project
         project_bucket = BucketResource(s3, project_name, region)
         bucket_name = project_bucket.create_bucket(output)
@@ -83,6 +66,8 @@ class StartCommand(AbstractConfigCommand):
 
         # create stack
         instance_type = instance_config['instanceType']
+        ami_name = instance_config['amiName']
+        root_volume_size = instance_config['rootVolumeSize']
         mount_dirs = [volume['directory'] for volume in volumes]
         docker_config = instance_config['docker']
         remote_project_dir = project_config['remoteDir']

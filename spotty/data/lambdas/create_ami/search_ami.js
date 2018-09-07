@@ -7,7 +7,7 @@ exports.handler = function(event, context) {
     var physicalId = event.PhysicalResourceId;
 
     function success(data) {
-        data = data || {}
+        data = data || {};
         console.log('SUCCESS:\n', data);
         return response.send(event, context, response.SUCCESS, data, physicalId);
     }

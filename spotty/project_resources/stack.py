@@ -1,7 +1,7 @@
 import yaml
 from botocore.exceptions import EndpointConnectionError
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
-from spotty.helpers.resources import get_snapshot, get_ami_id, is_gpu_instance, stack_exists
+from spotty.helpers.resources import get_snapshot, is_gpu_instance, stack_exists
 from spotty.project_resources.key_pair import KeyPairResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.utils import data_dir
@@ -182,10 +182,21 @@ class StackResource(object):
         vpc_id = res['Vpcs'][0]['VpcId']
 
         # get image info
-        ami_id = get_ami_id(ec2, ami_name)
-        if not ami_id:
-            raise ValueError('Image with Name=%s not found.\n'
-                             'Use "spotty create-ami" command to create NVIDIA Docker AMI.' % ami_name)
+        ami_info = ec2.describe_images(Filters=[
+            {'Name': 'name', 'Values': [ami_name]},
+        ])
+        if not len(ami_info['Images']):
+            raise ValueError('AMI with name "%s" not found.\n'
+                             'Use "spotty create-ami" command to create an AMI with NVIDIA Docker.' % ami_name)
+
+        ami_id = ami_info['Images'][0]['ImageId']
+
+        # check root volume size
+        image_volume_size = ami_info['Images'][0]['BlockDeviceMappings'][0]['Ebs']['VolumeSize']
+        if root_volume_size and root_volume_size < image_volume_size:
+            raise ValueError('Root volume size cannot be less than the size of AMI (%dGB).' % image_volume_size)
+        elif not root_volume_size:
+            root_volume_size = image_volume_size + 5
 
         # create key pair
         project_key = KeyPairResource(ec2, self._project_name, self._region)
