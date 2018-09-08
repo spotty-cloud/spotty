@@ -137,7 +137,7 @@ Resources:
 
                 [/var/log/cfn-init-cmd.log]
                 file = /var/log/cfn-init-cmd.log
-                log_group_name = ${InstanceLogGroup}
+                log_group_name = ${SpotInstanceLogGroup}
                 log_stream_name = {instance_id}/cfn-init-cmd.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
 
