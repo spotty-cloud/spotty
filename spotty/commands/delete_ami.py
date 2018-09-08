@@ -32,7 +32,7 @@ class DeleteAmiCommand(AbstractConfigCommand):
 
         # check that only one image with such name exists
         if not len(res['Images']):
-            raise ValueError('Image with Name=%s not found.' % ami_name)
+            raise ValueError('AMI with name "%s" not found.' % ami_name)
         elif len(res['Images']) > 1:
             raise ValueError('Several images with Name=%s found.' % ami_name)
 

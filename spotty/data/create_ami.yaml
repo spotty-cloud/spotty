@@ -101,6 +101,10 @@ Resources:
           'Fn::Base64': !Sub |
             #!/bin/bash -x
 
+            # stop daily updates for apt (fix for the issue when the cloud-init fails to install packages
+            # because the "/var/lib/dpkg/lock" file is locked)
+            systemctl disable --now apt-daily{,-upgrade}.{timer,service}
+
             # install CloudFormation tools
             apt-get update
             apt-get -y install python-setuptools
@@ -248,6 +252,12 @@ Resources:
                 file = /var/log/cfn-init.log
                 log_group_name = ${InstanceLogGroup}
                 log_stream_name = {instance_id}/cfn-init.log
+                datetime_format = %d/%b/%Y:%H:%M:%S
+
+                [/var/log/cfn-init-cmd.log]
+                file = /var/log/cfn-init-cmd.log
+                log_group_name = ${InstanceLogGroup}
+                log_stream_name = {instance_id}/cfn-init-cmd.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
               mode: '000400'
               owner: root
