@@ -135,6 +135,12 @@ Resources:
                 log_stream_name = {instance_id}/cfn-init.log
                 datetime_format = %d/%b/%Y:%H:%M:%S
 
+                [/var/log/cfn-init-cmd.log]
+                file = /var/log/cfn-init-cmd.log
+                log_group_name = ${InstanceLogGroup}
+                log_stream_name = {instance_id}/cfn-init-cmd.log
+                datetime_format = %d/%b/%Y:%H:%M:%S
+
                 [/var/log/cfn-hup.log]
                 file = /var/log/cfn-hup.log
                 log_group_name = ${SpotInstanceLogGroup}
@@ -184,7 +190,7 @@ Resources:
                 mkdir -p /var/log/spotty-run
                 chmod 777 /var/log/spotty-run
           commands:
-            mount_volume:
+            prepare_instance:
               command: '/bin/bash -xe /tmp/scripts/prepare_instance.sh'
         mount_volumes_config:
           files:
@@ -221,7 +227,7 @@ Resources:
                   aws s3 sync s3://${ProjectS3Bucket}/project ${ProjectDirectory}
                 fi
           commands:
-            mount_volume:
+            sync_project:
               command: '/bin/bash -xe /tmp/scripts/sync_project.sh'
         docker_container_config:
           files:
