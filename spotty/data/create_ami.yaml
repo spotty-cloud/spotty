@@ -448,6 +448,6 @@ Outputs:
   NewAMI:
     Description: Created AMI ID
     Value: !Ref DeleteAMI
-  InstanceLogGroupName:
+  InstanceLogGroup:
     Description: CloudWatch log group name for the instance
     Value: !Ref InstanceLogGroup
