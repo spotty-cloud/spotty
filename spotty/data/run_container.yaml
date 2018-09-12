@@ -208,6 +208,7 @@ Resources:
                   MOUNT_DIR=${!MOUNT_DIRS[$i]}
 
                   blkid -o value -s TYPE $DEVICE || mkfs -t ext4 $DEVICE
+                  resize2fs $DEVICE
                   mkdir -p $MOUNT_DIR
                   mount $DEVICE $MOUNT_DIR
                   chown -R ubuntu:ubuntu $MOUNT_DIR
