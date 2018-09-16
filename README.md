@@ -100,16 +100,24 @@ On-Demand price for chosen instance type. Read more here:
 - __`rootVolumeSize`__ _(optional)_ - size of the root volume in GB. The root volume will be destroyed once 
 the instance is terminated. Use attached volumes to store the data you need to keep (see "volumes" parameter below).
 - __`volumes`__ _(optional)_ - the list of volumes to attach to the instance:
-    - __`snapshotName`__ _(optional)_ - name of the snapshot to restore. If a snapshot with this name doesn't exists, 
-    it will be created from the volume once the instance is terminated.
+    - __`name`__ _(optional)_ - name of the volume. When you're starting an instance, Spotty is looking for a volume 
+    with this name. If the volume is found, it will be attached to the instance, if not - Spotty will be looking for a 
+    snapshot with this name. If the snapshot is found, the volume will be restored from that snapshot, if not - new 
+    volume will be created. This parameter is required if deletionPolicy isn't set to "delete".
     - __`directory`__ - directory where the volume will be mounted,
-    - __`size`__ _(optional)_ - size of the volume in GB. Size of the volume cannot be less then the size of existing snapshot, but
-    can always be increased.
-    - __`deletionPolicy`__ _(optional)_ - possible values include: "__update_snapshot__" _(value by default)_, 
-    "__create_snapshot__" and  "__delete__". If this parameter is set to "__update_snapshot__", new snapshot with the 
-    same name will be created and the original snapshot will be deleted. For "__create_snapshot__" value, new snapshot 
-    will be created and the original snapshot will be renamed. For "__delete__" value, the volume will be deleted without 
-    creating a snapshot.
+    - __`size`__ _(optional)_ - size of the volume in GB. Size of the volume cannot be less then the size of existing 
+    snapshot, but can be increased.
+    - __`deletionPolicy`__ _(optional)_ - possible values include: "__create_snapshot__" _(value by default)_, 
+    "__update_snapshot__", "__retain__" and  "__delete__". By default, Spotty will create new snapshot every time you're 
+    stopping an instance, the old snapshot will be renamed. If this parameter is set to "__update_snapshot__", new 
+    snapshot will be created and the old one will be deleted. If the parameter is set to "__retain__", the volume will
+    not be deleted and snapshot will not be taken. If the parameter is set to  "__delete__" value, the volume will be 
+    deleted without creating a snapshot.
+    
+        __Note:__ Deletion policy works only for volumes that were created from scratch or from snapshots during the 
+        `spotty start` command. So if the volume existed before and was attached to the instance by its name, it will 
+        retain after the instance deletion anyway, even if you had a different value in the DeletionPolicy.
+
 - __`docker`__ - Docker configuration:
     - __`image`__ _(optional)_ - the name of the Docker image that contains environment for your project. For example, 
     you could use [TensorFlow image for GPU]((https://hub.docker.com/r/tensorflow/tensorflow/)) 
