@@ -100,7 +100,6 @@ class StartCommand(AbstractConfigCommand):
 
         if status == 'CREATE_COMPLETE':
             ip_address = [row['OutputValue'] for row in info['Outputs'] if row['OutputKey'] == 'InstanceIpAddress'][0]
-            log_group = [row['OutputValue'] for row in info['Outputs'] if row['OutputKey'] == 'InstanceLogGroup'][0]
             availability_zone = [row['OutputValue'] for row in info['Outputs']
                                  if row['OutputKey'] == 'AvailabilityZone'][0]
 
@@ -112,12 +111,10 @@ class StartCommand(AbstractConfigCommand):
                          'Instance is running.\n'
                          '\n'
                          'IP address: %s\n'
-                         'CloudWatch Log Group:\n'
-                         '  %s\n'
-                         'Current Spot price: $%.02f\n'
+                         'Current Spot price: $%.04f\n'
                          '\n'
                          'Use "spotty ssh" command to connect to the Docker container.\n'
-                         '--------------------' % (ip_address, log_group, current_price))
+                         '--------------------' % (ip_address, current_price))
         else:
             raise ValueError('Stack "%s" was not created.\n'
                              'Please, see CloudFormation and CloudWatch logs for the details.' % stack.name)
