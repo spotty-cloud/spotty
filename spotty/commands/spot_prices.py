@@ -1,9 +1,9 @@
 from argparse import ArgumentParser
 import boto3
-import datetime
 from spotty.commands.abstract import AbstractCommand
 from spotty.helpers.resources import is_valid_instance_type
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.helpers.spot_prices import get_spot_prices
 
 
 class SpotPricesCommand(AbstractCommand):
@@ -35,21 +35,15 @@ class SpotPricesCommand(AbstractCommand):
         prices = []
         for region in regions:
             ec2 = boto3.client('ec2', region_name=region)
-
-            tomorrow_date = datetime.datetime.today() + datetime.timedelta(days=1)
-            res = ec2.describe_spot_price_history(
-                InstanceTypes=[instance_type],
-                StartTime=tomorrow_date,
-                ProductDescriptions=['Linux/UNIX'])
-
-            for row in res['SpotPriceHistory']:
-                prices.append((row['SpotPrice'], row['AvailabilityZone']))
+            res = get_spot_prices(ec2, instance_type)
+            prices += [(price, zone) for zone, price in res.items()]
 
         # sort availability zones by price
         prices.sort(key=lambda x: x[0])
 
         if prices:
+            output.write('Price  Zone')
             for price, zone in prices:
-                output.write('%s   %s' % (price, zone))
+                output.write('%.04f %s' % (price, zone))
         else:
             output.write('Spot instances of this type are not available.')

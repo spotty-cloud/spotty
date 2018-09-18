@@ -31,6 +31,7 @@ def validate_instance_config(data):
         },
         'instance': {
             'region': And(str, len),
+            Optional('availabilityZone', default=''): str,
             'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
             Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
             Optional('keyName', default=''): str,
@@ -49,12 +50,12 @@ def validate_instance_config(data):
                                                  ),
             Optional('volumes', default=[]): And(
                 [{
-                    Optional('snapshotName', default=''): str,
+                    Optional('name', default=''): str,
                     'directory': And(str, lambda x: x.startswith('/'), Use(lambda x: x.rstrip('/'))),
                     Optional('size', default=0): And(int, lambda x: x > 0),
                     Optional('deletionPolicy',
-                             default='update_snapshot'): And(str, lambda x: x in ['update_snapshot', 'create_snapshot',
-                                                                                  'delete'],
+                             default='create_snapshot'): And(str, lambda x: x in ['create_snapshot', 'update_snapshot',
+                                                                                  'retain', 'delete'],
                                                              error='Incorrect value for "deletionPolicy".'
                                                              ),
                 }],

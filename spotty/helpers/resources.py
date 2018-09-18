@@ -4,6 +4,7 @@ from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
 def get_snapshot(ec2, snapshot_name: str):
+    """Returns a snapshot by its name."""
     res = ec2.describe_snapshots(Filters=[
         {'Name': 'tag:Name', 'Values': [snapshot_name]},
     ])
@@ -14,6 +15,21 @@ def get_snapshot(ec2, snapshot_name: str):
     snapshot = res['Snapshots'][0] if len(res['Snapshots']) else {}
 
     return snapshot
+
+
+def get_volume(ec2, volume_name: str):
+    """Returns the volume by its name."""
+    res = ec2.describe_volumes(Filters=[
+        {'Name': 'tag:Name', 'Values': [volume_name]},
+        {'Name': 'status', 'Values': ['available']},
+    ])
+
+    if len(res['Volumes']) > 1:
+        raise ValueError('Several volumes with Name=%s found.' % volume_name)
+
+    volume = res['Volumes'][0] if len(res['Volumes']) else {}
+
+    return volume
 
 
 def get_instance_ip_address(ec2, stack_name):
