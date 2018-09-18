@@ -27,9 +27,9 @@ def get_volume(ec2, volume_name: str):
     if len(res['Volumes']) > 1:
         raise ValueError('Several volumes with Name=%s found.' % volume_name)
 
-    snapshot = res['Volumes'][0] if len(res['Volumes']) else {}
+    volume = res['Volumes'][0] if len(res['Volumes']) else {}
 
-    return snapshot
+    return volume
 
 
 def get_instance_ip_address(ec2, stack_name):
