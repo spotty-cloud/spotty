@@ -1,208 +1,71 @@
 # Spotty
 
-Spotty helps you to train deep learning models on [AWS Spot Instances](https://aws.amazon.com/ec2/spot/).
+Spotty simplifies training of Deep Learning models on AWS:
 
-You don't need to spend time on:
-- manually starting Spot Instances
-- installation of NVIDIA drivers
-- managing snapshots and AMIs
-- detaching remote processes from your SSH sessions
+- it makes training on AWS GPU instances as simple as a training on your local computer
+- it automatically manages all necessary AWS resources including AMIs, volumes and snapshots
+- it makes your model trainable on AWS by everyone with a couple of commands
+- it detaches remote processes from SSH sessions
+- it saves you up to 70% of the costs by using Spot Instances
 
-Just start an instance using the following command:
-```bash
-$ spotty start
-```
-It will run a Spot Instance, restore snapshots if any, synchronize the project with the instance 
-and start Docker container with the environment.
+## Documentation
 
-Then train your model:
-```bash
-$ spotty run train
-```
-It runs your custom training command inside the Docker container. The remote connection uses 
-[tmux](https://github.com/tmux/tmux/wiki), so you can close the connection and come back to the running process any time later.
-
-Connect to the container if necessary:
-```bash
-$ spotty ssh
-```
-It uses [tmux](https://github.com/tmux/tmux/wiki) session, so you can always detach the session using
-`Crtl`+`b`, then `d` combination of keys and attach that session later using `$ spotty ssh` command again.
+- See the [wiki section](https://github.com/apls777/spotty/wiki) for the documentation.
+- Read [this](https://medium.com/@apls/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365) 
+article on Medium for a real-world example.
 
 ## Installation
-
-To install Spotty use [pip](http://www.pip-installer.org/en/latest/) package manger:
-
-    $ pip install --upgrade spotty
 
 Requirements:
   * Python 3
   * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html))
 
-## Configuration
+Use [pip](http://www.pip-installer.org/en/latest/) to install or upgrade Spotty:
 
-By default, Spotty is looking for `spotty.yaml` file in the root directory of the project.
-Here is a basic example of such file:
+    $ pip install -U spotty
 
-```yaml
-project:
-  name: MyProjectName
-  remoteDir: /workspace/project
-instance:
-  region: us-east-2
-  instanceType: p2.xlarge
-  volumes:
-    - snapshotName: MySnapshotName
-      directory: /workspace
-      size: 10
-  docker:
-    image: tensorflow/tensorflow:latest-gpu-py3
-```
+## Get Started
 
-### Available Parameters
+1. Prepare a `spotty.yaml` file for your project.
 
-__`project`__ section:
-- __`name`__ - the name of your project. It will be used to create S3 bucket and CloudFormation stack to run 
-an instance.
-- __`remoteDir`__ - directory where your project will be stored on the instance. It's usually a directory 
-on the attached volume (see "instance" section).
-- __`syncFilters`__ _(optional)_ - filters to skip some directories or files during synchronization. By default, all project files 
-will be synced with the instance. Example:
-    ```yaml
-    syncFilters:
-      - exclude:
-          - .idea/*
-          - .git/*
-          - data/*
-      - include:
-          - data/test/*
-      - exclude:
-          - data/test/config
-    ```
-    
-    It will skip ".idea/", ".git/" and "data/" directories except "data/test/" directory. All files from "data/test/" 
-    directory will be synced with the instance except "data/test/config" file.
-    
-    You can read more about filters 
-    here: [Use of Exclude and Include Filter](https://docs.aws.amazon.com/cli/latest/reference/s3/index.html#use-of-exclude-and-include-filters). 
+   - See the file specification [here](https://github.com/apls777/spotty/wiki/Configuration-File).
+   - Read [this](https://medium.com/@apls/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365) 
+   article for a real-world example.
 
-__`instance`__ section:
-- __`region`__ - region where your are going to run the instance (you can use command `spotty spot-prices` to find the 
-cheapest region),
-- __`instanceType`__ - type of the instance to run. You can find more information about 
-types of GPU instances here: 
-[Recommended GPU Instances](https://docs.aws.amazon.com/dlami/latest/devguide/gpu.html).
-- __`amiName`__ _(optional)_ - name of the AMI with NVIDIA Docker (default value is "SpottyAMI"). Use 
-`spotty create-ami` command to create it. This AMI will be used to run your application inside the Docker container.
-- __`maxPrice`__ _(optional)_ - the maximum price per hour that you are willing to pay for a Spot Instance. By default, it's 
-On-Demand price for chosen instance type. Read more here: 
-[Spot Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html).
-- __`rootVolumeSize`__ _(optional)_ - size of the root volume in GB. The root volume will be destroyed once 
-the instance is terminated. Use attached volumes to store the data you need to keep (see "volumes" parameter below).
-- __`volumes`__ _(optional)_ - the list of volumes to attach to the instance:
-    - __`snapshotName`__ _(optional)_ - name of the snapshot to restore. If a snapshot with this name doesn't exists, 
-    it will be created from the volume once the instance is terminated.
-    - __`directory`__ - directory where the volume will be mounted,
-    - __`size`__ _(optional)_ - size of the volume in GB. Size of the volume cannot be less then the size of existing snapshot, but
-    can always be increased.
-    - __`deletionPolicy`__ _(optional)_ - possible values include: "__update_snapshot__" _(value by default)_, 
-    "__create_snapshot__" and  "__delete__". If this parameter is set to "__update_snapshot__", new snapshot with the 
-    same name will be created and the original snapshot will be deleted. For "__create_snapshot__" value, new snapshot 
-    will be created and the original snapshot will be renamed. For "__delete__" value, the volume will be deleted without 
-    creating a snapshot.
-- __`docker`__ - Docker configuration:
-    - __`image`__ _(optional)_ - the name of the Docker image that contains environment for your project. For example, 
-    you could use [TensorFlow image for GPU]((https://hub.docker.com/r/tensorflow/tensorflow/)) 
-    (`tensorflow/tensorflow:latest-gpu-py3`). It already contains NumPy, SciPy, scikit-learn, pandas, Jupyter Notebook and 
-    TensorFlow itself. If you need to use your own image, you can specify the path to your Dockerfile in the 
-    __`file`__ parameter (see below), or push your image to the [Docker Hub](https://hub.docker.com/) and use its name.
-    - __`file`__ _(optional)_ - relative path to your custom Dockerfile. For example, you could take TensorFlow image as a 
-    base one and add [AWS CLI](https://github.com/aws/aws-cli) there to be able to download your datasets from S3:
-        ```dockerfile
-        FROM tensorflow/tensorflow:latest-gpu-py3
-        
-        RUN pip install --upgrade \
-          pip \
-          awscli
-        ```
-    - __`workingDir`__ _(optional)_ - working directory for your custom scripts (see "scripts" section below),
-    - __`dataRoot`__ _(optional)_ - directory where Docker will store all downloaded and built images. You could cache 
-    images on your attached volume to avoid downloading them from internet or building your custom image from scratch 
-    every time when you start an instance.
-    - __`commands`__ _(optional)_ - commands which should be performed once your container is started. For example, you 
-    could download your datasets from S3 bucket to the project directory (see "project" section):
-        ```yaml
-        commands: |
-          aws s3 sync s3://my-bucket/datasets/my-dataset /workspace/project/data
-        ```
-- __`ports`__ _(optional)_ - list of ports to open. For example:
-    ```yaml
-    ports: [6006, 8888]
-    ```
-    It will open ports 6006 for Jupyter Notebook and 8008 for TensorBoard. 
+2. Create an AMI with NVIDIA Docker. Run the following command from the root directory of your project 
+(where the `spotty.yaml` file is located):
 
-__`scripts`__ section _(optional)_:
-- This section contains customs scripts which can be run using `spotty run <SCRIPT_NAME>`
-command. The following example defines scripts `train`, `jupyter` and `tensorflow`:
-                
-    ```yaml
-    project:
-      ...
-    instance:
-      ...
-    scripts:
-      train: |
-        PYTHONPATH=/workspace/project
-        python /workspace/project/model/train.py --num-layers 3
-      jupyter: |
-        /run_jupyter.sh --allow-root
-      tensorboard: |
-        tensorboard --logdir /workspace/outputs
+    ```bash
+    $ spotty create-ami
     ```
 
-## Available Commands
+    In several minutes you will have an AMI that can be used for all your projects within the AWS region.
 
-  - `$ spotty start`
-  
-    Runs a Spot Instance, synchronizes the project with that instance and starts a Docker container.
+3. Start an instance:
 
-  - `$ spotty stop`
+    ```bash
+    $ spotty start
+    ```
 
-    Terminates the running instance and creates snapshots of the attached volumes.
+    It will run a Spot Instance, restore snapshots if any, synchronize the project with the running instance 
+    and start the Docker container with the environment.
 
-  - `$ spotty run <SCRIPT_NAME> [--session-name <SESSION_NAME>]`
+4. Train a model or run notebooks.
 
-    Runs a custom script inside the Docker container (see "scripts" section in [Available Parameters](#Available-Parameters)).
-    
-    Use `Crtl`+`b`, then `d` combination of keys to be detached from SSH session. The script will keep running. 
-    Call `$ spotty run <SCRIPT_NAME>` again to be reattached to the running script. 
-    Read more about tmux here: [tmux Wiki](https://github.com/tmux/tmux/wiki).
-    
-    If you need to run the same script several times in parallel, use the `--session-name` parameter to
-    specify different names for tmux sessions.
+    You can run custom scripts inside the Docker container using the `spotty run <SCRIPT_NAME>` command. Read more
+    about custom scripts in the documentation: 
+    [Configuration File: "scripts" section](https://github.com/apls777/spotty/wiki/Configuration-File#scripts-section-optional).
 
-  - `$ spotty ssh [--host-os]`
+    To connect to the running container via SSH, use the following command:
 
-    Connects to the running Docker container or to the instance itself. Use the `--host-os` parameter to connect to the 
-    host OS instead of the Docker container.
+    ```bash
+    $ spotty ssh
+    ```
 
-  - `$ spotty sync`
+    It runs a [tmux](https://github.com/tmux/tmux/wiki) session, so you can always detach this session using
+    __`Crtl + b`__, then __`d`__ combination of keys. To be attached to that session later, just use the
+    `spotty ssh` command again.
 
-    Synchronizes the project with the running instance. First time it happens automatically once you start an instance, 
-    but you always can use this command to update the project if an instance is already running.
+## License
 
-  - `$ spotty create-ami`
-    
-    Creates AMI with NVIDIA Docker. You need to call this command only one time when you start using Spotty, then you 
-    can reuse created AMI for all your projects.
-  
-  - `$ spotty delete-ami`
-    
-    Deletes an AMI that was created using the command above.
-  
-  - `$ spotty spot-prices [--instance-type <INSTANCE_TYPE>]`
-
-    Returns Spot Instance prices for particular instance type across all AWS regions. Results will be sorted by price.
-
-All the commands have parameter `--config` that can be used to specify a path to configuration file. By default it's 
-looking for a file `spotty.yaml` in the current working directory.
+[MIT License](LICENSE)

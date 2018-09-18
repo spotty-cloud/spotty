@@ -211,6 +211,7 @@ Resources:
                   mkdir -p $MOUNT_DIR
                   mount $DEVICE $MOUNT_DIR
                   chown -R ubuntu:ubuntu $MOUNT_DIR
+                  resize2fs $DEVICE
                 done
           commands:
             mount_volumes:
@@ -551,3 +552,5 @@ Outputs:
     Value: !GetAtt SpotInstance.PublicIp
   InstanceLogGroup:
     Value: !Ref InstanceLogGroup
+  AvailabilityZone:
+    Value: !GetAtt SpotInstance.AvailabilityZone
