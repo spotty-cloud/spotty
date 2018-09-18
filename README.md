@@ -10,7 +10,7 @@ Spotty simplifies training of Deep Learning models on AWS:
 
 ## Documentation
 
-- See the [wiki section](/apls777/spotty/wiki) for the documentation.
+- See the [wiki section](https://github.com/apls777/spotty/wiki) for the documentation.
 - Read [this](https://medium.com/@apls/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365) 
 article on Medium for a real-world example.
 
@@ -54,7 +54,7 @@ Use [pip](http://www.pip-installer.org/en/latest/) to install or upgrade Spotty:
 
     You can run custom scripts inside the Docker container using the `spotty run <SCRIPT_NAME>` command. Read more
     about custom scripts in the documentation: 
-    [Configuration File: "scripts" section](/apls777/spotty/wiki/Configuration-File#scripts-section-optional).
+    [Configuration File: "scripts" section](https://github.com/apls777/spotty/wiki/Configuration-File#scripts-section-optional).
 
     To connect to the running container via SSH, use the following command:
 
