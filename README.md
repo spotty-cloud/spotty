@@ -1,4 +1,4 @@
-# Spotty
+<img src="logo.png" width="280" height="120" />
 
 Spotty simplifies training of Deep Learning models on AWS:
 
