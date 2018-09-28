@@ -1,5 +1,7 @@
 <img src="logo.png" width="280" height="120" />
 
+[![PyPI version](https://badge.fury.io/py/spotty.svg)](https://badge.fury.io/py/spotty)
+
 Spotty simplifies training of Deep Learning models on AWS:
 
 - it makes training on AWS GPU instances as simple as a training on your local computer
