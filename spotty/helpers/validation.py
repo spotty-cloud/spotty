@@ -18,7 +18,11 @@ def validate_instance_config(data):
     schema = Schema({
         'project': {
             'name': And(str, Regex(r'^[a-zA-Z0-9][a-zA-Z0-9-]{,26}[a-zA-Z0-9]$')),
-            'remoteDir': And(str, Use(lambda x: x.rstrip('/'))),
+            'remoteDir': And(str,
+                             And(lambda x: x.startswith('/'),
+                                 error='Use an absolute path when specifying a remote directory'),
+                             Use(lambda x: x.rstrip('/'))
+                             ),
             Optional('syncFilters', default=[]): [And(
                 {
                     Optional('exclude'): [And(str, len)],
@@ -65,8 +69,17 @@ def validate_instance_config(data):
                 {
                     Optional('image', default=''): str,
                     Optional('file', default=''): str,
-                    Optional('workingDir', default='/root'): And(str, lambda x: x.startswith('/')),
-                    Optional('dataRoot', default=''): And(str, Use(lambda x: x.rstrip('/'))),
+                    Optional('workingDir', default=''): And(str,
+                                                            And(lambda x: x.startswith('/'),
+                                                                error='Use an absolute path when specifying a '
+                                                                      'working directory'),
+                                                            ),
+                    Optional('dataRoot', default=''): And(str,
+                                                          And(lambda x: x.startswith('/'),
+                                                              error='Use an absolute path when specifying a Docker '
+                                                                    'data root directory'),
+                                                          Use(lambda x: x.rstrip('/')),
+                                                          ),
                     Optional('commands', default=''): str,
                 },
                 And(lambda x: x['image'] or x['file'], error='Either "image" or "file" should be specified.'),
