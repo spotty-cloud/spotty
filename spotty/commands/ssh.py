@@ -51,9 +51,7 @@ class SshCommand(AbstractConfigCommand):
             session_name = self._args.session_name if self._args.session_name else 'spotty-ssh-host-os'
             ssh_command += ['tmux', 'new', '-s', session_name, '-A']
         else:
-            working_dir = instance_config['docker']['workingDir']
             session_name = self._args.session_name if self._args.session_name else 'spotty-ssh-container'
-            ssh_command += ['tmux', 'new', '-s', session_name, '-A',
-                            'sudo', 'docker', 'exec', '-it', '-w', working_dir, 'spotty', '/bin/bash']
+            ssh_command += ['tmux', 'new', '-s', session_name, '-A', 'sudo', '/scripts/container_bash.sh']
 
         subprocess.call(ssh_command)

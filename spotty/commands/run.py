@@ -68,10 +68,8 @@ class RunCommand(AbstractConfigCommand):
                                                   '>>', script_log_file])
 
         # command to run user script inside the docker container
-        working_dir = instance_config['docker']['workingDir']
-        docker_cmd = subprocess.list2cmdline(['sudo', 'docker', 'exec', '-it', '-w', working_dir, 'spotty',
-                                              '/bin/bash', '-xe', script_path, '2>&1', '|', 'tee', '-a',
-                                              script_log_file])
+        docker_cmd = subprocess.list2cmdline(['sudo', '/scripts/container_bash.sh', '-xe', script_path, '2>&1',
+                                              '|', 'tee', '-a', script_log_file])
 
         # command to create new tmux session and run user script
         new_session_cmd = subprocess.list2cmdline(['tmux', 'new', '-s', session_name,

@@ -158,6 +158,11 @@ class StackResource(object):
         project_key = KeyPairResource(ec2, self._project_name, self._region)
         key_name = project_key.create_key()
 
+        # working directory for the Docker container
+        working_dir = docker_config['workingDir']
+        if not working_dir:
+            working_dir = remote_project_dir
+
         # create stack
         params = {
             'VpcId': vpc_id,
@@ -171,7 +176,7 @@ class StackResource(object):
             'DockerImage': docker_config.get('image', ''),
             'DockerfilePath': docker_config.get('file', ''),
             'DockerNvidiaRuntime': 'true' if is_gpu_instance(instance_type) else 'false',
-            'DockerWorkingDirectory': docker_config['workingDir'],
+            'DockerWorkingDirectory': working_dir,
             'ProjectS3Bucket': bucket_name,
             'ProjectDirectory': remote_project_dir,
         }
