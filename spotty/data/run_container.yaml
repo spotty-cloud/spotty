@@ -293,9 +293,9 @@ Resources:
                   # create a script to connect to the docker container
                   mkdir -p /scripts
                   cat > /scripts/container_bash.sh <<EOL
-                  #!/bin/bash
-                  docker exec -it $WORKING_DIR $CONTAINER_NAME /bin/bash \$@
-                  EOL
+                #!/bin/bash
+                docker exec -it $WORKING_DIR $CONTAINER_NAME /bin/bash \$@
+                EOL
                   chmod +x /scripts/container_bash.sh
 
                   # create an alias to connect to the docker container
