@@ -34,6 +34,10 @@ Parameters:
     Description: Dockerfile to build and to use instead of the image
     Type: String
     Default: ''
+  DockerBuildContextPath:
+    Description: Docker build's context path for the Dockerfile
+    Type: String
+    Default: ''
   DockerNvidiaRuntime:
     Description: Run Docker container with NVIDIA runtime
     Type: String
@@ -251,12 +255,9 @@ Resources:
 
                 # build docker image
                 DOCKER_IMAGE="${DockerImage}"
-                if [ -n "${DockerfilePath}" ] && [ -n "${ProjectDirectory}" ]; then
+                if [ -n "${DockerfilePath}" ]; then
                   DOCKER_IMAGE=spotty:`date +%s`
-                  docker build \
-                    -t $DOCKER_IMAGE \
-                    -f ${ProjectDirectory}/${DockerfilePath} \
-                    ${ProjectDirectory}
+                  docker build -t $DOCKER_IMAGE -f ${DockerfilePath} ${DockerBuildContextPath}
                 fi
 
                 if [ -n "$DOCKER_IMAGE" ]; then
