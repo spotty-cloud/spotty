@@ -38,7 +38,7 @@ setup(name='spotty',
           'schema',
       ],
       classifiers=[
-          'Development Status :: 3 - Alpha',
+          'Development Status :: 4 - Beta',
           'Intended Audience :: Science/Research',
           'Intended Audience :: Developers',
           'Intended Audience :: System Administrators',
