@@ -1,3 +1,4 @@
+import os
 import yaml
 from botocore.exceptions import EndpointConnectionError
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
@@ -163,6 +164,15 @@ class StackResource(object):
         if not working_dir:
             working_dir = remote_project_dir
 
+        # get the Dockerfile path and the build's context path
+        dockerfile_path = docker_config.get('file', '')
+        if not os.path.isabs(dockerfile_path):
+            dockerfile_path = remote_project_dir + '/' + dockerfile_path
+
+        docker_context_path = ''
+        if dockerfile_path:
+            docker_context_path = os.path.dirname(dockerfile_path)
+
         # create stack
         params = {
             'VpcId': vpc_id,
@@ -174,7 +184,8 @@ class StackResource(object):
             'VolumeMountDirectories': ('"%s"' % '" "'.join(mount_dirs)) if mount_dirs else '',
             'DockerDataRootDirectory': docker_config['dataRoot'],
             'DockerImage': docker_config.get('image', ''),
-            'DockerfilePath': docker_config.get('file', ''),
+            'DockerfilePath': dockerfile_path,
+            'DockerBuildContextPath': docker_context_path,
             'DockerNvidiaRuntime': 'true' if is_gpu_instance(instance_type) else 'false',
             'DockerWorkingDirectory': working_dir,
             'ProjectS3Bucket': bucket_name,
