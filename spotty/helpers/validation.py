@@ -1,3 +1,4 @@
+import os
 from schema import Schema, And, Use, Optional, SchemaError, Or, Regex
 from spotty.helpers.resources import is_valid_instance_type
 
@@ -18,7 +19,11 @@ def validate_instance_config(data):
     schema = Schema({
         'project': {
             'name': And(str, Regex(r'^[a-zA-Z0-9][a-zA-Z0-9-]{,26}[a-zA-Z0-9]$')),
-            'remoteDir': And(str, Use(lambda x: x.rstrip('/'))),
+            'remoteDir': And(str,
+                             And(os.path.isabs,
+                                 error='Use an absolute path when specifying a remote directory'),
+                             Use(lambda x: x.rstrip('/'))
+                             ),
             Optional('syncFilters', default=[]): [And(
                 {
                     Optional('exclude'): [And(str, len)],
@@ -64,9 +69,23 @@ def validate_instance_config(data):
             'docker': And(
                 {
                     Optional('image', default=''): str,
-                    Optional('file', default=''): str,
-                    Optional('workingDir', default='/root'): And(str, lambda x: x.startswith('/')),
-                    Optional('dataRoot', default=''): And(str, Use(lambda x: x.rstrip('/'))),
+                    Optional('file', default=''): And(str,  # TODO: a proper regex that the filename is valid
+                                                      Regex(r'^[\w\.\/@-]*$',
+                                                            error='Invalid name for a Dockerfile'),
+                                                      And(lambda x: not x.endswith('/'),
+                                                          error='Invalid name for a Dockerfile')
+                                                      ),
+                    Optional('workingDir', default=''): And(str,
+                                                            And(os.path.isabs,
+                                                                error='Use an absolute path when specifying a '
+                                                                      'working directory'),
+                                                            ),
+                    Optional('dataRoot', default=''): And(str,
+                                                          And(os.path.isabs,
+                                                              error='Use an absolute path when specifying a Docker '
+                                                                    'data root directory'),
+                                                          Use(lambda x: x.rstrip('/')),
+                                                          ),
                     Optional('commands', default=''): str,
                 },
                 And(lambda x: x['image'] or x['file'], error='Either "image" or "file" should be specified.'),

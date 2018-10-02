@@ -34,6 +34,10 @@ Parameters:
     Description: Dockerfile to build and to use instead of the image
     Type: String
     Default: ''
+  DockerBuildContextPath:
+    Description: Docker build's context path for the Dockerfile
+    Type: String
+    Default: ''
   DockerNvidiaRuntime:
     Description: Run Docker container with NVIDIA runtime
     Type: String
@@ -251,12 +255,9 @@ Resources:
 
                 # build docker image
                 DOCKER_IMAGE="${DockerImage}"
-                if [ -n "${DockerfilePath}" ] && [ -n "${ProjectDirectory}" ]; then
+                if [ -n "${DockerfilePath}" ]; then
                   DOCKER_IMAGE=spotty:`date +%s`
-                  docker build \
-                    -t $DOCKER_IMAGE \
-                    -f ${ProjectDirectory}/${DockerfilePath} \
-                    ${ProjectDirectory}
+                  docker build -t $DOCKER_IMAGE -f ${DockerfilePath} ${DockerBuildContextPath}
                 fi
 
                 if [ -n "$DOCKER_IMAGE" ]; then
@@ -277,20 +278,34 @@ Resources:
                   chmod 777 /tmp/docker
 
                   # run docker container
+                  CONTAINER_NAME=spotty
                   docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAMS \
                     -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker -v ${ProjectDirectory}:${ProjectDirectory} \
-                    --name spotty $DOCKER_IMAGE /bin/sh
+                    --name $CONTAINER_NAME $DOCKER_IMAGE /bin/sh
 
                   WORKING_DIR=""
                   if [ -n "${DockerWorkingDirectory}" ]; then
                     WORKING_DIR="-w ${DockerWorkingDirectory}"
 
                     # create working directory if it doesn't exist
-                    docker exec spotty mkdir -p ${DockerWorkingDirectory}
+                    docker exec $CONTAINER_NAME mkdir -p ${DockerWorkingDirectory}
                   fi
 
-                  # run initial user commands
-                  docker exec $WORKING_DIR spotty /bin/bash -xe /tmp/docker/docker_commands.sh \
+                  # create a script to connect to the docker container
+                  mkdir -p /scripts
+                  cat > /scripts/container_bash.sh <<EOL
+                #!/bin/bash
+                docker exec -it $WORKING_DIR $CONTAINER_NAME /bin/bash \$@
+                EOL
+                  chmod +x /scripts/container_bash.sh
+
+                  # create an alias to connect to the docker container
+                  CONTAINER_BASH_ALIAS=container
+                  echo "alias $CONTAINER_BASH_ALIAS=\"sudo /scripts/container_bash.sh\"" >> /home/ubuntu/.bashrc
+                  echo "alias $CONTAINER_BASH_ALIAS=\"/scripts/container_bash.sh\"" >> /root/.bashrc
+
+                  # run custom user commands
+                  docker exec $WORKING_DIR $CONTAINER_NAME /bin/bash -xe /tmp/docker/docker_commands.sh \
                     > /var/log/docker-commands.log 2>&1
                 fi
             /tmp/docker/docker_commands.sh:
