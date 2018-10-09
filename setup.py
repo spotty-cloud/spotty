@@ -34,7 +34,7 @@ setup(name='spotty',
       install_requires=[
           'botocore>=1.10.0',
           'boto3>=1.7.0',
-          'cfn_tools',
+          'cfn_flip',
           'schema',
       ],
       classifiers=[
