@@ -4,6 +4,7 @@ import boto3
 import subprocess
 from spotty.commands.abstract_config import AbstractConfigCommand
 from spotty.helpers.resources import get_instance_ip_address
+from spotty.helpers.sync import sync_project_with_s3, sync_instance_with_s3
 from spotty.helpers.validation import validate_instance_config
 from spotty.project_resources.key_pair import KeyPairResource
 from spotty.project_resources.stack import StackResource
@@ -28,6 +29,7 @@ class RunCommand(AbstractConfigCommand):
     def configure(parser: ArgumentParser):
         AbstractConfigCommand.configure(parser)
         parser.add_argument('--session-name', '-s', type=str, default=None, help='tmux session name')
+        parser.add_argument('--sync', '-S', action='store_true', help='Sync the project before running the command')
         parser.add_argument('script_name', metavar='SCRIPT_NAME', type=str, help='Script name')
 
     def run(self, output: AbstractOutputWriter):
@@ -44,6 +46,19 @@ class RunCommand(AbstractConfigCommand):
         stack = StackResource(None, project_name, region)
         ec2 = boto3.client('ec2', region_name=region)
         ip_address = get_instance_ip_address(ec2, stack.name)
+
+        # sync the project with the instance
+        if self._args.sync:
+            output.write('Syncing the project with S3 bucket...')
+
+            # sync the project with S3 bucket
+            sync_filters = project_config['syncFilters']
+            sync_project_with_s3(self._project_dir, project_name, region, sync_filters, output)
+
+            output.write('Syncing S3 bucket with the instance...')
+
+            # sync S3 with the instance
+            sync_instance_with_s3(ip_address, project_name, region)
 
         # tmux session name
         session_name = self._args.session_name if self._args.session_name else 'spotty-script-%s' % script_name

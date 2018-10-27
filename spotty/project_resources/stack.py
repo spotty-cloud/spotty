@@ -54,7 +54,8 @@ class StackResource(object):
                                  'existing volume.')
 
             # update availability zone
-            availability_zone = volume_availability_zone
+            if volume_availability_zone:
+                availability_zone = volume_availability_zone
 
             # update template resources
             template['Resources'].update(volume_resources)
