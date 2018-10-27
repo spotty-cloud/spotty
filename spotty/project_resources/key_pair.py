@@ -31,6 +31,8 @@ class KeyPairResource(object):
             with open(key_path, 'w') as f:
                 f.write(res['KeyMaterial'])
 
+            os.chmod(key_path, 0o600)
+
         return self._key_name
 
     def delete_key(self):
