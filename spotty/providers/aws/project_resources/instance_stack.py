@@ -1,17 +1,18 @@
 import os
+import boto3
 import yaml
 from botocore.exceptions import EndpointConnectionError
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
-from spotty.helpers.resources import get_snapshot, is_gpu_instance, stack_exists, get_volume
-from spotty.helpers.spot_prices import get_current_spot_price
-from spotty.project_resources.key_pair import KeyPairResource
+from spotty.providers.aws.helpers.resources import get_snapshot, is_gpu_instance, stack_exists, get_volume
+from spotty.providers.aws.helpers.spot_prices import get_current_spot_price
+from spotty.providers.aws.project_resources.key_pair import KeyPairResource
 from spotty.utils import data_dir
 
 
-class StackResource(object):
+class InstanceStackResource(object):
 
-    def __init__(self, cf, project_name: str, region: str):
-        self._cf = cf
+    def __init__(self, project_name: str, region: str):
+        self._cf = boto3.client('cloudformation', region_name=region)
         self._project_name = project_name
         self._region = region
         self._stack_name = 'spotty-instance-%s' % project_name
@@ -26,13 +27,14 @@ class StackResource(object):
     def get_stack_info(self):
         try:
             res = self._cf.describe_stacks(StackName=self._stack_name)
+        # TODO: remove catching?
         except EndpointConnectionError:
             res = {}
 
         return res['Stacks'][0]
 
-    def prepare_template(self, ec2, availability_zone: str, instance_type: str, volumes: list, ports: list, max_price,
-                         docker_commands):
+    def prepare_template(self, ec2, project_name: str, instance_name: str, availability_zone: str, instance_type: str,
+                         volumes: list, ports: list, max_price, docker_commands):
         """Prepares CloudFormation template to run a Spot Instance."""
 
         # read and update CF template
@@ -45,7 +47,8 @@ class StackResource(object):
         # create and attach volumes
         for i, volume in enumerate(volumes):
             device_letter = device_letters[i]
-            volume_resources, volume_availability_zone = self._get_volume_resources(ec2, volume, device_letter)
+            volume_resources, volume_availability_zone = self._get_volume_resources(ec2, project_name, instance_name,
+                                                                                    volume, device_letter)
 
             # existing volume will be attached to the instance
             if availability_zone and volume_availability_zone and (availability_zone != volume_availability_zone):
@@ -128,9 +131,11 @@ class StackResource(object):
         return yaml.dump(template, Dumper=CfnYamlDumper)
 
     def create_stack(self, ec2, template: str, instance_profile_arn: str, instance_type: str, ami_name: str,
-                     root_volume_size: int, mount_dirs: list, bucket_name: str, remote_project_dir: str,
-                     docker_config: dict):
+                     root_volume_size: int, project_dir: str, mount_dirs: list, container_volumes: dict,
+                     bucket_name: str, container_config: dict):
         """Runs CloudFormation template."""
+
+        # container_config['projectDir']
 
         # get default VPC ID
         res = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
@@ -145,7 +150,7 @@ class StackResource(object):
         ])
         if not len(ami_info['Images']):
             raise ValueError('AMI with name "%s" not found.\n'
-                             'Use "spotty create-ami" command to create an AMI with NVIDIA Docker.' % ami_name)
+                             'Use "spotty aws create-ami" command to create an AMI with NVIDIA Docker.' % ami_name)
 
         ami_id = ami_info['Images'][0]['ImageId']
 
@@ -157,22 +162,29 @@ class StackResource(object):
             root_volume_size = image_volume_size + 5
 
         # create key pair
-        project_key = KeyPairResource(ec2, self._project_name, self._region)
+        project_key = KeyPairResource(self._project_name, self._region)
         key_name = project_key.create_key()
 
         # working directory for the Docker container
-        working_dir = docker_config['workingDir']
+        working_dir = container_config['workingDir']
         if not working_dir:
-            working_dir = remote_project_dir
+            working_dir = container_config['projectDir']
 
         # get the Dockerfile path and the build's context path
-        dockerfile_path = docker_config.get('file', '')
+        dockerfile_path = container_config.get('file', '')
         if not os.path.isabs(dockerfile_path):
-            dockerfile_path = remote_project_dir + '/' + dockerfile_path
+            dockerfile_path = container_config['projectDir'] + '/' + dockerfile_path
 
         docker_context_path = ''
         if dockerfile_path:
             docker_context_path = os.path.dirname(dockerfile_path)
+
+        # split container volumes mapping to two different lists
+        docker_host_dirs = []
+        docker_container_dirs = []
+        for host_dir, container_dir in container_volumes.items():
+            docker_host_dirs.append(host_dir)
+            docker_container_dirs.append(container_dir)
 
         # create stack
         params = {
@@ -183,14 +195,16 @@ class StackResource(object):
             'ImageId': ami_id,
             'RootVolumeSize': str(root_volume_size),
             'VolumeMountDirectories': ('"%s"' % '" "'.join(mount_dirs)) if mount_dirs else '',
-            'DockerDataRootDirectory': docker_config['dataRoot'],
-            'DockerImage': docker_config.get('image', ''),
+            'DockerDataRootDirectory': container_config['dataRoot'],
+            'DockerImage': container_config.get('image', ''),
             'DockerfilePath': dockerfile_path,
             'DockerBuildContextPath': docker_context_path,
             'DockerNvidiaRuntime': 'true' if is_gpu_instance(instance_type) else 'false',
             'DockerWorkingDirectory': working_dir,
+            'DockerVolumesHostDirs': ('"%s"' % '" "'.join(docker_host_dirs)) if docker_host_dirs else '',
+            'DockerVolumesContainerDirs': ('"%s"' % '" "'.join(docker_container_dirs)) if docker_container_dirs else '',
             'ProjectS3Bucket': bucket_name,
-            'ProjectDirectory': remote_project_dir,
+            'ProjectDirectory': project_dir,
         }
 
         res = self._cf.create_stack(
@@ -207,7 +221,7 @@ class StackResource(object):
         self._cf.delete_stack(StackName=self._stack_name)
 
     @staticmethod
-    def _get_volume_resources(ec2, volume: dict, device_letter: str):
+    def _get_volume_resources(ec2, project_name: str, instance_name: str, volume_config: dict, device_letter: str):
         resources = {}
         availability_zone = ''
 
@@ -221,9 +235,11 @@ class StackResource(object):
             },
         }
 
-        volume_name = volume['name']
-        volume_size = volume['size']
-        deletion_policy = volume['deletionPolicy']
+        volume_name = '%s-%s-%s' % (project_name, volume_config['name'], instance_name)
+        volume_params = volume_config['parameters']
+        volume_size = volume_params['size']
+        volume_snapshot_name = volume_params['snapshotName']
+        deletion_policy = volume_params['deletionPolicy']
 
         # check that the volume name is specified
         if not volume_name and deletion_policy != 'delete':
@@ -254,8 +270,9 @@ class StackResource(object):
             # update VolumeAttachment resource with the reference to new volume
             attachment_resource['Properties']['VolumeId'] = {'Ref': volume_resource_name}
 
-            # check if a snapshot with the specified name exists
-            snapshot_info = get_snapshot(ec2, volume_name) if volume_name else {}
+            # check if the snapshot exists
+            snapshot_name = volume_snapshot_name if volume_snapshot_name else volume_name
+            snapshot_info = get_snapshot(ec2, snapshot_name) if volume_name else {}
             if snapshot_info:
                 # volume will be restored from the snapshot
                 # check size of the volume
@@ -296,6 +313,10 @@ class StackResource(object):
                 # empty volume will be created, check that the size is specified
                 if not volume_size:
                     raise ValueError('Size for the new volume is required.')
+
+                # if the snapshot explicitly specified and it doesn't exist, raise an error
+                if volume_snapshot_name:
+                    raise ValueError('Snapshot "%s" doesn\'t exist' % volume_snapshot_name)
 
             # set size of the volume
             if volume_size:

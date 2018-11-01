@@ -1,6 +1,6 @@
 from botocore.exceptions import ClientError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.helpers.resources import stack_exists, wait_stack_status_changed
+from spotty.providers.aws.helpers.resources import stack_exists, wait_stack_status_changed
 from spotty.utils import data_dir
 
 

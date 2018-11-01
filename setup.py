@@ -36,6 +36,7 @@ setup(name='spotty',
           'boto3>=1.7.0',
           'cfn_flip',
           'schema',
+          'pystache',
       ],
       classifiers=[
           'Development Status :: 4 - Beta',

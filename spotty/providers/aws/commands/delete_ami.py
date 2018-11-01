@@ -1,6 +1,6 @@
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.helpers.resources import wait_stack_status_changed
+from spotty.providers.aws.helpers.resources import wait_stack_status_changed
 from spotty.helpers.validation import validate_ami_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 

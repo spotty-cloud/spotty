@@ -1,12 +1,13 @@
 import os
+import boto3
 from botocore.exceptions import ClientError
 from spotty.configuration import get_spotty_keys_dir
 
 
 class KeyPairResource(object):
 
-    def __init__(self, ec2, project_name: str, region: str):
-        self._ec2 = ec2
+    def __init__(self, project_name: str, region: str):
+        self._ec2 = boto3.client('ec2', region_name=region)
         self._region = region
         self._key_name = 'spotty-%s-%s' % (project_name, region)
 

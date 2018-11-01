@@ -1,6 +1,6 @@
 import os
 from schema import Schema, And, Use, Optional, SchemaError, Or, Regex
-from spotty.helpers.resources import is_valid_instance_type
+from spotty.providers.aws.helpers.resources import is_valid_instance_type
 
 AMI_NAME_REGEX = r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$'
 DEFAULT_AMI_NAME = 'SpottyAMI'

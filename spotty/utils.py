@@ -4,14 +4,14 @@ import string
 import errno
 
 
-def data_dir(path: str = ''):
-    """Returns an absolute path to "data" directory.
+def package_dir(path: str = ''):
+    """Returns an absolute path to the "spotty" package directory.
 
     Args:
-        path: A path which should be added to the "data" path.
+        path: A relative path to add to the package path.
 
     """
-    res_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    res_path = os.path.dirname(os.path.abspath(__file__))
     if path:
         res_path = os.path.join(res_path, path)
 
@@ -30,3 +30,7 @@ def check_path(path):
 
 def random_string(length: int, chars: str = string.ascii_lowercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(length))
+
+
+def filter_list(list_of_dicts, key_name, value):
+    return [row for row in list_of_dicts if row[key_name] == value]

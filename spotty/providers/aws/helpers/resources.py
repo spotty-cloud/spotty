@@ -32,19 +32,16 @@ def get_volume(ec2, volume_name: str):
     return volume
 
 
-def get_instance_ip_address(ec2, stack_name):
-    instances_info = ec2.describe_instances(Filters=[
+def get_instance_info(ec2, stack_name):
+    res = ec2.describe_instances(Filters=[
         {'Name': 'tag:aws:cloudformation:stack-name', 'Values': [stack_name]},
-        {'Name': 'instance-state-name', 'Values': ['running']},
     ])
 
-    if not len(instances_info['Reservations']):
-        raise ValueError('Instance is not running.\n'
-                         'Use "spotty start" command to run an instance.')
+    instance_info = {}
+    if not len(res['Reservations']):
+        instance_info = res['Reservations'][0]['Instances'][0]
 
-    ip_address = instances_info['Reservations'][0]['Instances'][0]['PublicIpAddress']
-
-    return ip_address
+    return instance_info
 
 
 def stack_exists(cf, stack_name):

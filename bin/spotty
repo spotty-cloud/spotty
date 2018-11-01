@@ -3,11 +3,11 @@
 import sys
 import argparse
 import logging
-from spotty.commands.clean_logs import CleanLogsCommand
-from spotty.commands.create_ami import CreateAmiCommand
-from spotty.commands.delete_ami import DeleteAmiCommand
+from spotty.providers.aws.commands.clean_logs import CleanLogsCommand
+from spotty.providers.aws.commands.create_ami import CreateAmiCommand
+from spotty.providers.aws.commands.delete_ami import DeleteAmiCommand
 from spotty.commands.run import RunCommand
-from spotty.commands.spot_prices import SpotPricesCommand
+from spotty.providers.aws.commands.spot_prices import SpotPricesCommand
 from spotty.commands.ssh import SshCommand
 from spotty.commands.stop import StopCommand
 from spotty.commands.start import StartCommand

@@ -5,15 +5,15 @@ from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.instance_factory import InstanceFactory
 
 
-class SyncCommand(AbstractConfigCommand):
+class StatusCommand(AbstractConfigCommand):
 
     @staticmethod
     def get_name() -> str:
-        return 'sync'
+        return 'status'
 
     @staticmethod
     def get_description():
-        return 'Synchronize the project with the running instance'
+        return 'Print information about the instance'
 
     @staticmethod
     def _validate_config(config):
@@ -21,13 +21,8 @@ class SyncCommand(AbstractConfigCommand):
 
     def run(self, output: AbstractOutputWriter):
         project_name = self._config['project']['name']
-        sync_filters = self._config['project']['syncFilters']
         instance_config = get_instance_config(self._config['instances'], self._args.instance_name)
 
         instance = InstanceFactory.get_instance(project_name, instance_config)
 
-        output.write('Syncing the project with the instance...')
-
-        instance.sync(self._project_dir, sync_filters, output)
-
-        output.write('Done')
+        output.write(instance.status_text)

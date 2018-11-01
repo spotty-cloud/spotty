@@ -31,6 +31,7 @@ class AbstractConfigCommand(AbstractCommand):
     @staticmethod
     def configure(parser: ArgumentParser):
         parser.add_argument('-c', '--config', type=str, default=None, help='Path to the configuration file')
+        parser.add_argument('instance_name', metavar='INSTANCE_NAME', nargs='?', type=str, help='Instance name')
 
     @staticmethod
     def _validate_config(config):

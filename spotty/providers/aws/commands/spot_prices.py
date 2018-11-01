@@ -1,9 +1,9 @@
 from argparse import ArgumentParser
 import boto3
 from spotty.commands.abstract import AbstractCommand
-from spotty.helpers.resources import is_valid_instance_type
+from spotty.providers.aws.helpers.resources import is_valid_instance_type
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.helpers.spot_prices import get_spot_prices
+from spotty.providers.aws.helpers.spot_prices import get_spot_prices
 
 
 class SpotPricesCommand(AbstractCommand):

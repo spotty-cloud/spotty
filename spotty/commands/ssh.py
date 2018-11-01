@@ -1,12 +1,10 @@
 from argparse import ArgumentParser
-import boto3
 import subprocess
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.helpers.resources import get_instance_ip_address
+from spotty.helpers.config import get_instance_config
 from spotty.helpers.validation import validate_instance_config
-from spotty.project_resources.key_pair import KeyPairResource
-from spotty.project_resources.stack import StackResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.providers.instance_factory import InstanceFactory
 
 
 class SshCommand(AbstractConfigCommand):
@@ -31,21 +29,14 @@ class SshCommand(AbstractConfigCommand):
         parser.add_argument('--session-name', '-s', type=str, default=None, help='tmux session name')
 
     def run(self, output: AbstractOutputWriter):
-        project_config = self._config['project']
-        instance_config = self._config['instance']
+        project_name = self._config['project']['name']
+        instance_config = get_instance_config(self._config['instances'], self._args.instance_name)
 
-        project_name = project_config['name']
-        region = instance_config['region']
-
-        # get instance IP address
-        stack = StackResource(None, project_name, region)
-        ec2 = boto3.client('ec2', region_name=region)
-        ip_address = get_instance_ip_address(ec2, stack.name)
+        instance = InstanceFactory.get_instance(project_name, instance_config)
 
         # connect to the instance
-        host = 'ubuntu@%s' % ip_address
-        key_path = KeyPairResource(None, project_name, region).key_path
-        ssh_command = ['ssh', '-i', key_path, '-o', 'StrictHostKeyChecking no', '-t', host]
+        host = '%s@%s' % (instance.ssh_user, instance.ip_address)
+        ssh_command = ['ssh', '-i', instance.ssh_key_path, '-o', 'StrictHostKeyChecking no', '-t', host]
 
         if self._args.host_os:
             session_name = self._args.session_name if self._args.session_name else 'spotty-ssh-host-os'
