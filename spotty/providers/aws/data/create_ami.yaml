@@ -1,0 +1,453 @@
+Description: Spotty NVIDIA Docker AMI
+Metadata:
+  Version: 1.0.1
+Parameters:
+  InstanceType:
+    Description: Instance type to launch EC2 Spot instance
+    Type: String
+  ImageName:
+    Description: AMI name
+    Type: String
+  KeyName:
+    Description: Key name to get an access o the instance
+    Type: AWS::EC2::KeyPair::KeyName
+Resources:
+  FindBaseAMI:
+    Type: Custom::AMI
+    Properties:
+      ServiceToken: !GetAtt FindBaseAMIFunction.Arn
+      Region": !Ref 'AWS::Region'
+  FindBaseAMIFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt FindBaseAMILambdaExecutionRole.Arn
+      Code:
+        ZipFile: !Sub |
+          var aws=require("aws-sdk");var response=require('cfn-response');exports.handler=function(event,context){console.log("request received:\n"+JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{};console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
+          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
+          if(event.RequestType=='Delete'){console.log('Delete request is ignored');return success()}
+          var ec2=new aws.EC2({region:event.ResourceProperties.Region});ec2.describeImages({Filters:[{Name:"name",Values:['ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64*']}],Owners:['099720109477']}).promise().then((data)=>{console.log('Number of found images: ',data.Images.length);var images=data.Images;images.sort(function(x,y){return y.Name.localeCompare(x.Name)});var amiId=!1;for(var j=0;j<images.length;j++){if(isBeta(images[j].Name))continue;amiId=images[j].ImageId;break}
+          if(!amiId){throw new Error('AMI not found')}
+          console.log('Found AMI ID='+amiId)
+          physicalId=amiId;success()}).catch((err)=>failed(err))};function isBeta(imageName){return imageName.toLowerCase().indexOf("beta")>-1||imageName.toLowerCase().indexOf(".rc")>-1}
+      Runtime: nodejs4.3
+      Timeout: 30
+  FindBaseAMILambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: 'Allow'
+          Principal:
+            Service:
+            - 'lambda.amazonaws.com'
+          Action:
+          - 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+      - PolicyName: FindBaseAMIPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: 'Allow'
+            Action:
+            - 'logs:CreateLogGroup'
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+            Resource: 'arn:aws:logs:*:*:*'
+          - Effect: 'Allow'
+            Action:
+            - 'ec2:DescribeImages'
+            Resource: '*'
+  DeleteAMIFunctionRetention:
+    Type: Custom::LogsRetention
+    DependsOn: FindBaseAMI
+    Properties:
+      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
+      LogGroupName: !Join ['', ['/aws/lambda/', !Ref FindBaseAMIFunction]]
+      RetentionInDays: 1
+
+  SpotInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref SpotInstanceLaunchTemplate
+        Version: !GetAtt SpotInstanceLaunchTemplate.LatestVersionNumber
+
+  SpotInstanceLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Ref FindBaseAMI
+        KeyName: !Ref KeyName
+        EbsOptimized: 'false'
+        IamInstanceProfile:
+          Arn: !GetAtt InstanceProfile.Arn
+        InstanceInitiatedShutdownBehavior: terminate
+        InstanceMarketOptions:
+          MarketType: spot
+          SpotOptions:
+            SpotInstanceType: one-time
+            InstanceInterruptionBehavior: terminate
+        BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp2
+            DeleteOnTermination: true
+        UserData:
+          'Fn::Base64': !Sub |
+            #!/bin/bash -x
+
+            # stop daily updates for apt (fix for the issue when the cloud-init fails to install packages
+            # because the "/var/lib/dpkg/lock" file is locked)
+            systemctl disable --now apt-daily{,-upgrade}.{timer,service}
+
+            # install CloudFormation tools
+            apt-get update
+            apt-get -y install python-setuptools
+            mkdir aws-cfn-bootstrap-latest
+            curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
+            easy_install aws-cfn-bootstrap-latest
+
+            # install CloudWatch agent
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource SpotInstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c cwlogs
+
+            # install NVIDIA Docker
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource SpotInstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c init \
+              -v
+
+            INIT_EXIT_CODE=$?
+
+            # send signal that the instance is ready
+            /usr/local/bin/cfn-signal \
+              -e $INIT_EXIT_CODE \
+              --stack ${AWS::StackName} \
+              --region ${AWS::Region} \
+              --resource InstanceReadyWaitCondition
+
+            if [[ $INIT_EXIT_CODE -ne 0 ]] ; then
+              exit $INIT_EXIT_CODE
+            fi
+
+            # create the AMI
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource SpotInstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c ami \
+              -v
+
+            AMI_EXIT_CODE=$?
+
+            # send signal that the AMI is created
+            /usr/local/bin/cfn-signal \
+              -e $AMI_EXIT_CODE \
+              --stack ${AWS::StackName} \
+              --region ${AWS::Region} \
+              --resource AMICreatedWaitCondition
+
+            if [[ $AMI_EXIT_CODE -ne 0 ]] ; then
+              exit $AMI_EXIT_CODE
+            fi
+
+            # shutdown the instance
+            shutdown -h now
+    Metadata:
+      'AWS::CloudFormation::Init':
+        configSets:
+          init:
+            - init_config
+          ami:
+            - ami_config
+          cwlogs:
+            - cwlogs_config
+        init_config:
+          files:
+            /tmp/scripts/init.sh:
+              content: !Sub |
+                # install Docker
+                apt-get update
+                apt-get install -y \
+                    apt-transport-https \
+                    ca-certificates \
+                    curl \
+                    software-properties-common
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+                add-apt-repository \
+                   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+                   $(lsb_release -cs) \
+                   stable"
+                apt-get update
+                apt-get install -y docker-ce
+
+                # add the package repositories
+                curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add -
+                distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+                curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
+                  tee /etc/apt/sources.list.d/nvidia-docker.list
+                apt-get update
+
+                # install nvidia-docker2 and reload the Docker daemon configuration
+                apt-get install -y nvidia-384
+                apt-get install -y nvidia-docker2
+                pkill -SIGHUP dockerd
+
+                # test nvidia-docker
+                docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
+                docker rmi $(docker images -q)
+              mode: '000755'
+              owner: root
+              group: root
+          commands:
+            run_init:
+              command: '/bin/bash -xe /tmp/scripts/init.sh'
+        ami_config:
+          files:
+            /tmp/scripts/create_ami.sh:
+              content: !Sub |
+                # install AWS CLI
+                apt-get install -y awscli
+                aws configure set default.region ${AWS::Region}
+
+                # install jq
+                apt-get install -y jq
+
+                # create AMI
+                INSTANCE_ID=`curl http://169.254.169.254/latest/meta-data/instance-id`
+                IMAGE_ID=`aws ec2 create-image --instance-id $INSTANCE_ID --name "${ImageName}" --no-reboot | jq -r '.ImageId'`
+                aws ec2 create-tags --resources $IMAGE_ID \
+                  --tags Key=spotty:stack-id,Value=${AWS::StackId} "Key=Name,Value=NVIDIA Docker"
+                aws ec2 wait image-available --image-ids $IMAGE_ID
+              mode: '000755'
+              owner: root
+              group: root
+          commands:
+            create_ami:
+              command: '/bin/bash -xe /tmp/scripts/create_ami.sh'
+        cwlogs_config:
+          files:
+            /tmp/cwlogs/logs.conf:
+              content: !Sub |
+                [general]
+                state_file= /var/awslogs/agent-state
+
+                [/var/log/cloud-init-output.log]
+                file = /var/log/cloud-init-output.log
+                log_group_name = ${InstanceLogGroup}
+                log_stream_name = {instance_id}/cloud-init-output.log
+                datetime_format = %d/%b/%Y:%H:%M:%S
+
+                [/var/log/cfn-init.log]
+                file = /var/log/cfn-init.log
+                log_group_name = ${InstanceLogGroup}
+                log_stream_name = {instance_id}/cfn-init.log
+                datetime_format = %d/%b/%Y:%H:%M:%S
+
+                [/var/log/cfn-init-cmd.log]
+                file = /var/log/cfn-init-cmd.log
+                log_group_name = ${InstanceLogGroup}
+                log_stream_name = {instance_id}/cfn-init-cmd.log
+                datetime_format = %d/%b/%Y:%H:%M:%S
+              mode: '000400'
+              owner: root
+              group: root
+            /tmp/cwlogs/run.sh:
+              content: !Sub |
+                curl https://s3.amazonaws.com//aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -O
+                chmod +x ./awslogs-agent-setup.py
+                ./awslogs-agent-setup.py -n -r ${AWS::Region} -c /tmp/cwlogs/logs.conf
+                systemctl disable awslogs
+              mode: '000400'
+              owner: root
+              group: root
+          commands:
+            run_cw_agent:
+              command: '/bin/bash -xe /tmp/cwlogs/run.sh'
+
+  InstanceLogGroup:
+    Type: AWS::Logs::LogGroup
+
+  LogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: '/'
+      Policies:
+      - PolicyName: LogsPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:Create*
+            - logs:PutLogEvents
+            - s3:GetObject
+            Resource:
+            - arn:aws:logs:*:*:*
+            - arn:aws:s3:::*
+      - PolicyName: AMICreationPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'ec2:DescribeImages'
+            - 'ec2:CreateImage'
+            - 'ec2:CreateTags'
+            Resource: ['*']
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+      - Ref: LogRole
+
+  InstanceReadyWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: SpotInstance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT20M
+
+  AMICreatedWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: SpotInstance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT30M
+
+  DeleteAMI:
+    Type: Custom::AMI
+    DependsOn: AMICreatedWaitCondition
+    Properties:
+      ServiceToken: !GetAtt DeleteAMIFunction.Arn
+  DeleteAMIFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt DeleteAMILambdaExecutionRole.Arn
+      Code:
+        ZipFile: !Sub |
+          var aws=require('aws-sdk');var response=require('cfn-response');exports.handler=function(event,context){console.log('Request received:\n',JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{};console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
+          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
+          var ec2=new aws.EC2({region:event.ResourceProperties.Region});if(event.RequestType=='Create'||event.RequestType=='Update'){ec2.describeImages({Filters:[{Name:'tag:spotty:stack-id',Values:[event.StackId]}]}).promise().then((data)=>{if(!data.Images.length){throw new Error('No images found')}
+          console.log('"describeImages" response:\n',data);physicalId=data.Images[0].ImageId;success()}).catch((err)=>failed(err))}else{var imageId=physicalId;console.log('Searching AMI with ID='+imageId);ec2.describeImages({ImageIds:[imageId]}).promise().then((data)=>{if(!data.Images.length){throw new Error('No images found')}
+          console.log('"describeImages" response:\n',data);return ec2.deregisterImage({ImageId:imageId}).promise()}).then((data)=>{console.log('Image deregistered:\n',data);return ec2.describeSnapshots({Filters:[{Name:'description',Values:['*'+imageId+'*']}]}).promise()}).then((data)=>{console.log('"describeSnapshots" response:\n',data);if(!data.Snapshots.length){throw new Error('No snapshots found')}
+          return ec2.deleteSnapshot({SnapshotId:data.Snapshots[0].SnapshotId}).promise()}).then((data)=>{console.log('Snapshot deleted:\n',data);success()}).catch((err)=>failed(err))}}
+      Runtime: nodejs4.3
+      Timeout: 60
+  DeleteAMILambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+              - lambda.amazonaws.com
+          Action:
+            - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+      Policies:
+      - PolicyName: EC2Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+              - 'ec2:DescribeImages'
+              - 'ec2:DescribeSnapshots'
+              - 'ec2:DeregisterImage'
+              - 'ec2:DeleteSnapshot'
+              Resource: ['*']
+  DeleteAMIFunctionRetention:
+    Type: Custom::LogsRetention
+    DependsOn: DeleteAMI
+    Properties:
+      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
+      LogGroupName: !Join ['', ['/aws/lambda/', !Ref DeleteAMIFunction]]
+      RetentionInDays: 1
+
+  # function to change a log group retention (for lambdas by default they never expire)
+  SetLogsRetentionFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt SetLogsRetentionLambdaExecutionRole.Arn
+      Runtime: nodejs4.3
+      Timeout: 30
+      Code:
+        ZipFile: |
+          var aws=require("aws-sdk");var response=require('cfn-response');exports.handler=function(event,context){console.log("request received:\n"+JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{}
+          console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
+          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
+          if(event.RequestType!=='Create'){console.log('Non-create request is ignored');return success()}
+          var logGroupName=event.ResourceProperties.LogGroupName;if(!logGroupName){return failed('LogGroupName required')}
+          var retentionInDays=event.ResourceProperties.RetentionInDays;if(!retentionInDays){return failed('RetentionInDays required')}
+          var cloudwatchlogs=new aws.CloudWatchLogs();cloudwatchlogs.putRetentionPolicy({logGroupName:logGroupName,retentionInDays:retentionInDays}).promise().then((data)=>{console.log('"putRetentionPolicy" Response:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}
+  SetLogsRetentionLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+              - lambda.amazonaws.com
+          Action:
+            - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+      Policies:
+      - PolicyName: CloudWatchLogsPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+              - logs:PutRetentionPolicy
+              Resource:
+              - arn:aws:logs:*:*:*
+  SetLogsRetentionFunctionRetention:
+    Type: Custom::LogsRetention
+    Properties:
+      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
+      LogGroupName: !Join ['', ['/aws/lambda/', !Ref SetLogsRetentionFunction]]
+      RetentionInDays: 1
+
+Outputs:
+  BaseAMI:
+    Description: Base AMI ID
+    Value: !Ref FindBaseAMI
+  NewAMI:
+    Description: Created AMI ID
+    Value: !Ref DeleteAMI
+  InstanceLogGroup:
+    Description: CloudWatch log group name for the instance
+    Value: !Ref InstanceLogGroup

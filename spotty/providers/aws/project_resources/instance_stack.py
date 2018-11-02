@@ -235,17 +235,21 @@ class InstanceStackResource(object):
             },
         }
 
-        volume_name = '%s-%s-%s' % (project_name, volume_config['name'], instance_name)
         volume_params = volume_config['parameters']
-        volume_size = volume_params['size']
+
+        # this is a name of the existing volume or a name of the existing snapshot if the volume doesn't exist
+        # this name will be used to "create" or "update" volume snapshot
+        volume_name = '%s-%s-%s' % (project_name, volume_config['name'], instance_name)
+
+        # this snapshot name (if provided) is used ONLY to restore the volume,
+        # this name WILL NOT be used to "create" or "update" volume snapshot
         volume_snapshot_name = volume_params['snapshotName']
+
+        volume_size = volume_params['size']
         deletion_policy = volume_params['deletionPolicy']
 
-        # check that the volume name is specified
-        if not volume_name and deletion_policy != 'delete':
-            raise ValueError('Volume name is required if the deletion policy isn\'t set to "delete".')
-
-        volume_info = get_volume(ec2, volume_name) if volume_name else {}
+        # check if the volume already exists
+        volume_info = get_volume(ec2, volume_name)
         if volume_info:
             # set availability zone
             availability_zone = volume_info['AvailabilityZone']
@@ -270,9 +274,9 @@ class InstanceStackResource(object):
             # update VolumeAttachment resource with the reference to new volume
             attachment_resource['Properties']['VolumeId'] = {'Ref': volume_resource_name}
 
-            # check if the snapshot exists
+            # check if the snapshot exists and restore the volume from it
             snapshot_name = volume_snapshot_name if volume_snapshot_name else volume_name
-            snapshot_info = get_snapshot(ec2, snapshot_name) if volume_name else {}
+            snapshot_info = get_snapshot(ec2, snapshot_name)
             if snapshot_info:
                 # volume will be restored from the snapshot
                 # check size of the volume
@@ -282,33 +286,37 @@ class InstanceStackResource(object):
                                      % (volume_name, volume_size, snapshot_info['VolumeSize']))
 
                 # set snapshot ID
-                orig_snapshot_id = snapshot_info['SnapshotId']
-                volume_resource['Properties']['SnapshotId'] = orig_snapshot_id
+                volume_resource['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
 
-                # rename or delete the original snapshot on stack deletion
-                if deletion_policy == 'create_snapshot':
-                    # rename the original snapshot once new snapshot is created
-                    s_renaming_resource_name = 'RenameSnapshot' + device_letter.upper()
-                    resources[s_renaming_resource_name] = {
-                        'Type': 'Custom::SnapshotRenaming',
-                        'Properties': {
-                            'ServiceToken': {'Fn::GetAtt': ['RenameSnapshotFunction', 'Arn']},
-                            'SnapshotId': orig_snapshot_id,
-                        },
-                    }
-                    volume_resource['DependsOn'] = s_renaming_resource_name
+                # update or rename volume's snapshot after the stack deletion
+                snapshot_info = snapshot_info if snapshot_name == volume_name else get_snapshot(ec2, volume_name)
+                if snapshot_info:
+                    orig_snapshot_id = snapshot_info['SnapshotId']
 
-                elif deletion_policy == 'update_snapshot':
-                    # delete the original snapshot once new snapshot is created
-                    s_deletion_resource_name = 'DeleteSnapshot' + device_letter.upper()
-                    resources[s_deletion_resource_name] = {
-                        'Type': 'Custom::SnapshotDeletion',
-                        'Properties': {
-                            'ServiceToken': {'Fn::GetAtt': ['DeleteSnapshotFunction', 'Arn']},
-                            'SnapshotId': orig_snapshot_id,
-                        },
-                    }
-                    volume_resource['DependsOn'] = s_deletion_resource_name
+                    # rename or delete the original snapshot on stack deletion
+                    if deletion_policy == 'create_snapshot':
+                        # rename the original snapshot once new snapshot is created
+                        s_renaming_resource_name = 'RenameSnapshot' + device_letter.upper()
+                        resources[s_renaming_resource_name] = {
+                            'Type': 'Custom::SnapshotRenaming',
+                            'Properties': {
+                                'ServiceToken': {'Fn::GetAtt': ['RenameSnapshotFunction', 'Arn']},
+                                'SnapshotId': orig_snapshot_id,
+                            },
+                        }
+                        volume_resource['DependsOn'] = s_renaming_resource_name
+
+                    elif deletion_policy == 'update_snapshot':
+                        # delete the original snapshot once new snapshot is created
+                        s_deletion_resource_name = 'DeleteSnapshot' + device_letter.upper()
+                        resources[s_deletion_resource_name] = {
+                            'Type': 'Custom::SnapshotDeletion',
+                            'Properties': {
+                                'ServiceToken': {'Fn::GetAtt': ['DeleteSnapshotFunction', 'Arn']},
+                                'SnapshotId': orig_snapshot_id,
+                            },
+                        }
+                        volume_resource['DependsOn'] = s_deletion_resource_name
             else:
                 # empty volume will be created, check that the size is specified
                 if not volume_size:

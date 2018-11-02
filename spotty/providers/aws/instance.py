@@ -12,7 +12,7 @@ from spotty.providers.aws.project_resources.instance_profile_stack import create
 from spotty.providers.aws.project_resources.instance_stack import InstanceStackResource
 from spotty.providers.abstract_instance import AbstractInstance
 from spotty.providers.aws.project_resources.key_pair import KeyPairResource
-from spotty.providers.aws.validators import validate_instance_parameters
+from spotty.providers.aws.validation import validate_aws_instance_parameters
 
 
 class AwsInstance(AbstractInstance):
@@ -20,7 +20,7 @@ class AwsInstance(AbstractInstance):
     def __init__(self, project_name: str, instance_config: dict):
         super().__init__(project_name, instance_config)
 
-        validate_instance_parameters(self._instance_params)
+        self._instance_params = validate_aws_instance_parameters(self._instance_params)
 
         self._region = self._instance_params['region']
         self._instance_stack = InstanceStackResource(self._project_name, self._region)

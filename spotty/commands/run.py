@@ -5,7 +5,6 @@ import re
 import pystache
 from spotty.commands.abstract_config import AbstractConfigCommand
 from spotty.helpers.config import get_instance_config
-from spotty.helpers.validation import validate_instance_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.instance_factory import InstanceFactory
 
@@ -19,10 +18,6 @@ class RunCommand(AbstractConfigCommand):
     @staticmethod
     def get_description():
         return 'Run a script from configuration file inside the Docker container'
-
-    @staticmethod
-    def _validate_config(config):
-        return validate_instance_config(config)
 
     @staticmethod
     def configure(parser: ArgumentParser):

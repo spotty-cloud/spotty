@@ -3,6 +3,7 @@ import os
 from argparse import Namespace, ArgumentParser
 from yaml.scanner import ScannerError
 from spotty.commands.abstract import AbstractCommand
+from spotty.helpers.validation import validate_basic_config
 
 
 class AbstractConfigCommand(AbstractCommand):
@@ -35,7 +36,7 @@ class AbstractConfigCommand(AbstractCommand):
 
     @staticmethod
     def _validate_config(config):
-        return config
+        return validate_basic_config(config)
 
     @staticmethod
     def _load_config(config_path: str):

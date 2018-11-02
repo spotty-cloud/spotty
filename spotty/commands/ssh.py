@@ -2,7 +2,6 @@ from argparse import ArgumentParser
 import subprocess
 from spotty.commands.abstract_config import AbstractConfigCommand
 from spotty.helpers.config import get_instance_config
-from spotty.helpers.validation import validate_instance_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.instance_factory import InstanceFactory
 
@@ -16,10 +15,6 @@ class SshCommand(AbstractConfigCommand):
     @staticmethod
     def get_description():
         return 'Connect to the running Docker container or to the instance itself'
-
-    @staticmethod
-    def _validate_config(config):
-        return validate_instance_config(config)
 
     @staticmethod
     def configure(parser: ArgumentParser):
