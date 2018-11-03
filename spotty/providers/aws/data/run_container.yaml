@@ -291,7 +291,7 @@ Resources:
                   # run docker container
                   CONTAINER_NAME=spotty
                   docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAMS \
-                    -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker -v ${ProjectDirectory}:${ProjectDirectory} \
+                    -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker \
                     --name $CONTAINER_NAME $DOCKER_IMAGE /bin/sh
 
                   WORKING_DIR=""

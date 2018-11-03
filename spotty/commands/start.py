@@ -26,8 +26,5 @@ class StartCommand(AbstractConfigCommand):
         # start the instance
         instance.start(project_dir, sync_filters, container_config, output)
 
-        output.write('\n'
-                     '--------------------\n'
-                     '%s\n\n'
-                     'Use "spotty ssh" command to connect to the Docker container.\n'
-                     '--------------------' % instance.status_text)
+        output.write('\n' + instance.status_text)
+        output.write('\nUse "spotty ssh" command to connect to the Docker container.\n')

@@ -23,6 +23,6 @@ class StopCommand(AbstractConfigCommand):
         instance.stop(project_name, output)
 
         output.write('\n'
-                     '--------------------\n'
+                     '----------------------------------\n'
                      'Instance was successfully deleted.\n'
-                     '--------------------')
+                     '----------------------------------')

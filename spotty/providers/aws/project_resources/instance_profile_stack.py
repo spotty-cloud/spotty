@@ -1,7 +1,7 @@
 from botocore.exceptions import ClientError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.aws.helpers.resources import stack_exists, wait_stack_status_changed
-from spotty.utils import data_dir
+from spotty.providers.aws.utils import data_dir
 
 
 def create_or_update_instance_profile(cf, output: AbstractOutputWriter):

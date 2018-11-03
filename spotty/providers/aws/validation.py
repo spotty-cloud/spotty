@@ -1,3 +1,4 @@
+import os
 from schema import Schema, Optional, And, Regex, Or, Use
 from spotty.helpers.config import validate_config
 from spotty.providers.aws.helpers.resources import is_valid_instance_type
@@ -21,6 +22,12 @@ def validate_aws_instance_parameters(params):
                                                        error='"rootVolumeSize" should be greater than 0 or should '
                                                              ' not be specified.'),
                                                    ),
+        Optional('dockerDataRoot', default=''): And(str,
+                                                    And(os.path.isabs,
+                                                        error='Use an absolute path when specifying a Docker '
+                                                              'data root directory'),
+                                                    Use(lambda x: x.rstrip('/')),
+                                                ),
         Optional('maxPrice', default=0): And(Or(float, int, str), Use(str),
                                              Regex(r'^\d+(\.\d{1,6})?$', error='Incorrect value for "maxPrice".'),
                                              Use(float),

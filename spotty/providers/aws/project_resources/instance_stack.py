@@ -6,7 +6,7 @@ from cfn_tools import CfnYamlLoader, CfnYamlDumper
 from spotty.providers.aws.helpers.resources import get_snapshot, is_gpu_instance, stack_exists, get_volume
 from spotty.providers.aws.helpers.spot_prices import get_current_spot_price
 from spotty.providers.aws.project_resources.key_pair import KeyPairResource
-from spotty.utils import data_dir
+from spotty.providers.aws.utils import data_dir
 
 
 class InstanceStackResource(object):
@@ -132,7 +132,7 @@ class InstanceStackResource(object):
 
     def create_stack(self, ec2, template: str, instance_profile_arn: str, instance_type: str, ami_name: str,
                      root_volume_size: int, project_dir: str, mount_dirs: list, container_volumes: dict,
-                     bucket_name: str, container_config: dict):
+                     bucket_name: str, container_config: dict, docker_data_root: str):
         """Runs CloudFormation template."""
 
         # container_config['projectDir']
@@ -195,7 +195,7 @@ class InstanceStackResource(object):
             'ImageId': ami_id,
             'RootVolumeSize': str(root_volume_size),
             'VolumeMountDirectories': ('"%s"' % '" "'.join(mount_dirs)) if mount_dirs else '',
-            'DockerDataRootDirectory': container_config['dataRoot'],
+            'DockerDataRootDirectory': docker_data_root,
             'DockerImage': container_config.get('image', ''),
             'DockerfilePath': dockerfile_path,
             'DockerBuildContextPath': docker_context_path,

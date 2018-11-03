@@ -36,6 +36,7 @@ class AwsInstance(AbstractInstance):
         instance_type = self._instance_params['instanceType']
         ami_name = self._instance_params['amiName']
         root_volume_size = self._instance_params['rootVolumeSize']
+        docker_data_root = self._instance_params['dockerDataRoot']
         max_price = self._instance_params['maxPrice']
         volumes = self._instance_params['volumes']
 
@@ -70,31 +71,41 @@ class AwsInstance(AbstractInstance):
             if volume['parameters']['directory']:
                 mount_dir = volume['parameters']['directory']
             else:
-                mount_dir = '/mnt/%s' % volume['name']
+                mount_dir = '/mnt/%s-%s-%s' % (self._project_name, volume['name'], self._instance_name)
 
             mount_dirs[volume['name']] = mount_dir
+
+        output.write('Container volumes:')
 
         # container volumes mapping
         container_volumes = {}
         for container_mount in container_config['volumeMounts']:
             if container_mount['name'] in mount_dirs:
                 container_volumes[mount_dirs[container_mount['name']]] = container_mount['mountPath']
+                output.write('  %s -> EBS volume (%s-%s-%s)' % (container_mount['mountPath'], self._project_name,
+                                                              container_mount['name'], self._instance_name))
             else:
                 tmp_host_dir = '/tmp/spotty/volumes/%s-%s-%s' \
                                % (self._project_name, container_mount['name'], self._instance_name)
                 container_volumes[tmp_host_dir] = container_mount['mountPath']
+                output.write('  %s -> temporary directory' % container_mount['mountPath'])
 
         # get project directory
-        project_dir = '/tmp/spotty/projects/%s' % self._project_name  # temporary project directory
         container_project_dir = container_config['projectDir']
+        project_dir = None
         for host_dir, container_dir in container_volumes.items():
             if (container_project_dir + '/').startswith(container_dir + '/'):
                 project_subdir = os.path.relpath(container_project_dir, container_dir)
                 project_dir = host_dir + '/' + project_subdir
                 break
 
-        # update container volume mappings
-        container_volumes[project_dir] = container_project_dir
+        if not project_dir:
+            # use temporary directory for the project
+            project_dir = '/tmp/spotty/projects/%s' % self._project_name
+
+            # update container volume mappings
+            container_volumes[project_dir] = container_project_dir
+            output.write('  %s -> temporary directory' % project_dir)
 
         # project bucket name
         s3 = boto3.client('s3', region_name=self._region)
@@ -104,7 +115,7 @@ class AwsInstance(AbstractInstance):
         # create stack
         res = self._instance_stack.create_stack(ec2, template, instance_profile_arn, instance_type, ami_name,
                                                 root_volume_size, project_dir, list(mount_dirs.values()),
-                                                container_volumes, bucket_name, container_config)
+                                                container_volumes, bucket_name, container_config, docker_data_root)
 
         output.write('Waiting for the stack to be created...')
 
@@ -122,9 +133,6 @@ class AwsInstance(AbstractInstance):
             raise ValueError('Stack "%s" was not created.\n'
                              'Please, see CloudFormation and CloudWatch logs for the details.'
                              % self._instance_stack.name)
-
-        # update teh stack info
-        self._stack_info = stack_info
 
     def stop(self, project_name: str, output: AbstractOutputWriter):
         cf = boto3.client('cloudformation', region_name=self._region)

@@ -6,6 +6,7 @@ import logging
 from spotty.commands.aws import AwsCommand
 from spotty.commands.run import RunCommand
 from spotty.commands.ssh import SshCommand
+from spotty.commands.status import StatusCommand
 from spotty.commands.stop import StopCommand
 from spotty.commands.sync import SyncCommand
 from spotty.helpers.commands import add_subparsers
@@ -18,6 +19,7 @@ parser = argparse.ArgumentParser()
 commands = [
     StartCommand,
     StopCommand,
+    StatusCommand,
     SshCommand,
     RunCommand,
     SyncCommand,
@@ -43,7 +45,7 @@ output = OutputWriter()
 # run a command
 try:
     args.command.run(args, output)
-except ValueError as e:
+except Exception as e:
     output.write('Error:\n'
                  '------\n'
                  '%s' % str(e))

@@ -1,5 +1,5 @@
 import os
-from schema import Schema, And, Use, Optional, SchemaError, Or, Regex
+from schema import Schema, And, Use, Optional, Or, Regex
 from spotty.helpers.config import validate_config
 
 
@@ -50,12 +50,6 @@ def validate_basic_config(data):
                                                                   'working directory'),
                                                         Use(lambda x: x.rstrip('/'))
                                                         ),
-                Optional('dataRoot', default=''): And(str,
-                                                      And(os.path.isabs,
-                                                          error='Use an absolute path when specifying a Docker '
-                                                                'data root directory'),
-                                                      Use(lambda x: x.rstrip('/')),
-                                                      ),
                 Optional('commands', default=''): str,
                 Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
             },

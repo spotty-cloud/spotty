@@ -38,7 +38,7 @@ def get_instance_info(ec2, stack_name):
     ])
 
     instance_info = {}
-    if not len(res['Reservations']):
+    if len(res['Reservations']):
         instance_info = res['Reservations'][0]['Instances'][0]
 
     return instance_info
