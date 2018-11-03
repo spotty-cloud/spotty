@@ -1,37 +1,27 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from time import time
 import boto3
-from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.helpers.validation import validate_logs_config
+from spotty.commands.abstract_command import AbstractCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
-class CleanLogsCommand(AbstractConfigCommand):
+class CleanLogsCommand(AbstractCommand):
 
-    @staticmethod
-    def get_name() -> str:
-        return 'clean-logs'
+    name = 'clean-logs'
+    description = 'Delete expired CloudFormation log groups with Spotty prefixes'
 
-    @staticmethod
-    def get_description():
-        return 'Delete expired CloudFormation log groups with Spotty prefixes'
-
-    @staticmethod
-    def _validate_config(config):
-        return validate_logs_config(config)
-
-    @staticmethod
-    def configure(parser: ArgumentParser):
-        AbstractConfigCommand.configure(parser)
-        parser.add_argument('--delete-all', '-a', action='store_true', help='Delete all Spotty log groups, '
+    def configure(self, parser: ArgumentParser):
+        super().configure(parser)
+        parser.add_argument('-r', '--region', type=str, required=True, help='AWS region')
+        parser.add_argument('-a', '--delete-all', action='store_true', help='Delete all Spotty log groups, '
                                                                             'not just expired ones')
 
-    def run(self, output: AbstractOutputWriter):
-        region = self._config['instance']['region']
+    def run(self, args: Namespace, output: AbstractOutputWriter):
+        region = args.region
         logs = boto3.client('logs', region_name=region)
 
         prefixes = ['spotty-', '/aws/lambda/spotty-']
-        only_empty = not self._args.delete_all
+        only_empty = not args.delete_all
 
         output.write('Deleting %s Spotty log groups...' % ('empty' if only_empty else 'all'))
 

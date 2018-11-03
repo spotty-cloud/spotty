@@ -1,5 +1,4 @@
 from importlib import import_module
-
 from spotty.providers.abstract_instance import AbstractInstance
 
 

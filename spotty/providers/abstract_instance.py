@@ -38,18 +38,18 @@ class AbstractInstance(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     @property
+    @abstractmethod
     def ip_address(self):
         """Returns an IP address of the running instance."""
         raise NotImplementedError
 
-    @abstractmethod
     @property
+    @abstractmethod
     def ssh_user(self):
         raise NotImplementedError
 
-    @abstractmethod
     @property
+    @abstractmethod
     def ssh_key_path(self):
         raise NotImplementedError

@@ -1,39 +1,39 @@
+from argparse import Namespace, ArgumentParser
 import yaml
 import boto3
-from spotty.commands.abstract_config import AbstractConfigCommand
+from spotty.commands.abstract_command import AbstractCommand
 from spotty.providers.aws.helpers.resources import is_gpu_instance, wait_stack_status_changed
-from spotty.helpers.validation import validate_ami_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.providers.aws.utils import data_dir
+from spotty.providers.aws.validation import DEFAULT_AMI_NAME
 from spotty.utils import random_string
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
 
 
-class CreateAmiCommand(AbstractConfigCommand):
+class CreateAmiCommand(AbstractCommand):
 
-    @staticmethod
-    def get_name() -> str:
-        return 'create-ami'
+    name = 'create-ami'
+    description = 'Create AMI with NVIDIA Docker'
 
-    @staticmethod
-    def get_description():
-        return 'Create AMI with NVIDIA Docker'
+    def configure(self, parser: ArgumentParser):
+        super().configure(parser)
+        parser.add_argument('-r', '--region', type=str, required=True, help='AWS region')
+        parser.add_argument('-i', '--instance-type', type=str, default='p2.xlarge', help='GPU instance type')
+        parser.add_argument('-n', '--ami-name', type=str, default=DEFAULT_AMI_NAME, help='AMI name')
+        parser.add_argument('-k', '--key-name', type=str, default=None, help='EC2 Key Pair name')
 
-    @staticmethod
-    def _validate_config(config):
-        return validate_ami_config(config)
-
-    def run(self, output: AbstractOutputWriter):
+    def run(self, args: Namespace, output: AbstractOutputWriter):
         # check that it's a GPU instance type
-        instance_type = self._config['instance']['instanceType']
+        instance_type = args.instance_type
         if not is_gpu_instance(instance_type):
             raise ValueError('"%s" is not a GPU instance' % instance_type)
 
-        region = self._config['instance']['region']
+        region = args.region
         cf = boto3.client('cloudformation', region_name=region)
         ec2 = boto3.client('ec2', region_name=region)
 
         # check that an image with this name doesn't exist yet
-        ami_name = self._config['instance']['amiName']
+        ami_name = args.ami_name
         res = ec2.describe_images(Filters=[
             {'Name': 'name', 'Values': [ami_name]},
         ])
@@ -46,7 +46,8 @@ class CreateAmiCommand(AbstractConfigCommand):
             template = yaml.load(f, Loader=CfnYamlLoader)
 
         # remove key parameter if key is not provided
-        key_name = self._config['instance'].get('keyName', '')
+        # TODO: check that the key exists
+        key_name = args.key_name
         if not key_name:
             del template['Parameters']['KeyName']
             del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['KeyName']

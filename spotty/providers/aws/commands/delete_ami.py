@@ -1,31 +1,28 @@
+from argparse import ArgumentParser, Namespace
 import boto3
-from spotty.commands.abstract_config import AbstractConfigCommand
+from spotty.commands.abstract_command import AbstractCommand
 from spotty.providers.aws.helpers.resources import wait_stack_status_changed
-from spotty.helpers.validation import validate_ami_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.providers.aws.validation import DEFAULT_AMI_NAME
 
 
-class DeleteAmiCommand(AbstractConfigCommand):
+class DeleteAmiCommand(AbstractCommand):
 
-    @staticmethod
-    def get_name() -> str:
-        return 'delete-ami'
+    name = 'delete-ami'
+    description = 'Delete AMI with NVIDIA Docker'
 
-    @staticmethod
-    def get_description():
-        return 'Delete AMI with NVIDIA Docker'
+    def configure(self, parser: ArgumentParser):
+        super().configure(parser)
+        parser.add_argument('-r', '--region', type=str, required=True, help='AWS region')
+        parser.add_argument('-n', '--ami-name', type=str, default=DEFAULT_AMI_NAME, help='AMI name')
 
-    @staticmethod
-    def _validate_config(config):
-        return validate_ami_config(config)
-
-    def run(self, output: AbstractOutputWriter):
-        region = self._config['instance']['region']
+    def run(self, args: Namespace, output: AbstractOutputWriter):
+        region = args.region
         cf = boto3.client('cloudformation', region_name=region)
         ec2 = boto3.client('ec2', region_name=region)
 
         # get image info
-        ami_name = self._config['instance']['amiName']
+        ami_name = args.ami_name
         res = ec2.describe_images(Filters=[
             {'Name': 'name', 'Values': [ami_name]},
         ])
