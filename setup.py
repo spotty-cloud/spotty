@@ -32,7 +32,6 @@ setup(name='spotty',
       ]},
       scripts=['bin/spotty'],
       install_requires=[
-          'botocore>=1.10.0',
           'boto3>=1.7.0',
           'cfn_flip',
           'schema',
@@ -50,4 +49,5 @@ setup(name='spotty',
           'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
+          'Programming Language :: Python :: 3.7',
       ])
