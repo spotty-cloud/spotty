@@ -31,8 +31,8 @@ class StackResource(object):
 
         return res['Stacks'][0]
 
-    def prepare_template(self, ec2, availability_zone: str, instance_type: str, volumes: list, ports: list, max_price,
-                         docker_commands):
+    def prepare_template(self, ec2, availability_zone: str, subnet_id: str, instance_type: str, volumes: list,
+                         ports: list, max_price, docker_commands):
         """Prepares CloudFormation template to run a Spot Instance."""
 
         # read and update CF template
@@ -65,6 +65,15 @@ class StackResource(object):
             template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['Placement'] = {
                 'AvailabilityZone': availability_zone,
             }
+
+        # set subnet
+        if subnet_id:
+            template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['NetworkInterfaces'] = [{
+                'SubnetId': subnet_id,
+                'DeviceIndex': 0,
+                'Groups': template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['SecurityGroupIds'],
+            }]
+            del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['SecurityGroupIds']
 
         # make sure that the lambda to update log group retention was called after
         # the log group was created
@@ -129,7 +138,7 @@ class StackResource(object):
 
     def create_stack(self, ec2, template: str, instance_profile_arn: str, instance_type: str, ami_name: str,
                      root_volume_size: int, mount_dirs: list, bucket_name: str, remote_project_dir: str,
-                     docker_config: dict):
+                     project_dir: str, docker_config: dict):
         """Runs CloudFormation template."""
 
         # get default VPC ID
@@ -140,7 +149,7 @@ class StackResource(object):
         vpc_id = res['Vpcs'][0]['VpcId']
 
         # get image info
-        ami_info = ec2.describe_images(Filters=[
+        ami_info = ec2.describe_images(Owners=['self'], Filters=[
             {'Name': 'name', 'Values': [ami_name]},
         ])
         if not len(ami_info['Images']):
@@ -167,11 +176,12 @@ class StackResource(object):
 
         # get the Dockerfile path and the build's context path
         dockerfile_path = docker_config.get('file', '')
-        if not os.path.isabs(dockerfile_path):
-            dockerfile_path = remote_project_dir + '/' + dockerfile_path
-
         docker_context_path = ''
         if dockerfile_path:
+            if not os.path.isfile(os.path.join(project_dir, dockerfile_path)):
+                raise ValueError('File "%s" doesn\'t exist.' % dockerfile_path)
+
+            dockerfile_path = remote_project_dir + '/' + dockerfile_path
             docker_context_path = os.path.dirname(dockerfile_path)
 
         # create stack
