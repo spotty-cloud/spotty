@@ -3,8 +3,8 @@ import boto3
 import subprocess
 from spotty.commands.abstract_config import AbstractConfigCommand
 from spotty.helpers.resources import get_instance_ip_address
+from spotty.helpers.ssh import get_ssh_command
 from spotty.helpers.validation import validate_instance_config
-from spotty.project_resources.key_pair import KeyPairResource
 from spotty.project_resources.stack import StackResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
@@ -36,22 +36,24 @@ class SshCommand(AbstractConfigCommand):
 
         project_name = project_config['name']
         region = instance_config['region']
+        local_ssh_port = instance_config['localSshPort']
 
         # get instance IP address
         stack = StackResource(None, project_name, region)
         ec2 = boto3.client('ec2', region_name=region)
         ip_address = get_instance_ip_address(ec2, stack.name)
 
-        # connect to the instance
-        host = 'ubuntu@%s' % ip_address
-        key_path = KeyPairResource(None, project_name, region).key_path
-        ssh_command = ['ssh', '-i', key_path, '-o', 'StrictHostKeyChecking no', '-t', host]
-
         if self._args.host_os:
+            # connect to the host OS
             session_name = self._args.session_name if self._args.session_name else 'spotty-ssh-host-os'
-            ssh_command += ['tmux', 'new', '-s', session_name, '-A']
+            remote_cmd = ['tmux', 'new', '-s', session_name, '-A']
         else:
+            # connect to the container
             session_name = self._args.session_name if self._args.session_name else 'spotty-ssh-container'
-            ssh_command += ['tmux', 'new', '-s', session_name, '-A', 'sudo', '/scripts/container_bash.sh']
+            remote_cmd = ['tmux', 'new', '-s', session_name, '-A', 'sudo', '/scripts/container_bash.sh']
 
+        remote_cmd = subprocess.list2cmdline(remote_cmd)
+
+        # connect to the instance
+        ssh_command = get_ssh_command(project_name, region, ip_address, remote_cmd, local_ssh_port)
         subprocess.call(ssh_command)

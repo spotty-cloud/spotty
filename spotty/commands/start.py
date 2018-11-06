@@ -1,7 +1,8 @@
 import boto3
 from spotty.aws_cli import AwsCli
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.helpers.resources import wait_stack_status_changed
+from spotty.helpers.resources import wait_stack_status_changed, get_default_subnet_ids, get_subnet, \
+    get_instance_ip_address
 from spotty.helpers.spot_prices import get_current_spot_price
 from spotty.helpers.validation import validate_instance_config
 from spotty.project_resources.bucket import BucketResource
@@ -41,6 +42,42 @@ class StartCommand(AbstractConfigCommand):
             raise ValueError('Stack "%s" already exists.\n'
                              'Use "spotty stop" command to delete the stack.' % stack.name)
 
+        # get all availability zones for the region
+        zones = ec2.describe_availability_zones()
+        zone_names = [zone['ZoneName'] for zone in zones['AvailabilityZones']]
+
+        # check availability zone
+        availability_zone = instance_config['availabilityZone']
+        if availability_zone and availability_zone not in zone_names:
+            raise ValueError('Availability zone "%s" doesn\'t exist in the "%s" region.'
+                             % (availability_zone, region))
+
+        subnet_id = instance_config['subnetId']
+        if availability_zone:
+            if subnet_id:
+                subnet = get_subnet(ec2, subnet_id)
+                if not subnet:
+                    raise ValueError('Subnet "%s" not found.' % subnet_id)
+
+                if subnet['AvailabilityZone'] != availability_zone:
+                    raise ValueError('Availability zone of the subnet doesn\'t match the specified availability zone')
+            else:
+                default_subnets = get_default_subnet_ids(ec2)
+                if availability_zone not in default_subnets:
+                    raise ValueError('Default subnet for the "%s" availability zone not found.\n'
+                                     'Use the "subnetId" parameter to specify a subnet for this availability zone.'
+                                     % availability_zone)
+        else:
+            if subnet_id:
+                raise ValueError('Availability zone should be specified if a custom subnet is specified.')
+            else:
+                default_subnets = get_default_subnet_ids(ec2)
+                zones_wo_subnet = [zone_name for zone_name in zone_names if zone_name not in default_subnets]
+                if zones_wo_subnet:
+                    raise ValueError('Default subnets for the following availability zones were not found: %s.\n'
+                                     'Consider to use the "subnetId" parameter or create missing default subnets.'
+                                     % ', '.join(zones_wo_subnet))
+
         # create bucket for the project
         project_bucket = BucketResource(s3, project_name, region)
         bucket_name = project_bucket.create_bucket(output)
@@ -58,22 +95,13 @@ class StartCommand(AbstractConfigCommand):
         # prepare CloudFormation template
         output.write('Preparing CloudFormation template...')
 
-        # check availability zone
-        availability_zone = instance_config['availabilityZone']
-        if availability_zone:
-            zones = ec2.describe_availability_zones()
-            zone_names = [zone['ZoneName'] for zone in zones['AvailabilityZones']]
-            if availability_zone not in zone_names:
-                raise ValueError('Availability zone "%s" doesn\'t exist in the "%s" region.'
-                                 % (availability_zone, region))
-
         instance_type = instance_config['instanceType']
         volumes = instance_config['volumes']
         ports = instance_config['ports']
         max_price = instance_config['maxPrice']
         docker_commands = instance_config['docker']['commands']
 
-        template = stack.prepare_template(ec2, availability_zone, instance_type, volumes, ports, max_price,
+        template = stack.prepare_template(ec2, availability_zone, subnet_id, instance_type, volumes, ports, max_price,
                                           docker_commands)
 
         # create stack
@@ -84,7 +112,7 @@ class StartCommand(AbstractConfigCommand):
         remote_project_dir = project_config['remoteDir']
 
         res = stack.create_stack(ec2, template, instance_profile_arn, instance_type, ami_name, root_volume_size,
-                                 mount_dirs, bucket_name, remote_project_dir, docker_config)
+                                 mount_dirs, bucket_name, remote_project_dir, self._project_dir, docker_config)
 
         output.write('Waiting for the stack to be created...')
 
@@ -99,7 +127,7 @@ class StartCommand(AbstractConfigCommand):
                                                  resource_success_status='CREATE_COMPLETE', output=output)
 
         if status == 'CREATE_COMPLETE':
-            ip_address = [row['OutputValue'] for row in info['Outputs'] if row['OutputKey'] == 'InstanceIpAddress'][0]
+            ip_address = get_instance_ip_address(ec2, stack.name)
             availability_zone = [row['OutputValue'] for row in info['Outputs']
                                  if row['OutputKey'] == 'AvailabilityZone'][0]
 

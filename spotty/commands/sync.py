@@ -27,6 +27,7 @@ class SyncCommand(AbstractConfigCommand):
 
         region = instance_config['region']
         project_name = project_config['name']
+        local_ssh_port = instance_config['localSshPort']
 
         output.write('Syncing the project with S3 bucket...')
 
@@ -42,6 +43,6 @@ class SyncCommand(AbstractConfigCommand):
         ip_address = get_instance_ip_address(ec2, stack.name)
 
         # sync S3 with the instance
-        sync_instance_with_s3(ip_address, project_name, region)
+        sync_instance_with_s3(ip_address, project_name, region, local_ssh_port)
 
         output.write('Done')

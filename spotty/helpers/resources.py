@@ -42,9 +42,34 @@ def get_instance_ip_address(ec2, stack_name):
         raise ValueError('Instance is not running.\n'
                          'Use "spotty start" command to run an instance.')
 
-    ip_address = instances_info['Reservations'][0]['Instances'][0]['PublicIpAddress']
+    instance = instances_info['Reservations'][0]['Instances'][0]
+    ip_address = instance['PublicIpAddress'] if 'PublicIpAddress' in instance else instance['PrivateIpAddress']
 
     return ip_address
+
+
+def get_default_subnet_ids(ec2):
+    res = ec2.describe_subnets(Filters=[
+        {'Name': 'defaultForAz', 'Values': ['true']},
+    ])
+
+    subnets_by_zones = {}
+    for subnet in res['Subnets']:
+        subnets_by_zones[subnet['AvailabilityZone']] = subnet['SubnetId']
+
+    return subnets_by_zones
+
+
+def get_subnet(ec2, subnet_id):
+    res = ec2.describe_subnets(Filters=[
+        {'Name': 'subnet-id', 'Values': [subnet_id]},
+    ])
+
+    subnet = {}
+    if len(res['Subnets']):
+        subnet = res['Subnets'][0]
+
+    return subnet
 
 
 def stack_exists(cf, stack_name):
