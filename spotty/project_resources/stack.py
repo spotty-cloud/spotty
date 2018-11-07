@@ -49,9 +49,9 @@ class StackResource(object):
 
             # existing volume will be attached to the instance
             if availability_zone and volume_availability_zone and (availability_zone != volume_availability_zone):
-                raise ValueError('You have two existing volumes in different availability zones or an availability '
-                                 'zone in the configuration file doesn\'t match an availability zone of the '
-                                 'existing volume.')
+                raise ValueError('The availability zone in the configuration file doesn\'t match the availability zone '
+                                 'of the existing volume or you have two existing volumes in different availability '
+                                 'zones.')
 
             # update availability zone
             if volume_availability_zone:
