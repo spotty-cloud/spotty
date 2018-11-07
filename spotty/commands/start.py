@@ -1,12 +1,10 @@
 import boto3
-from spotty.aws_cli import AwsCli
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.helpers.resources import wait_stack_status_changed, get_default_subnet_ids, get_subnet, \
-    get_instance_ip_address
+from spotty.helpers.resources import wait_stack_status_changed, get_instance_ip_address, check_az_and_subnet
 from spotty.helpers.spot_prices import get_current_spot_price
+from spotty.helpers.sync import sync_project_with_s3
 from spotty.helpers.validation import validate_instance_config
-from spotty.project_resources.bucket import BucketResource
-from spotty.project_resources.instance_profile import create_or_update_instance_profile
+from spotty.project_resources.instance_profile_stack import create_or_update_instance_profile
 from spotty.project_resources.stack import StackResource
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
@@ -30,9 +28,11 @@ class StartCommand(AbstractConfigCommand):
         instance_config = self._config['instance']
 
         region = instance_config['region']
+        availability_zone = instance_config['availabilityZone']
+        subnet_id = instance_config['subnetId']
+
         cf = boto3.client('cloudformation', region_name=region)
         ec2 = boto3.client('ec2', region_name=region)
-        s3 = boto3.client('s3', region_name=region)
 
         project_name = project_config['name']
         stack = StackResource(cf, project_name, region)
@@ -42,52 +42,13 @@ class StartCommand(AbstractConfigCommand):
             raise ValueError('Stack "%s" already exists.\n'
                              'Use "spotty stop" command to delete the stack.' % stack.name)
 
-        # get all availability zones for the region
-        zones = ec2.describe_availability_zones()
-        zone_names = [zone['ZoneName'] for zone in zones['AvailabilityZones']]
-
-        # check availability zone
-        availability_zone = instance_config['availabilityZone']
-        if availability_zone and availability_zone not in zone_names:
-            raise ValueError('Availability zone "%s" doesn\'t exist in the "%s" region.'
-                             % (availability_zone, region))
-
-        subnet_id = instance_config['subnetId']
-        if availability_zone:
-            if subnet_id:
-                subnet = get_subnet(ec2, subnet_id)
-                if not subnet:
-                    raise ValueError('Subnet "%s" not found.' % subnet_id)
-
-                if subnet['AvailabilityZone'] != availability_zone:
-                    raise ValueError('Availability zone of the subnet doesn\'t match the specified availability zone')
-            else:
-                default_subnets = get_default_subnet_ids(ec2)
-                if availability_zone not in default_subnets:
-                    raise ValueError('Default subnet for the "%s" availability zone not found.\n'
-                                     'Use the "subnetId" parameter to specify a subnet for this availability zone.'
-                                     % availability_zone)
-        else:
-            if subnet_id:
-                raise ValueError('Availability zone should be specified if a custom subnet is specified.')
-            else:
-                default_subnets = get_default_subnet_ids(ec2)
-                zones_wo_subnet = [zone_name for zone_name in zone_names if zone_name not in default_subnets]
-                if zones_wo_subnet:
-                    raise ValueError('Default subnets for the following availability zones were not found: %s.\n'
-                                     'Consider to use the "subnetId" parameter or create missing default subnets.'
-                                     % ', '.join(zones_wo_subnet))
-
-        # create bucket for the project
-        project_bucket = BucketResource(s3, project_name, region)
-        bucket_name = project_bucket.create_bucket(output)
+        # check availability zone and subnet
+        check_az_and_subnet(ec2, availability_zone, subnet_id, region)
 
         # sync the project with S3
         output.write('Syncing the project with S3...')
-
-        project_filters = project_config['syncFilters']
-        AwsCli(region=region).s3_sync(self._project_dir, 's3://%s/project' % bucket_name, delete=True,
-                                      filters=project_filters, capture_output=False)
+        sync_filters = project_config['syncFilters']
+        bucket_name = sync_project_with_s3(self._project_dir, project_name, region, sync_filters, output)
 
         # create or update instance profile
         instance_profile_arn = create_or_update_instance_profile(cf, output)
@@ -112,7 +73,8 @@ class StartCommand(AbstractConfigCommand):
         remote_project_dir = project_config['remoteDir']
 
         res = stack.create_stack(ec2, template, instance_profile_arn, instance_type, ami_name, root_volume_size,
-                                 mount_dirs, bucket_name, remote_project_dir, self._project_dir, docker_config)
+                                 mount_dirs, bucket_name, remote_project_dir, project_name, self._project_dir,
+                                 docker_config)
 
         output.write('Waiting for the stack to be created...')
 
