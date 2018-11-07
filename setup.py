@@ -32,7 +32,7 @@ setup(name='spotty',
       ]},
       scripts=['bin/spotty'],
       install_requires=[
-          'boto3>=1.7.0',
+          'boto3>=1.9.0',
           'cfn_flip',
           'schema',
       ],
