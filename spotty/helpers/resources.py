@@ -164,7 +164,7 @@ def check_az_and_subnet(ec2, availability_zone, subnet_id, region):
                                  % availability_zone)
     else:
         if subnet_id:
-            raise ValueError('Availability zone should be specified if a custom subnet is specified.')
+            raise ValueError('An availability zone should be specified if a custom subnet is used.')
         else:
             default_subnets = get_default_subnet_ids(ec2)
             zones_wo_subnet = [zone_name for zone_name in zone_names if zone_name not in default_subnets]
