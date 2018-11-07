@@ -170,7 +170,7 @@ def check_az_and_subnet(ec2, availability_zone, subnet_id, region):
             zones_wo_subnet = [zone_name for zone_name in zone_names if zone_name not in default_subnets]
             if zones_wo_subnet:
                 raise ValueError('Default subnets for the following availability zones were not found: %s.\n'
-                                 'Consider to use the "subnetId" parameter or create missing default subnets.'
+                                 'Use "subnetId" and "availabilityZone" parameters or create missing default subnets.'
                                  % ', '.join(zones_wo_subnet))
 
 
