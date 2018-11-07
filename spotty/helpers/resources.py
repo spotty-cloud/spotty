@@ -33,16 +33,16 @@ def get_volume(ec2, volume_name: str):
 
 
 def get_instance_ip_address(ec2, stack_name):
-    instances_info = ec2.describe_instances(Filters=[
+    res = ec2.describe_instances(Filters=[
         {'Name': 'tag:aws:cloudformation:stack-name', 'Values': [stack_name]},
         {'Name': 'instance-state-name', 'Values': ['running']},
     ])
 
-    if not len(instances_info['Reservations']):
+    if not len(res['Reservations']):
         raise ValueError('Instance is not running.\n'
                          'Use "spotty start" command to run an instance.')
 
-    instance = instances_info['Reservations'][0]['Instances'][0]
+    instance = res['Reservations'][0]['Instances'][0]
     ip_address = instance['PublicIpAddress'] if 'PublicIpAddress' in instance else instance['PrivateIpAddress']
 
     return ip_address
@@ -58,6 +58,21 @@ def get_default_subnet_ids(ec2):
         subnets_by_zones[subnet['AvailabilityZone']] = subnet['SubnetId']
 
     return subnets_by_zones
+
+
+def get_ami(ec2, ami_name):
+    res = ec2.describe_images(Owners=['self'], Filters=[
+        {'Name': 'name', 'Values': [ami_name]},
+    ])
+
+    if len(res['Images']) > 1:
+        raise ValueError('Several AMIs use the same name: "%s".' % ami_name)
+
+    ami = {}
+    if len(res['Images']):
+        ami = res['Images'][0]
+
+    return ami
 
 
 def get_subnet(ec2, subnet_id):
@@ -121,6 +136,42 @@ def wait_stack_status_changed(cf, stack_id, waiting_status, resource_messages, r
         current_status = stack['StackStatus']
 
     return current_status, stack
+
+
+def check_az_and_subnet(ec2, availability_zone, subnet_id, region):
+    # get all availability zones for the region
+    zones = ec2.describe_availability_zones()
+    zone_names = [zone['ZoneName'] for zone in zones['AvailabilityZones']]
+
+    # check availability zone
+    if availability_zone and availability_zone not in zone_names:
+        raise ValueError('Availability zone "%s" doesn\'t exist in the "%s" region.'
+                         % (availability_zone, region))
+
+    if availability_zone:
+        if subnet_id:
+            subnet = get_subnet(ec2, subnet_id)
+            if not subnet:
+                raise ValueError('Subnet "%s" not found.' % subnet_id)
+
+            if subnet['AvailabilityZone'] != availability_zone:
+                raise ValueError('Availability zone of the subnet doesn\'t match the specified availability zone')
+        else:
+            default_subnets = get_default_subnet_ids(ec2)
+            if availability_zone not in default_subnets:
+                raise ValueError('Default subnet for the "%s" availability zone not found.\n'
+                                 'Use the "subnetId" parameter to specify a subnet for this availability zone.'
+                                 % availability_zone)
+    else:
+        if subnet_id:
+            raise ValueError('Availability zone should be specified if a custom subnet is specified.')
+        else:
+            default_subnets = get_default_subnet_ids(ec2)
+            zones_wo_subnet = [zone_name for zone_name in zone_names if zone_name not in default_subnets]
+            if zones_wo_subnet:
+                raise ValueError('Default subnets for the following availability zones were not found: %s.\n'
+                                 'Consider to use the "subnetId" parameter or create missing default subnets.'
+                                 % ', '.join(zones_wo_subnet))
 
 
 def is_gpu_instance(instance_type: str):

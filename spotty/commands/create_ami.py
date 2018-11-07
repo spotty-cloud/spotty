@@ -1,11 +1,9 @@
-import yaml
 import boto3
 from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.helpers.resources import is_gpu_instance, wait_stack_status_changed
+from spotty.helpers.resources import is_gpu_instance, wait_stack_status_changed, get_ami, check_az_and_subnet
 from spotty.helpers.validation import validate_ami_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.utils import data_dir, random_string
-from cfn_tools import CfnYamlLoader, CfnYamlDumper
+from spotty.project_resources.ami_stack import AmiStackResource
 
 
 class CreateAmiCommand(AbstractConfigCommand):
@@ -23,50 +21,37 @@ class CreateAmiCommand(AbstractConfigCommand):
         return validate_ami_config(config)
 
     def run(self, output: AbstractOutputWriter):
+        instance_config = self._config['instance']
+
         # check that it's a GPU instance type
-        instance_type = self._config['instance']['instanceType']
+        instance_type = instance_config['instanceType']
         if not is_gpu_instance(instance_type):
             raise ValueError('"%s" is not a GPU instance' % instance_type)
 
-        region = self._config['instance']['region']
+        region = instance_config['region']
+        availability_zone = instance_config['availabilityZone']
+        subnet_id = instance_config['subnetId']
+
         cf = boto3.client('cloudformation', region_name=region)
         ec2 = boto3.client('ec2', region_name=region)
 
         # check that an image with this name doesn't exist yet
         ami_name = self._config['instance']['amiName']
-        res = ec2.describe_images(Filters=[
-            {'Name': 'name', 'Values': [ami_name]},
-        ])
-
-        if len(res['Images']):
+        ami_info = get_ami(ec2, ami_name)
+        if ami_info:
             raise ValueError('AMI with name "%s" already exists.' % ami_name)
 
-        # read and update CF template
-        with open(data_dir('create_ami.yaml')) as f:
-            template = yaml.load(f, Loader=CfnYamlLoader)
+        # check availability zone and subnet
+        check_az_and_subnet(ec2, availability_zone, subnet_id, region)
 
-        # remove key parameter if key is not provided
-        key_name = self._config['instance'].get('keyName', '')
-        if not key_name:
-            del template['Parameters']['KeyName']
-            del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['KeyName']
+        ami_stack = AmiStackResource(cf)
+
+        # prepare CF template
+        key_name = instance_config.get('keyName', '')
+        template = ami_stack.prepare_template(availability_zone, subnet_id, key_name)
 
         # create stack
-        params = [
-            {'ParameterKey': 'InstanceType', 'ParameterValue': instance_type},
-            {'ParameterKey': 'ImageName', 'ParameterValue': ami_name},
-        ]
-        if key_name:
-            params.append({'ParameterKey': 'KeyName', 'ParameterValue': key_name})
-
-        stack_name = 'spotty-nvidia-docker-ami-%s' % random_string(8)
-        res = cf.create_stack(
-            StackName=stack_name,
-            TemplateBody=yaml.dump(template, Dumper=CfnYamlDumper),
-            Parameters=params,
-            Capabilities=['CAPABILITY_IAM'],
-            OnFailure='DELETE',
-        )
+        res, stack_name = ami_stack.create_stack(template, instance_type, ami_name, key_name)
 
         output.write('Waiting for the AMI to be created...')
 

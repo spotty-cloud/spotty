@@ -8,13 +8,14 @@ from spotty.project_resources.bucket import BucketResource
 
 def sync_project_with_s3(project_dir, project_name, region, sync_filters, output: AbstractOutputWriter):
     # create or get existing bucket for the project
-    s3 = boto3.client('s3', region_name=region)
-    project_bucket = BucketResource(s3, project_name, region)
-    bucket_name = project_bucket.create_bucket(output)
+    project_bucket = BucketResource(project_name, region)
+    bucket_name = project_bucket.get_or_create_bucket(output)
 
     # sync the project with S3
     AwsCli(region=region).s3_sync(project_dir, 's3://%s/project' % bucket_name, delete=True,
                                   filters=sync_filters, capture_output=False)
+
+    return bucket_name
 
 
 def sync_instance_with_s3(instance_ip_address, project_name, region, local_ssh_port: None):

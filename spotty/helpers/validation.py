@@ -110,6 +110,8 @@ def validate_ami_config(data):
     schema = Schema({
         'instance': {
             'region': And(str, len),
+            Optional('availabilityZone', default=''): str,
+            Optional('subnetId', default=''): str,
             'instanceType': And(str, len),
             Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
             Optional('keyName', default=''): str,

@@ -2,7 +2,7 @@ import os
 import yaml
 from botocore.exceptions import EndpointConnectionError
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
-from spotty.helpers.resources import get_snapshot, is_gpu_instance, stack_exists, get_volume
+from spotty.helpers.resources import get_snapshot, is_gpu_instance, stack_exists, get_volume, get_ami
 from spotty.helpers.spot_prices import get_current_spot_price
 from spotty.project_resources.key_pair import KeyPairResource
 from spotty.utils import data_dir
@@ -138,7 +138,7 @@ class StackResource(object):
 
     def create_stack(self, ec2, template: str, instance_profile_arn: str, instance_type: str, ami_name: str,
                      root_volume_size: int, mount_dirs: list, bucket_name: str, remote_project_dir: str,
-                     project_dir: str, docker_config: dict):
+                     project_name: str, project_dir: str, docker_config: dict):
         """Runs CloudFormation template."""
 
         # get default VPC ID
@@ -149,17 +149,15 @@ class StackResource(object):
         vpc_id = res['Vpcs'][0]['VpcId']
 
         # get image info
-        ami_info = ec2.describe_images(Owners=['self'], Filters=[
-            {'Name': 'name', 'Values': [ami_name]},
-        ])
-        if not len(ami_info['Images']):
+        ami_info = get_ami(ec2, ami_name)
+        if not ami_info:
             raise ValueError('AMI with name "%s" not found.\n'
                              'Use "spotty create-ami" command to create an AMI with NVIDIA Docker.' % ami_name)
 
-        ami_id = ami_info['Images'][0]['ImageId']
+        ami_id = ami_info['ImageId']
 
         # check root volume size
-        image_volume_size = ami_info['Images'][0]['BlockDeviceMappings'][0]['Ebs']['VolumeSize']
+        image_volume_size = ami_info['BlockDeviceMappings'][0]['Ebs']['VolumeSize']
         if root_volume_size and root_volume_size < image_volume_size:
             raise ValueError('Root volume size cannot be less than the size of AMI (%dGB).' % image_volume_size)
         elif not root_volume_size:
@@ -199,6 +197,7 @@ class StackResource(object):
             'DockerBuildContextPath': docker_context_path,
             'DockerNvidiaRuntime': 'true' if is_gpu_instance(instance_type) else 'false',
             'DockerWorkingDirectory': working_dir,
+            'InstanceNameTag': project_name,
             'ProjectS3Bucket': bucket_name,
             'ProjectDirectory': remote_project_dir,
         }
@@ -324,6 +323,8 @@ class StackResource(object):
             elif deletion_policy == 'delete':
                 # delete the volume on termination
                 volume_resource['DeletionPolicy'] = 'Delete'
+            else:
+                raise ValueError('Unsupported deletion policy: "%s".' % deletion_policy)
 
             # update resources
             resources[volume_resource_name] = volume_resource
