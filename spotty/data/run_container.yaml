@@ -47,6 +47,10 @@ Parameters:
     Description: Working directory inside Docker container
     Type: String
     Default: ''
+  InstanceNameTag:
+    Description: Name for the instance
+    Type: String
+    Default: ''
   ProjectS3Bucket:
     Description: S3 bucket with the project
     Type: String
@@ -71,10 +75,15 @@ Resources:
         ImageId: !Ref ImageId
         KeyName: !Ref KeyName
         EbsOptimized: 'false'
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Ref InstanceNameTag
         IamInstanceProfile:
           Arn: !Ref InstanceProfileArn
         SecurityGroupIds:
-        - !Ref InstanceSecurityGroup
+          - !Ref InstanceSecurityGroup
         InstanceInitiatedShutdownBehavior: terminate
         InstanceMarketOptions:
           MarketType: spot
@@ -229,7 +238,7 @@ Resources:
               content: !Sub |
                 if [ -n "${ProjectS3Bucket}" ] && [ -n "${ProjectDirectory}" ]; then
                   mkdir -p ${ProjectDirectory}
-                  aws s3 sync s3://${ProjectS3Bucket}/project ${ProjectDirectory}
+                  aws s3 sync --exact-timestamps s3://${ProjectS3Bucket}/project ${ProjectDirectory}
                 fi
           commands:
             sync_project:
@@ -563,8 +572,6 @@ Resources:
 Outputs:
   InstanceId:
     Value: !Ref SpotInstance
-  InstanceIpAddress:
-    Value: !GetAtt SpotInstance.PublicIp
   InstanceLogGroup:
     Value: !Ref InstanceLogGroup
   AvailabilityZone:

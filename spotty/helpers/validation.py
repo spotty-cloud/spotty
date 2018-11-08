@@ -37,6 +37,7 @@ def validate_instance_config(data):
         'instance': {
             'region': And(str, len),
             Optional('availabilityZone', default=''): str,
+            Optional('subnetId', default=''): str,
             'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
             Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
             Optional('keyName', default=''): str,
@@ -73,7 +74,10 @@ def validate_instance_config(data):
                                                       Regex(r'^[\w\.\/@-]*$',
                                                             error='Invalid name for a Dockerfile'),
                                                       And(lambda x: not x.endswith('/'),
-                                                          error='Invalid name for a Dockerfile')
+                                                          error='Invalid name for a Dockerfile'),
+                                                      And(lambda x: not os.path.isabs(x),
+                                                          error='Path to the Dockerfile should be relative to the '
+                                                                'project\'s root directory.'),
                                                       ),
                     Optional('workingDir', default=''): And(str,
                                                             And(os.path.isabs,
@@ -92,6 +96,7 @@ def validate_instance_config(data):
                 And(lambda x: not (x['image'] and x['file']), error='"image" and "file" cannot be specified together.'),
             ),
             Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
+            Optional('localSshPort', default=None): And(int, lambda x: 0 <= x <= 65535),
         },
         Optional('scripts', default={}): {
             And(str, Regex(r'^[\w-]+$')): And(str, len),
@@ -105,6 +110,8 @@ def validate_ami_config(data):
     schema = Schema({
         'instance': {
             'region': And(str, len),
+            Optional('availabilityZone', default=''): str,
+            Optional('subnetId', default=''): str,
             'instanceType': And(str, len),
             Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
             Optional('keyName', default=''): str,
