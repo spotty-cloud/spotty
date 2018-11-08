@@ -1,11 +1,12 @@
+import boto3
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.utils import random_string
 
 
 class BucketResource(object):
 
-    def __init__(self, s3, project_name: str, region: str):
-        self._s3 = s3
+    def __init__(self, project_name: str, region: str):
+        self._s3 = boto3.client('s3', region_name=region)
         self._region = region
         self._bucket_prefix = 'spotty-%s' % project_name.lower()
 
@@ -21,7 +22,7 @@ class BucketResource(object):
 
         return bucket_name
 
-    def create_bucket(self, output: AbstractOutputWriter):
+    def get_or_create_bucket(self, output: AbstractOutputWriter):
         bucket_name = self._find_bucket()
         if not bucket_name:
             bucket_name = '-'.join([self._bucket_prefix, random_string(12), self._region])
