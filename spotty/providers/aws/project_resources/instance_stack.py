@@ -3,6 +3,7 @@ import boto3
 import yaml
 from botocore.exceptions import EndpointConnectionError
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
+from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.aws.helpers.resources import get_snapshot, is_gpu_instance, stack_exists, get_volume
 from spotty.providers.aws.helpers.spot_prices import get_current_spot_price
 from spotty.providers.aws.project_resources.key_pair import KeyPairResource
@@ -34,7 +35,7 @@ class InstanceStackResource(object):
         return res['Stacks'][0]
 
     def prepare_template(self, ec2, project_name: str, instance_name: str, availability_zone: str, instance_type: str,
-                         volumes: list, ports: list, max_price, docker_commands):
+                         volumes: list, ports: list, max_price, docker_commands, output: AbstractOutputWriter):
         """Prepares CloudFormation template to run a Spot Instance."""
 
         # read and update CF template
@@ -48,7 +49,7 @@ class InstanceStackResource(object):
         for i, volume in enumerate(volumes):
             device_letter = device_letters[i]
             volume_resources, volume_availability_zone = self._get_volume_resources(ec2, project_name, instance_name,
-                                                                                    volume, device_letter)
+                                                                                    volume, device_letter, output)
 
             # existing volume will be attached to the instance
             if availability_zone and volume_availability_zone and (availability_zone != volume_availability_zone):
@@ -68,6 +69,8 @@ class InstanceStackResource(object):
             template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['Placement'] = {
                 'AvailabilityZone': availability_zone,
             }
+
+        output.write('- availability zone: %s' % (availability_zone if availability_zone else 'auto'))
 
         # make sure that the lambda to update log group retention was called after
         # the log group was created
@@ -122,6 +125,8 @@ class InstanceStackResource(object):
             # set maximum price
             template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData'] \
                 ['InstanceMarketOptions']['SpotOptions']['MaxPrice'] = max_price
+
+        output.write('- maximum instance price: %s' % (('%.04f' % max_price) if max_price else 'on-demand'))
 
         # set initial docker commands
         if docker_commands:
@@ -221,7 +226,8 @@ class InstanceStackResource(object):
         self._cf.delete_stack(StackName=self._stack_name)
 
     @staticmethod
-    def _get_volume_resources(ec2, project_name: str, instance_name: str, volume_config: dict, device_letter: str):
+    def _get_volume_resources(ec2, project_name: str, instance_name: str, volume_config: dict, device_letter: str,
+                              output: AbstractOutputWriter):
         resources = {}
         availability_zone = ''
 
@@ -261,6 +267,8 @@ class InstanceStackResource(object):
             if volume_size and (volume_size != volume_info['Size']):
                 raise ValueError('Specified size for the "%s" volume (%dGB) doesn\'t match the size of the '
                                  'existing volume (%dGB).' % (volume_name, volume_size, volume_info['Size']))
+
+            output.write('- volume "%s" (%s) will be attached' % (volume_name, volume_info['VolumeId']))
         else:
             # new volume will be created
             volume_resource_name = 'Volume' + device_letter.upper()
@@ -287,6 +295,8 @@ class InstanceStackResource(object):
 
                 # set snapshot ID
                 volume_resource['Properties']['SnapshotId'] = snapshot_info['SnapshotId']
+
+                output.write('- volume "%s" will be restored from the snapshot "%s" (%s)' % (volume_name, snapshot_name, snapshot_info['SnapshotId']))
 
                 # update or rename volume's snapshot after the stack deletion
                 snapshot_info = snapshot_info if snapshot_name == volume_name else get_snapshot(ec2, volume_name)
@@ -325,6 +335,8 @@ class InstanceStackResource(object):
                 # if the snapshot explicitly specified and it doesn't exist, raise an error
                 if volume_snapshot_name:
                     raise ValueError('Snapshot "%s" doesn\'t exist' % volume_snapshot_name)
+
+                output.write('- volume "%s" will be created' % volume_name)
 
             # set size of the volume
             if volume_size:

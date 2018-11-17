@@ -21,12 +21,13 @@ class BucketResource(object):
 
         return bucket_name
 
-    def create_bucket(self, output: AbstractOutputWriter):
+    def create_bucket(self, output: AbstractOutputWriter, dry_run=False):
         bucket_name = self._find_bucket()
         if not bucket_name:
             bucket_name = '-'.join([self._bucket_prefix, random_string(12), self._region])
-            self._s3.create_bucket(ACL='private', Bucket=bucket_name,
-                                   CreateBucketConfiguration={'LocationConstraint': self._region})
+            if not dry_run:
+                self._s3.create_bucket(ACL='private', Bucket=bucket_name,
+                                       CreateBucketConfiguration={'LocationConstraint': self._region})
             output.write('Bucket "%s" was created.' % bucket_name)
 
         return bucket_name

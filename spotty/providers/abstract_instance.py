@@ -16,7 +16,7 @@ class AbstractInstance(ABC):
 
     @abstractmethod
     def start(self, project_dir: str, sync_filters: list, container_config: dict,
-              output: AbstractOutputWriter):
+              output: AbstractOutputWriter, dry_run=False):
         """Creates a stack with the instance."""
         raise NotImplementedError
 
@@ -26,7 +26,7 @@ class AbstractInstance(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def sync(self, project_dir: str, sync_filters: list, output: AbstractOutputWriter):
+    def sync(self, project_dir: str, sync_filters: list, output: AbstractOutputWriter, dry_run=False):
         """Synchronizes the project code with the instance."""
         raise NotImplementedError
 

@@ -1,20 +1,12 @@
 import subprocess
-import boto3
 from spotty.providers.aws.helpers.aws_cli import AwsCli
-from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.aws.project_resources.bucket import BucketResource
 from spotty.providers.aws.project_resources.key_pair import KeyPairResource
 
 
-def sync_project_with_s3(project_dir, project_name, region, sync_filters, output: AbstractOutputWriter):
-    # create or get existing bucket for the project
-    s3 = boto3.client('s3', region_name=region)
-    project_bucket = BucketResource(s3, project_name, region)
-    bucket_name = project_bucket.create_bucket(output)
-
+def sync_project_with_s3(project_dir, bucket_name, region, sync_filters, dry_run=False):
     # sync the project with S3
     AwsCli(region=region).s3_sync(project_dir, 's3://%s/project' % bucket_name, delete=True,
-                                  filters=sync_filters, capture_output=False)
+                                  filters=sync_filters, capture_output=False, dry_run=dry_run)
 
 
 def sync_instance_with_s3(instance_ip_address, project_name, region):

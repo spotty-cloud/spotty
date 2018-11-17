@@ -1,4 +1,4 @@
-from argparse import Namespace
+from argparse import Namespace, ArgumentParser
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.helpers.config import get_instance_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
@@ -10,7 +10,13 @@ class StartCommand(AbstractConfigCommand):
     name = 'start'
     description = 'Run spot instance, sync the project and start the Docker container'
 
-    def _run(slf, project_dir: str, config: dict, args: Namespace, output: AbstractOutputWriter):
+    def configure(self, parser: ArgumentParser):
+        super().configure(parser)
+        parser.add_argument('--dry-run', action='store_true', help='Displays the steps that would be performed '
+                                                                   'using the specified command without actually '
+                                                                   'running them')
+
+    def _run(self, project_dir: str, config: dict, args: Namespace, output: AbstractOutputWriter):
         project_name = config['project']['name']
         sync_filters = config['project']['syncFilters']
         container_config = config['container']
@@ -24,7 +30,10 @@ class StartCommand(AbstractConfigCommand):
                              'Use "spotty stop" command to stop the instance.' % args.instance_name)
 
         # start the instance
-        instance.start(project_dir, sync_filters, container_config, output)
+        dry_run = args.dry_run
+        with output.prefix('[dry-run] ' if dry_run else ''):
+            instance.start(project_dir, sync_filters, container_config, output, dry_run)
 
-        output.write('\n' + instance.status_text)
-        output.write('\nUse "spotty ssh" command to connect to the Docker container.\n')
+        if not dry_run:
+            output.write('\n' + instance.status_text)
+            output.write('\nUse "spotty ssh" command to connect to the Docker container.\n')
