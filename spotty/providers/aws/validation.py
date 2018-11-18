@@ -12,7 +12,9 @@ def validate_aws_instance_parameters(params):
     schema = Schema({
         'region': And(str, len),
         Optional('availabilityZone', default=''): str,
+        Optional('subnetId', default=''): str,
         'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
+        Optional('spotInstance', default=True): bool,
         Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
         Optional('keyName', default=''): str,
         Optional('rootVolumeSize', default=0): And(Or(int, str), Use(str),
@@ -33,7 +35,7 @@ def validate_aws_instance_parameters(params):
                                              Use(float),
                                              And(lambda x: x > 0, error='"maxPrice" should be greater than 0 or '
                                                                         'should  not be specified.'),
-                                             ),
+                                             ),  # TODO: maxPrice can only be specified if spotInstance is true
         Optional('volumes', default=[]): And(
             [{
                 'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
@@ -53,6 +55,7 @@ def validate_aws_instance_parameters(params):
             # TODO:
             # And(lambda x: unique_name(x), error='Each volume should have a unique name.'),
         ),
+        Optional('localSshPort', default=None): And(int, lambda x: 0 <= x <= 65535),
     })
 
     return validate_config(schema, params)

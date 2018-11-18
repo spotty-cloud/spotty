@@ -35,8 +35,8 @@ class InstanceStackResource(object):
         return res['Stacks'][0]
 
     def prepare_template(self, ec2, project_name: str, instance_name: str, availability_zone: str, subnet_id: str,
-                         instance_type: str, volumes: list, ports: list, max_price, docker_commands,
-                         output: AbstractOutputWriter):
+                         instance_type: str, volumes: list, ports: list, spot_instance: bool, max_price,
+                         docker_commands, output: AbstractOutputWriter):
         """Prepares CloudFormation template to run a Spot Instance."""
 
         # read and update CF template
@@ -125,18 +125,23 @@ class InstanceStackResource(object):
                     'ToPort': port,
                 }]
 
-        if max_price:
-            # check the maximum price
-            current_price = get_current_spot_price(ec2, instance_type, availability_zone)
-            if current_price > max_price:
-                raise ValueError('Current price for the instance (%.04f) is higher than the maximum price in the '
-                                 'configuration file (%.04f).' % (current_price, max_price))
+        if spot_instance:
+            if max_price:
+                # check the maximum price
+                current_price = get_current_spot_price(ec2, instance_type, availability_zone)
+                if current_price > max_price:
+                    raise ValueError('Current price for the instance (%.04f) is higher than the maximum price in the '
+                                     'configuration file (%.04f).' % (current_price, max_price))
 
-            # set maximum price
-            template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData'] \
-                ['InstanceMarketOptions']['SpotOptions']['MaxPrice'] = max_price
+                # set maximum price
+                template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData'] \
+                    ['InstanceMarketOptions']['SpotOptions']['MaxPrice'] = max_price
 
-        output.write('- maximum instance price: %s' % (('%.04f' % max_price) if max_price else 'on-demand'))
+            output.write('- maximum Spot Instance price: %s' % (('%.04f' % max_price) if max_price else 'on-demand'))
+        else:
+            # run on-demand instance
+            del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['InstanceMarketOptions']
+            output.write('- on-demand instance')
 
         # set initial docker commands
         if docker_commands:
@@ -185,7 +190,7 @@ class InstanceStackResource(object):
         dockerfile_path = container_config.get('file', '')
         docker_context_path = ''
         if dockerfile_path:
-            if not os.path.isabs(dockerfile_path):
+            if not os.path.isfile(os.path.join(project_dir, dockerfile_path)):
                 raise ValueError('File "%s" doesn\'t exist.' % dockerfile_path)
 
             dockerfile_path = container_config['projectDir'] + '/' + dockerfile_path

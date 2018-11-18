@@ -29,7 +29,10 @@ def validate_basic_config(data):
                                                   Regex(r'^[\w\.\/@-]*$',
                                                         error='Invalid name for a Dockerfile'),
                                                   And(lambda x: not x.endswith('/'),
-                                                      error='Invalid name for a Dockerfile')
+                                                      error='Invalid name for a Dockerfile'),
+                                                  And(lambda x: not os.path.isabs(x),
+                                                      error='Path to the Dockerfile should be relative to the '
+                                                            'project\'s root directory.'),
                                                   ),
                 Optional('volumeMounts'): (And(
                     [{

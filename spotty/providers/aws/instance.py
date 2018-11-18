@@ -20,6 +20,7 @@ class AwsInstance(AbstractInstance):
     def __init__(self, project_name: str, instance_config: dict):
         super().__init__(project_name, instance_config)
 
+        # validate instance configuration
         self._instance_params = validate_aws_instance_parameters(self._instance_params)
 
         self._region = self._instance_params['region']
@@ -39,6 +40,7 @@ class AwsInstance(AbstractInstance):
         ami_name = self._instance_params['amiName']
         root_volume_size = self._instance_params['rootVolumeSize']
         docker_data_root = self._instance_params['dockerDataRoot']
+        spot_instance = self._instance_params['spotInstance']
         max_price = self._instance_params['maxPrice']
         volumes = self._instance_params['volumes']
 
@@ -65,7 +67,7 @@ class AwsInstance(AbstractInstance):
         with output.prefix('  '):
             template = self._instance_stack.prepare_template(ec2, self._project_name, self._instance_name,
                                                              availability_zone, subnet_id, instance_type, volumes,
-                                                             ports, max_price, docker_commands, output)
+                                                             ports, spot_instance, max_price, docker_commands, output)
 
         # mount directories for the volumes
         mount_dirs = OrderedDict()
@@ -210,7 +212,12 @@ class AwsInstance(AbstractInstance):
         if not instance_info:
             raise InstanceNotRunningError()
 
-        return instance_info['PublicIpAddress']
+        if 'PublicIpAddress' in instance_info:
+            ip_address = instance_info['PublicIpAddress']
+        else:
+            ip_address = instance_info['PrivateIpAddress']
+
+        return ip_address
 
     @property
     def ssh_user(self):

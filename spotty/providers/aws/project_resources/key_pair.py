@@ -9,6 +9,8 @@ class KeyPairResource(object):
     def __init__(self, project_name: str, region: str):
         self._ec2 = boto3.client('ec2', region_name=region)
         self._region = region
+        # TODO: if a case of a key name was changed, the key will not be found,
+        # TODO: but AWS will raise an error if you will try to create it
         self._key_name = 'spotty-%s-%s' % (project_name, region)
 
     @property
