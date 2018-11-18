@@ -4,7 +4,7 @@ import yaml
 from botocore.exceptions import EndpointConnectionError
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.aws.helpers.resources import get_snapshot, is_gpu_instance, stack_exists, get_volume
+from spotty.providers.aws.helpers.resources import get_snapshot, is_gpu_instance, stack_exists, get_volume, get_ami
 from spotty.providers.aws.helpers.spot_prices import get_current_spot_price
 from spotty.providers.aws.project_resources.key_pair import KeyPairResource
 from spotty.providers.aws.utils import data_dir
@@ -53,9 +53,9 @@ class InstanceStackResource(object):
 
             # existing volume will be attached to the instance
             if availability_zone and volume_availability_zone and (availability_zone != volume_availability_zone):
-                raise ValueError('You have two existing volumes in different availability zones or an availability '
-                                 'zone in the configuration file doesn\'t match an availability zone of the '
-                                 'existing volume.')
+                raise ValueError('The availability zone in the configuration file doesn\'t match the availability zone '
+                                 'of the existing volume or you have two existing volumes in different availability '
+                                 'zones.')
 
             # update availability zone
             if volume_availability_zone:
@@ -71,6 +71,15 @@ class InstanceStackResource(object):
             }
 
         output.write('- availability zone: %s' % (availability_zone if availability_zone else 'auto'))
+
+        # set subnet
+        if subnet_id:
+            template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['NetworkInterfaces'] = [{
+                'SubnetId': subnet_id,
+                'DeviceIndex': 0,
+                'Groups': template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['SecurityGroupIds'],
+            }]
+            del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['SecurityGroupIds']
 
         # make sure that the lambda to update log group retention was called after
         # the log group was created
@@ -140,8 +149,6 @@ class InstanceStackResource(object):
                      bucket_name: str, container_config: dict, docker_data_root: str):
         """Runs CloudFormation template."""
 
-        # container_config['projectDir']
-
         # get default VPC ID
         res = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
         if not len(res['Vpcs']):
@@ -150,17 +157,15 @@ class InstanceStackResource(object):
         vpc_id = res['Vpcs'][0]['VpcId']
 
         # get image info
-        ami_info = ec2.describe_images(Filters=[
-            {'Name': 'name', 'Values': [ami_name]},
-        ])
-        if not len(ami_info['Images']):
+        ami_info = get_ami(ec2, ami_name)
+        if not ami_info:
             raise ValueError('AMI with name "%s" not found.\n'
                              'Use "spotty aws create-ami" command to create an AMI with NVIDIA Docker.' % ami_name)
 
-        ami_id = ami_info['Images'][0]['ImageId']
+        ami_id = ami_info['ImageId']
 
         # check root volume size
-        image_volume_size = ami_info['Images'][0]['BlockDeviceMappings'][0]['Ebs']['VolumeSize']
+        image_volume_size = ami_info['BlockDeviceMappings'][0]['Ebs']['VolumeSize']
         if root_volume_size and root_volume_size < image_volume_size:
             raise ValueError('Root volume size cannot be less than the size of AMI (%dGB).' % image_volume_size)
         elif not root_volume_size:
@@ -177,11 +182,12 @@ class InstanceStackResource(object):
 
         # get the Dockerfile path and the build's context path
         dockerfile_path = container_config.get('file', '')
-        if not os.path.isabs(dockerfile_path):
-            dockerfile_path = container_config['projectDir'] + '/' + dockerfile_path
-
         docker_context_path = ''
         if dockerfile_path:
+            if not os.path.isabs(dockerfile_path):
+                raise ValueError('File "%s" doesn\'t exist.' % dockerfile_path)
+
+            dockerfile_path = container_config['projectDir'] + '/' + dockerfile_path
             docker_context_path = os.path.dirname(dockerfile_path)
 
         # split container volumes mapping to two different lists
@@ -208,6 +214,7 @@ class InstanceStackResource(object):
             'DockerWorkingDirectory': working_dir,
             'DockerVolumesHostDirs': ('"%s"' % '" "'.join(docker_host_dirs)) if docker_host_dirs else '',
             'DockerVolumesContainerDirs': ('"%s"' % '" "'.join(docker_container_dirs)) if docker_container_dirs else '',
+            'InstanceNameTag': project_name,
             'ProjectS3Bucket': bucket_name,
             'ProjectDirectory': project_dir,
         }
@@ -355,6 +362,8 @@ class InstanceStackResource(object):
             elif deletion_policy == 'delete':
                 # delete the volume on termination
                 volume_resource['DeletionPolicy'] = 'Delete'
+            else:
+                raise ValueError('Unsupported deletion policy: "%s".' % deletion_policy)
 
             # update resources
             resources[volume_resource_name] = volume_resource

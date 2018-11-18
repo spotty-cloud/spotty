@@ -1,5 +1,8 @@
 from argparse import ArgumentParser, Namespace
 import boto3
+from spotty.commands.abstract_config import AbstractConfigCommand
+from spotty.helpers.resources import wait_stack_status_changed, get_ami
+from spotty.helpers.validation import validate_ami_config
 from spotty.commands.abstract_command import AbstractCommand
 from spotty.providers.aws.helpers.resources import wait_stack_status_changed
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
@@ -23,23 +26,19 @@ class DeleteAmiCommand(AbstractCommand):
 
         # get image info
         ami_name = args.ami_name
-        res = ec2.describe_images(Filters=[
-            {'Name': 'name', 'Values': [ami_name]},
-        ])
+        ami_info = get_ami(ec2, ami_name)
 
-        # check that only one image with such name exists
-        if not len(res['Images']):
+        # check that the image exists
+        if not ami_info:
             raise ValueError('AMI with name "%s" not found.' % ami_name)
-        elif len(res['Images']) > 1:
-            raise ValueError('Several images with Name=%s found.' % ami_name)
 
         # get stack ID for the image
-        tag_values = [tag['Value'] for tag in res['Images'][0]['Tags'] if tag['Key'] == 'spotty:stack-id']
+        tag_values = [tag['Value'] for tag in ami_info['Tags'] if tag['Key'] == 'spotty:stack-id']
         if not len(tag_values):
             raise ValueError('AMI wasn\'t created by Spotty')
 
         # ask user to confirm the deletion
-        ami_id = res['Images'][0]['ImageId']
+        ami_id = ami_info['ImageId']
         confirm = input('AMI "%s" (ID=%s) will be deleted.\n'
                         'Type "y" to confirm: '
                         % (ami_name, ami_id))

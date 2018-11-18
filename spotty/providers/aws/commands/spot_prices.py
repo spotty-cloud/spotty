@@ -14,12 +14,16 @@ class SpotPricesCommand(AbstractCommand):
     def configure(self, parser: ArgumentParser):
         super().configure(parser)
         parser.add_argument('-i', '--instance-type', type=str, required=True, help='Instance type')
+        parser.add_argument('-r', '--region', type=str, help='AWS region')
 
     def run(self, args: Namespace, output: AbstractOutputWriter):
         # get all regions
-        ec2 = boto3.client('ec2')
-        res = ec2.describe_regions()
-        regions = [row['RegionName'] for row in res['Regions']]
+        if not self._args.region:
+            ec2 = boto3.client('ec2')
+            res = ec2.describe_regions()
+            regions = [row['RegionName'] for row in res['Regions']]
+        else:
+            regions = [self._args.region]
 
         instance_type = args.instance_type
         if not is_valid_instance_type(instance_type):

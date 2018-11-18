@@ -24,6 +24,7 @@ class RunCommand(AbstractConfigCommand):
     def _run(self, project_dir: str, config: dict, args: Namespace, output: AbstractOutputWriter):
         project_name = config['project']['name']
         sync_filters = config['project']['syncFilters']
+        local_ssh_port = instance_config['localSshPort']
 
         if args.instance_name and '=' in args.script_name:
             # fix argument values if at least two arguments provided and the second argument is a script parameter
@@ -106,7 +107,5 @@ class RunCommand(AbstractConfigCommand):
         remote_cmd = '%s || (%s && %s)' % (attach_session_cmd, upload_script_cmd, new_session_cmd)
 
         # connect to the instance and run the command above
-        host = 'ubuntu@%s' % ip_address
-        ssh_command = ['ssh', '-i', key_path, '-o', 'StrictHostKeyChecking no', host, '-t', remote_cmd]
-
+        ssh_command = get_ssh_command(project_name, region, ip_address, remote_cmd, local_ssh_port)
         subprocess.call(ssh_command)

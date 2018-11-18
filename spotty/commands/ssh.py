@@ -28,10 +28,16 @@ class SshCommand(AbstractConfigCommand):
         ssh_command = ['ssh', '-i', instance.ssh_key_path, '-o', 'StrictHostKeyChecking no', '-t', host]
 
         if args.host_os:
+            # connect to the host OS
             session_name = args.session_name if args.session_name else 'spotty-ssh-host-os'
-            ssh_command += ['tmux', 'new', '-s', session_name, '-A']
+            remote_cmd = ['tmux', 'new', '-s', session_name, '-A']
         else:
+            # connect to the container
             session_name = args.session_name if args.session_name else 'spotty-ssh-container'
-            ssh_command += ['tmux', 'new', '-s', session_name, '-A', 'sudo', '/scripts/container_bash.sh']
+            remote_cmd = ['tmux', 'new', '-s', session_name, '-A', 'sudo', '/scripts/container_bash.sh']
 
+        remote_cmd = subprocess.list2cmdline(remote_cmd)
+
+        # connect to the instance
+        ssh_command = get_ssh_command(project_name, region, ip_address, remote_cmd, local_ssh_port)
         subprocess.call(ssh_command)
