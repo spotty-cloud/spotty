@@ -1,18 +1,17 @@
-import base64
 from argparse import ArgumentParser, Namespace
-import subprocess
 import re
 import pystache
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.helpers.config import get_instance_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.helpers.ssh import run_script
 from spotty.providers.instance_factory import InstanceFactory
 
 
 class RunCommand(AbstractConfigCommand):
 
     name = 'run'
-    description = 'Run a script from configuration file inside the Docker container'
+    description = 'Run a script from the configuration file inside the Docker container'
 
     def configure(self, parser: ArgumentParser):
         super().configure(parser)
@@ -24,7 +23,6 @@ class RunCommand(AbstractConfigCommand):
     def _run(self, project_dir: str, config: dict, args: Namespace, output: AbstractOutputWriter):
         project_name = config['project']['name']
         sync_filters = config['project']['syncFilters']
-        local_ssh_port = instance_config['localSshPort']
 
         if args.instance_name and '=' in args.script_name:
             # fix argument values if at least two arguments provided and the second argument is a script parameter
@@ -58,54 +56,19 @@ class RunCommand(AbstractConfigCommand):
 
         # check that the instance is started
         instance = InstanceFactory.get_instance(project_name, instance_config)
-        if not instance.is_started():
+        if not instance.is_created():
             raise ValueError('Instance "%s" is not started.' % instance_name)
 
         # sync the project with the instance
         if args.sync:
             instance.sync(project_dir, sync_filters, output)
 
-        # get instance info
-        instance_info = instance.get_info()
-        ip_address = instance_info.ip_address
-        key_path = instance_info.ssh_key_path
-
         # tmux session name
         session_name = args.session_name if args.session_name else 'spotty-script-%s' % script_name
 
-        # base64 encoded user script from the configuration file
+        # replace script parameters
         script_content = pystache.render(config['scripts'][script_name], script_params)
-        script_base64 = base64.b64encode(script_content.encode('utf-8')).decode('utf-8')
 
-        # remote path where the script will be uploaded
-        script_path = '/tmp/docker/%s.sh' % script_name
-
-        # log file for the script outputs
-        script_log_file = '/var/log/spotty-run/%s.log' % script_name
-
-        # command to attach user to existing tmux session
-        attach_session_cmd = subprocess.list2cmdline(['tmux', 'attach', '-t', session_name, '>', '/dev/null', '2>&1'])
-
-        # command to upload user script to the instance
-        upload_script_cmd = subprocess.list2cmdline(['echo', script_base64, '|', 'base64', '-d', '>', script_path])
-
-        # command to log the time when user script started
-        start_time_cmd = subprocess.list2cmdline(['echo', '-e', '\\nScript started: `date \'+%Y-%m-%d %H:%M:%S\'`\\n',
-                                                  '>>', script_log_file])
-
-        # command to run user script inside the docker container
-        docker_cmd = subprocess.list2cmdline(['sudo', '/scripts/container_bash.sh', '-xe', script_path, '2>&1',
-                                              '|', 'tee', '-a', script_log_file])
-
-        # command to create new tmux session and run user script
-        new_session_cmd = subprocess.list2cmdline(['tmux', 'new', '-s', session_name,
-                                                   '%s && %s' % (start_time_cmd, docker_cmd)])
-
-        # composition of the commands: if user cannot be attached to the tmux session (assume the session doesn't
-        # exist), then we're uploading user script to the instance, creating new tmux session and running that script
-        # inside the Docker container
-        remote_cmd = '%s || (%s && %s)' % (attach_session_cmd, upload_script_cmd, new_session_cmd)
-
-        # connect to the instance and run the command above
-        ssh_command = get_ssh_command(project_name, region, ip_address, remote_cmd, local_ssh_port)
-        subprocess.call(ssh_command)
+        # run the script on the instance
+        run_script(instance.ip_address, instance.ssh_user, instance.ssh_key_path, script_name, script_content,
+                   session_name, instance.local_ssh_port)

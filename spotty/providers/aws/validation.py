@@ -56,3 +56,18 @@ def validate_aws_instance_parameters(params):
     })
 
     return validate_config(schema, params)
+
+
+# def validate_ami_config(data):
+#     schema = Schema({
+#         'instance': {
+#             'region': And(str, len),
+#             Optional('availabilityZone', default=''): str,
+#             Optional('subnetId', default=''): str,
+#             'instanceType': And(str, len),
+#             Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
+#             Optional('keyName', default=''): str,
+#         },
+#     }, ignore_extra_keys=True)
+#
+#     return validate_config(schema, data)

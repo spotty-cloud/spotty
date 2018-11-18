@@ -3,6 +3,7 @@ import subprocess
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.helpers.config import get_instance_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.helpers.ssh import get_ssh_command
 from spotty.providers.instance_factory import InstanceFactory
 
 
@@ -23,10 +24,6 @@ class SshCommand(AbstractConfigCommand):
 
         instance = InstanceFactory.get_instance(project_name, instance_config)
 
-        # connect to the instance
-        host = '%s@%s' % (instance.ssh_user, instance.ip_address)
-        ssh_command = ['ssh', '-i', instance.ssh_key_path, '-o', 'StrictHostKeyChecking no', '-t', host]
-
         if args.host_os:
             # connect to the host OS
             session_name = args.session_name if args.session_name else 'spotty-ssh-host-os'
@@ -39,5 +36,6 @@ class SshCommand(AbstractConfigCommand):
         remote_cmd = subprocess.list2cmdline(remote_cmd)
 
         # connect to the instance
-        ssh_command = get_ssh_command(project_name, region, ip_address, remote_cmd, local_ssh_port)
+        ssh_command = get_ssh_command(instance.ip_address, instance.ssh_user, instance.ssh_key_path, remote_cmd,
+                                      instance.local_ssh_port)
         subprocess.call(ssh_command)

@@ -9,7 +9,7 @@ class AmiStackResource(object):
     def __init__(self, cf):
         self._cf = cf
 
-    def prepare_template(self, availability_zone: str, subnet_id: str, key_name: str):
+    def prepare_template(self, availability_zone: str, subnet_id: str, key_name: str, on_demand=False):
         """Prepares CloudFormation template to run a Spot Instance."""
 
         # read and update CF template
@@ -33,6 +33,10 @@ class AmiStackResource(object):
                 'SubnetId': subnet_id,
                 'DeviceIndex': 0,
             }]
+
+        # run on-demand instance
+        if on_demand:
+            del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['InstanceMarketOptions']
 
         return yaml.dump(template, Dumper=CfnYamlDumper)
 

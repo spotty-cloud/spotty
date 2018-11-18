@@ -1,10 +1,7 @@
 from argparse import ArgumentParser, Namespace
 import boto3
-from spotty.commands.abstract_config import AbstractConfigCommand
-from spotty.helpers.resources import wait_stack_status_changed, get_ami
-from spotty.helpers.validation import validate_ami_config
 from spotty.commands.abstract_command import AbstractCommand
-from spotty.providers.aws.helpers.resources import wait_stack_status_changed
+from spotty.providers.aws.helpers.resources import wait_stack_status_changed, get_ami
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.aws.validation import DEFAULT_AMI_NAME
 
@@ -21,14 +18,13 @@ class DeleteAmiCommand(AbstractCommand):
 
     def run(self, args: Namespace, output: AbstractOutputWriter):
         region = args.region
+        ami_name = args.ami_name
+
         cf = boto3.client('cloudformation', region_name=region)
         ec2 = boto3.client('ec2', region_name=region)
 
         # get image info
-        ami_name = args.ami_name
         ami_info = get_ami(ec2, ami_name)
-
-        # check that the image exists
         if not ami_info:
             raise ValueError('AMI with name "%s" not found.' % ami_name)
 

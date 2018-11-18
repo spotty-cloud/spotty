@@ -4,7 +4,7 @@ import os
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.errors.stack_not_created import StackNotCreatedError
-from spotty.providers.aws.helpers.resources import wait_stack_status_changed, get_instance_info
+from spotty.providers.aws.helpers.resources import wait_stack_status_changed, get_instance_info, check_az_and_subnet
 from spotty.providers.aws.helpers.spot_prices import get_current_spot_price
 from spotty.providers.aws.helpers.sync import sync_project_with_s3, sync_instance_with_s3
 from spotty.providers.aws.project_resources.bucket import BucketResource
@@ -34,6 +34,7 @@ class AwsInstance(AbstractInstance):
         ec2 = boto3.client('ec2', region_name=self._region)
 
         availability_zone = self._instance_params['availabilityZone']
+        subnet_id = self._instance_params['subnetId']
         instance_type = self._instance_params['instanceType']
         ami_name = self._instance_params['amiName']
         root_volume_size = self._instance_params['rootVolumeSize']
@@ -41,10 +42,12 @@ class AwsInstance(AbstractInstance):
         max_price = self._instance_params['maxPrice']
         volumes = self._instance_params['volumes']
 
+        # check availability zone and subnet
+        check_az_and_subnet(ec2, availability_zone, subnet_id, self._region)
+
         # create or get existing bucket for the project
-        s3 = boto3.client('s3', region_name=self._region)
-        project_bucket = BucketResource(s3, self._project_name, self._region)
-        bucket_name = project_bucket.create_bucket(output, dry_run)
+        project_bucket = BucketResource(self._project_name, self._region)
+        bucket_name = project_bucket.get_or_create_bucket(output, dry_run)
 
         # sync the project with the bucket
         sync_project_with_s3(project_dir, bucket_name, self._region, sync_filters, dry_run)
@@ -55,22 +58,14 @@ class AwsInstance(AbstractInstance):
         # prepare CloudFormation template
         output.write('Preparing CloudFormation template...')
 
-        # check availability zone
-        if availability_zone:
-            zones = ec2.describe_availability_zones()
-            zone_names = [zone['ZoneName'] for zone in zones['AvailabilityZones']]
-            if availability_zone not in zone_names:
-                raise ValueError('Availability zone "%s" doesn\'t exist in the "%s" region.'
-                                 % (availability_zone, self._region))
-
         # prepare CF template
         ports = container_config['ports']
         docker_commands = container_config['commands']
 
         with output.prefix('  '):
             template = self._instance_stack.prepare_template(ec2, self._project_name, self._instance_name,
-                                                             availability_zone, instance_type, volumes, ports,
-                                                             max_price, docker_commands, output)
+                                                             availability_zone, subnet_id, instance_type, volumes,
+                                                             ports, max_price, docker_commands, output)
 
         # mount directories for the volumes
         mount_dirs = OrderedDict()
@@ -78,7 +73,7 @@ class AwsInstance(AbstractInstance):
             if volume['parameters']['directory']:
                 mount_dir = volume['parameters']['directory']
             else:
-                mount_dir = '/mnt/%s-%s-%s' % (self._project_name, volume['name'], self._instance_name)
+                mount_dir = '/mnt/%s-%s-%s' % (self._project_name, self._instance_name, volume['name'])
 
             mount_dirs[volume['name']] = mount_dir
 
@@ -91,10 +86,10 @@ class AwsInstance(AbstractInstance):
                 if container_mount['name'] in mount_dirs:
                     container_volumes[mount_dirs[container_mount['name']]] = container_mount['mountPath']
                     output.write('%s -> EBS volume (%s-%s-%s)' % (container_mount['mountPath'], self._project_name,
-                                                                  container_mount['name'], self._instance_name))
+                                                                  self._instance_name, container_mount['name']))
                 else:
                     tmp_host_dir = '/tmp/spotty/volumes/%s-%s-%s' \
-                                   % (self._project_name, container_mount['name'], self._instance_name)
+                                   % (self._project_name, self._instance_name, container_mount['name'])
                     container_volumes[tmp_host_dir] = container_mount['mountPath']
                     output.write('%s -> temporary directory' % container_mount['mountPath'])
 
@@ -123,7 +118,8 @@ class AwsInstance(AbstractInstance):
         if dry_run:
             return
 
-        res = self._instance_stack.create_stack(ec2, template, instance_profile_arn, instance_type, ami_name,
+        res = self._instance_stack.create_stack(ec2, template, self._project_name, self._instance_name,
+                                                instance_profile_arn, instance_type, ami_name,
                                                 root_volume_size, project_dir, list(mount_dirs.values()),
                                                 container_volumes, bucket_name, container_config, docker_data_root)
 
@@ -170,9 +166,8 @@ class AwsInstance(AbstractInstance):
 
     def sync(self, project_dir: str, sync_filters: list, output: AbstractOutputWriter, dry_run=False):
         # create or get existing bucket for the project
-        s3 = boto3.client('s3', region_name=self._region)
-        project_bucket = BucketResource(s3, self._project_name, self._region)
-        bucket_name = project_bucket.create_bucket(output, dry_run)
+        project_bucket = BucketResource(self._project_name, self._region)
+        bucket_name = project_bucket.get_or_create_bucket(output, dry_run)
 
         # sync the project with S3 bucket
         output.write('Syncing the project with S3 bucket...')
@@ -181,7 +176,7 @@ class AwsInstance(AbstractInstance):
         # sync S3 with the instance
         output.write('Syncing S3 bucket with the instance...')
         if not dry_run:
-            sync_instance_with_s3(self.ip_address, self._project_name, self._region)
+            sync_instance_with_s3(self.ip_address, self.ssh_user, self.ssh_key_path, self.local_ssh_port)
 
     @property
     def status_text(self):

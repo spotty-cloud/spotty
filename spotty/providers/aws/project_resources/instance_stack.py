@@ -34,8 +34,9 @@ class InstanceStackResource(object):
 
         return res['Stacks'][0]
 
-    def prepare_template(self, ec2, project_name: str, instance_name: str, availability_zone: str, instance_type: str,
-                         volumes: list, ports: list, max_price, docker_commands, output: AbstractOutputWriter):
+    def prepare_template(self, ec2, project_name: str, instance_name: str, availability_zone: str, subnet_id: str,
+                         instance_type: str, volumes: list, ports: list, max_price, docker_commands,
+                         output: AbstractOutputWriter):
         """Prepares CloudFormation template to run a Spot Instance."""
 
         # read and update CF template
@@ -144,9 +145,9 @@ class InstanceStackResource(object):
 
         return yaml.dump(template, Dumper=CfnYamlDumper)
 
-    def create_stack(self, ec2, template: str, instance_profile_arn: str, instance_type: str, ami_name: str,
-                     root_volume_size: int, project_dir: str, mount_dirs: list, container_volumes: dict,
-                     bucket_name: str, container_config: dict, docker_data_root: str):
+    def create_stack(self, ec2, template: str, project_name: str, instance_name: str, instance_profile_arn: str,
+                     instance_type: str, ami_name: str, root_volume_size: int, project_dir: str, mount_dirs: list,
+                     container_volumes: dict, bucket_name: str, container_config: dict, docker_data_root: str):
         """Runs CloudFormation template."""
 
         # get default VPC ID
@@ -214,7 +215,7 @@ class InstanceStackResource(object):
             'DockerWorkingDirectory': working_dir,
             'DockerVolumesHostDirs': ('"%s"' % '" "'.join(docker_host_dirs)) if docker_host_dirs else '',
             'DockerVolumesContainerDirs': ('"%s"' % '" "'.join(docker_container_dirs)) if docker_container_dirs else '',
-            'InstanceNameTag': project_name,
+            'InstanceNameTag': '%s-%s' % (project_name, instance_name),
             'ProjectS3Bucket': bucket_name,
             'ProjectDirectory': project_dir,
         }
@@ -252,7 +253,7 @@ class InstanceStackResource(object):
 
         # this is a name of the existing volume or a name of the existing snapshot if the volume doesn't exist
         # this name will be used to "create" or "update" volume snapshot
-        volume_name = '%s-%s-%s' % (project_name, volume_config['name'], instance_name)
+        volume_name = '%s-%s-%s' % (project_name, instance_name, volume_config['name'])
 
         # this snapshot name (if provided) is used ONLY to restore the volume,
         # this name WILL NOT be used to "create" or "update" volume snapshot

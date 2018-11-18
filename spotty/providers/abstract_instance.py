@@ -53,3 +53,7 @@ class AbstractInstance(ABC):
     @abstractmethod
     def ssh_key_path(self):
         raise NotImplementedError
+
+    @property
+    def local_ssh_port(self):
+        return self._instance_params['localSshPort']
