@@ -69,7 +69,7 @@ class AwsInstance(AbstractInstance):
                                                              availability_zone, subnet_id, instance_type, volumes,
                                                              ports, spot_instance, max_price, docker_commands, output)
 
-        # mount directories for the volumes
+        # get mount directories for the volumes
         mount_dirs = OrderedDict()
         for volume in volumes:
             if volume['parameters']['directory']:
@@ -81,7 +81,7 @@ class AwsInstance(AbstractInstance):
 
         output.write('\nContainer volumes:')
 
-        # container volumes mapping
+        # get container volumes mapping
         with output.prefix('  '):
             container_volumes = {}
             for container_mount in container_config['volumeMounts']:
@@ -95,24 +95,24 @@ class AwsInstance(AbstractInstance):
                     container_volumes[tmp_host_dir] = container_mount['mountPath']
                     output.write('%s -> temporary directory' % container_mount['mountPath'])
 
+            # get project directory
+            container_project_dir = container_config['projectDir']
+            project_dir = None
+            for host_dir, container_dir in container_volumes.items():
+                if (container_project_dir + '/').startswith(container_dir + '/'):
+                    project_subdir = os.path.relpath(container_project_dir, container_dir)
+                    project_dir = host_dir + '/' + project_subdir
+                    break
+
+            if not project_dir:
+                # use temporary directory for the project
+                project_dir = '/tmp/spotty/projects/%s' % self._project_name
+
+                # update container volume mappings
+                container_volumes[project_dir] = container_project_dir
+                output.write('  %s -> temporary directory' % project_dir)
+
         output.write('')
-
-        # get project directory
-        container_project_dir = container_config['projectDir']
-        project_dir = None
-        for host_dir, container_dir in container_volumes.items():
-            if (container_project_dir + '/').startswith(container_dir + '/'):
-                project_subdir = os.path.relpath(container_project_dir, container_dir)
-                project_dir = host_dir + '/' + project_subdir
-                break
-
-        if not project_dir:
-            # use temporary directory for the project
-            project_dir = '/tmp/spotty/projects/%s' % self._project_name
-
-            # update container volume mappings
-            container_volumes[project_dir] = container_project_dir
-            output.write('  %s -> temporary directory' % project_dir)
 
         # create stack
         output.write('Waiting for the stack to be created...')
@@ -131,9 +131,11 @@ class AwsInstance(AbstractInstance):
         ]
 
         # wait for the stack to be created
-        status, stack_info = wait_stack_status_changed(cf, stack_id=res['StackId'], waiting_status='CREATE_IN_PROGRESS',
-                                                       resource_messages=resource_messages,
-                                                       resource_success_status='CREATE_COMPLETE', output=output)
+        with output.prefix('  '):
+            status, stack_info = wait_stack_status_changed(cf, stack_id=res['StackId'],
+                                                           waiting_status='CREATE_IN_PROGRESS',
+                                                           resource_messages=resource_messages,
+                                                           resource_success_status='CREATE_COMPLETE', output=output)
 
         if status != 'CREATE_COMPLETE':
             raise ValueError('Stack "%s" was not created.\n'
@@ -158,9 +160,10 @@ class AwsInstance(AbstractInstance):
         ]
 
         # wait for the deletion to be completed
-        status, stack_info = wait_stack_status_changed(cf, stack_id=stack_id, waiting_status='DELETE_IN_PROGRESS',
-                                                       resource_messages=resource_messages,
-                                                       resource_success_status='DELETE_COMPLETE', output=output)
+        with output.prefix('  '):
+            status, stack_info = wait_stack_status_changed(cf, stack_id=stack_id, waiting_status='DELETE_IN_PROGRESS',
+                                                           resource_messages=resource_messages,
+                                                           resource_success_status='DELETE_COMPLETE', output=output)
 
         if status != 'DELETE_COMPLETE':
             raise ValueError('Stack "%s" was not deleted.\n'
@@ -193,15 +196,18 @@ class AwsInstance(AbstractInstance):
         availability_zone = instance_info['Placement']['AvailabilityZone']
         launch_time_str = instance_info['LaunchTime'].strftime('%Y-%m-%d %H:%M:%S')
 
-        spot_price = get_current_spot_price(ec2, instance_type, availability_zone)
-
-        text = 'Instance State: %s.\n' \
-               'Instance Type: %s.\n' \
+        text = 'Instance State: %s\n' \
+               'Instance Type: %s\n' \
                'IP Address: %s\n' \
                'Availability Zone: %s\n' \
-               'Launch Time: %s\n' \
-               'Current Spot Price: $%.04f' % (state_name, instance_type, ip_address, availability_zone,
-                                               launch_time_str, spot_price)
+               'Launch Time: %s' % (state_name, instance_type, ip_address, availability_zone, launch_time_str)
+
+        if instance_info['InstanceLifecycle'] == 'spot':
+            spot_price = get_current_spot_price(ec2, instance_type, availability_zone)
+            text += '\nPurchasing Option: Spot Instance'
+            text += '\nCurrent Spot Instance Price: $%.04f' % spot_price
+        else:
+            text += '\nPurchasing Option: On-Demand Instance'
 
         return text
 

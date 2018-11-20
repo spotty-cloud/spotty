@@ -49,9 +49,10 @@ class DeleteAmiCommand(AbstractCommand):
         output.write('Waiting for the AMI to be deleted...')
 
         # wait for the deletion to be completed
-        status, stack = wait_stack_status_changed(cf, stack_id=stack_id, waiting_status='DELETE_IN_PROGRESS',
-                                                  resource_messages=[],
-                                                  resource_success_status='DELETE_COMPLETE', output=output)
+        with output.prefix('  '):
+            status, stack = wait_stack_status_changed(cf, stack_id=stack_id, waiting_status='DELETE_IN_PROGRESS',
+                                                      resource_messages=[],
+                                                      resource_success_status='DELETE_COMPLETE', output=output)
 
         if status == 'DELETE_COMPLETE':
             output.write('\n'

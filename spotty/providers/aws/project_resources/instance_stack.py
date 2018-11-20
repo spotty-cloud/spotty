@@ -44,6 +44,8 @@ class InstanceStackResource(object):
             template = yaml.load(f, Loader=CfnYamlLoader)
 
         # ending letters for the devices (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html)
+        # TODO: different device names on different types of instances,
+        # see: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nvme-ebs-volumes.html
         device_letters = 'fghijklmnop'
 
         # create and attach volumes

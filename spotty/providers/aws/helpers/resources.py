@@ -119,7 +119,7 @@ def wait_stack_status_changed(cf, stack_id, waiting_status, resource_messages, r
                                               resource_statuses.get(resource_name, '') == resource_success_status):
                 (resource_name, resource_msg) = next(resource_messages, (False, False))
                 if resource_name:
-                    output.write('  - %s...' % resource_msg)
+                    output.write('- %s...' % resource_msg)
 
         # get the latest status of the stack
         try:

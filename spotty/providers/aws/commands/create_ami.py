@@ -66,9 +66,10 @@ class CreateAmiCommand(AbstractCommand):
         ]
 
         # wait for the stack to be created
-        status, stack = wait_stack_status_changed(cf, stack_id=res['StackId'], waiting_status='CREATE_IN_PROGRESS',
-                                                  resource_messages=resource_messages,
-                                                  resource_success_status='CREATE_COMPLETE', output=output)
+        with output.prefix('  '):
+            status, stack = wait_stack_status_changed(cf, stack_id=res['StackId'], waiting_status='CREATE_IN_PROGRESS',
+                                                      resource_messages=resource_messages,
+                                                      resource_success_status='CREATE_COMPLETE', output=output)
 
         if status == 'CREATE_COMPLETE':
             ami_id = [row['OutputValue'] for row in stack['Outputs'] if row['OutputKey'] == 'NewAMI'][0]
