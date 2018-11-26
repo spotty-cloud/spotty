@@ -1,9 +1,9 @@
 import os
 from schema import Schema, And, Use, Optional, Or, Regex
-from spotty.helpers.config import validate_config
+from spotty.config.utils import validate_config
 
 
-def validate_basic_config(data):
+def validate_basic_config(data, project_dir):
     schema = Schema({
         'project': {
             'name': And(str, Regex(r'^[a-zA-Z0-9][a-zA-Z0-9-]{,26}[a-zA-Z0-9]$')),
@@ -33,15 +33,17 @@ def validate_basic_config(data):
                                                   And(lambda x: not os.path.isabs(x),
                                                       error='Path to the Dockerfile should be relative to the '
                                                             'project\'s root directory.'),
+                                                  And(lambda x: os.path.isfile(os.path.join(project_dir, x)),
+                                                      error='Dockerfile not found.'),
                                                   ),
-                Optional('volumeMounts'): (And(
+                Optional('volumes'): (And(
                     [{
                         'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
-                        'mountPath': And(str,
-                                         And(os.path.isabs,
-                                             error='Use an absolute path when specifying a mount directory'),
-                                         Use(lambda x: x.rstrip('/'))
-                                         ),
+                        'path': And(str,
+                                    And(os.path.isabs,
+                                        error='Use an absolute path when specifying a mount directory'),
+                                    Use(lambda x: x.rstrip('/'))
+                                    ),
                     }],
                     # TODO:
                     # And(lambda x: no_prefixes(x), error='Mount paths cannot be prefixes for each other.'),

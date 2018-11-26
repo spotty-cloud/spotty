@@ -2,10 +2,9 @@ from argparse import ArgumentParser, Namespace
 import re
 import pystache
 from spotty.commands.abstract_config_command import AbstractConfigCommand
-from spotty.helpers.config import get_instance_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.helpers.ssh import run_script
-from spotty.providers.instance_factory import InstanceFactory
+from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
 
 class RunCommand(AbstractConfigCommand):
@@ -20,8 +19,8 @@ class RunCommand(AbstractConfigCommand):
         parser.add_argument('script_name', metavar='SCRIPT_NAME', type=str, help='Script name')
         parser.add_argument('script_params', metavar='PARAMETER=VALUE', nargs='*', type=str, help='Script parameters')
 
-    def _run(self, project_dir: str, config: dict, args: Namespace, output: AbstractOutputWriter):
-        project_name = config['project']['name']
+    def _run(self, project_dir: str, config: dict, instance_manager: AbstractInstanceManager,
+             args: Namespace, output: AbstractOutputWriter):
         sync_filters = config['project']['syncFilters']
 
         if args.instance_name and '=' in args.script_name:
@@ -33,9 +32,6 @@ class RunCommand(AbstractConfigCommand):
             instance_name = args.instance_name
             script_name = args.script_name
             script_params = args.script_params
-
-        # get the instance config
-        instance_config = get_instance_config(config['instances'], instance_name)
 
         # check that the script exists
         if script_name not in config['scripts']:
@@ -55,13 +51,12 @@ class RunCommand(AbstractConfigCommand):
             params[param_name] = param_value
 
         # check that the instance is started
-        instance = InstanceFactory.get_instance(project_name, instance_config)
-        if not instance.is_created():
+        if not instance_manager.is_running():
             raise ValueError('Instance "%s" is not started.' % instance_name)
 
         # sync the project with the instance
         if args.sync:
-            instance.sync(project_dir, sync_filters, output)
+            instance_manager.sync(project_dir, sync_filters, output)
 
         # tmux session name
         session_name = args.session_name if args.session_name else 'spotty-script-%s' % script_name
@@ -70,5 +65,5 @@ class RunCommand(AbstractConfigCommand):
         script_content = pystache.render(config['scripts'][script_name], script_params)
 
         # run the script on the instance
-        run_script(instance.ip_address, instance.ssh_user, instance.ssh_key_path, script_name, script_content,
-                   session_name, instance.local_ssh_port)
+        run_script(instance_manager.ip_address, instance_manager.ssh_user, instance_manager.ssh_key_path,
+                   script_name, script_content, session_name, instance_manager.local_ssh_port)

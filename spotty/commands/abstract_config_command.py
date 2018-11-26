@@ -2,16 +2,21 @@ from abc import abstractmethod
 import yaml
 import os
 from argparse import Namespace, ArgumentParser
+
+from spotty.config.utils import get_instance_config
+from spotty.providers.abstract_instance_manager import AbstractInstanceManager
+from spotty.providers.instance_manager_factory import InstanceManagerFactory
 from yaml.scanner import ScannerError
 from spotty.commands.abstract_command import AbstractCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.helpers.validation import validate_basic_config
+from spotty.config.validation import validate_basic_config
 
 
 class AbstractConfigCommand(AbstractCommand):
 
     @abstractmethod
-    def _run(self, project_dir: str, config: dict, args: Namespace, output: AbstractOutputWriter):
+    def _run(self, project_dir: str, config: dict, instance_manager: AbstractInstanceManager,
+             args: Namespace, output: AbstractOutputWriter):
         raise NotImplementedError
 
     def configure(self, parser: ArgumentParser):
@@ -36,9 +41,16 @@ class AbstractConfigCommand(AbstractCommand):
         project_dir = os.path.dirname(config_abs_path)
 
         # load project config file
-        config = validate_basic_config(self._load_config(config_abs_path))
+        config = validate_basic_config(self._load_config(config_abs_path), project_dir)
 
-        self._run(project_dir, config, args, output)
+        # get instance manager
+        project_name = config['project']['name']
+        container_config = config['container']
+        instance_config = get_instance_config(config['instances'], args.instance_name)
+        instance_manager = InstanceManagerFactory.get_instance(project_name, instance_config, container_config)
+
+        # run the command
+        self._run(project_dir, config, instance_manager, args, output)
 
     @staticmethod
     def _load_config(config_path: str):

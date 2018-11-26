@@ -1,10 +1,9 @@
 from argparse import ArgumentParser, Namespace
 import subprocess
 from spotty.commands.abstract_config_command import AbstractConfigCommand
-from spotty.helpers.config import get_instance_config
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.helpers.ssh import get_ssh_command
-from spotty.providers.instance_factory import InstanceFactory
+from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
 
 class SshCommand(AbstractConfigCommand):
@@ -18,12 +17,8 @@ class SshCommand(AbstractConfigCommand):
                                                                          'container')
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')
 
-    def _run(self, project_dir: str, config: dict, args: Namespace, output: AbstractOutputWriter):
-        project_name = config['project']['name']
-        instance_config = get_instance_config(config['instances'], args.instance_name)
-
-        instance = InstanceFactory.get_instance(project_name, instance_config)
-
+    def _run(self, project_dir: str, config: dict, instance_manager: AbstractInstanceManager,
+             args: Namespace, output: AbstractOutputWriter):
         if args.host_os:
             # connect to the host OS
             session_name = args.session_name if args.session_name else 'spotty-ssh-host-os'
@@ -36,6 +31,7 @@ class SshCommand(AbstractConfigCommand):
         remote_cmd = subprocess.list2cmdline(remote_cmd)
 
         # connect to the instance
-        ssh_command = get_ssh_command(instance.ip_address, instance.ssh_user, instance.ssh_key_path, remote_cmd,
-                                      instance.local_ssh_port)
+        ssh_command = get_ssh_command(instance_manager.ip_address, instance_manager.ssh_user,
+                                      instance_manager.ssh_key_path, remote_cmd,
+                                      instance_manager.local_ssh_port)
         subprocess.call(ssh_command)

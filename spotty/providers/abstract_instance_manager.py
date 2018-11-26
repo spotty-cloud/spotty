@@ -2,26 +2,35 @@ from abc import ABC, abstractmethod
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
-class AbstractInstance(ABC):
+class AbstractInstanceManager(ABC):
 
-    def __init__(self, project_name: str, instance_config: dict):
+    def __init__(self, project_name: str, instance_name: str, instance_params: dict, container_config: dict):
         self._project_name = project_name
-        self._instance_name = instance_config['name']
-        self._instance_params = instance_config['parameters']
+        self._instance_name = instance_name
+        self._instance_params = instance_params
+        self._container_config = container_config
+
+    @property
+    def instance_name(self):
+        return self._instance_name
 
     @abstractmethod
-    def is_created(self):
-        """Checks if the stack with the instance is created."""
+    def is_running(self):
+        """Checks if the instance is running."""
         raise NotImplementedError
 
     @abstractmethod
-    def start(self, project_dir: str, sync_filters: list, container_config: dict,
-              output: AbstractOutputWriter, dry_run=False):
+    def start(self, project_dir: str, sync_filters: list, output: AbstractOutputWriter, dry_run=False):
         """Creates a stack with the instance."""
         raise NotImplementedError
 
     @abstractmethod
-    def stop(self, project_name: str, output: AbstractOutputWriter):
+    def stop(self, output: AbstractOutputWriter):
+        """Deletes the stack."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def clean(self, output: AbstractOutputWriter):
         """Deletes the stack."""
         raise NotImplementedError
 
@@ -55,5 +64,6 @@ class AbstractInstance(ABC):
         raise NotImplementedError
 
     @property
+    @abstractmethod
     def local_ssh_port(self):
-        return self._instance_params['localSshPort']
+        raise NotImplementedError

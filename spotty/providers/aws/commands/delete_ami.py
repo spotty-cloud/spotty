@@ -1,8 +1,9 @@
 from argparse import ArgumentParser, Namespace
 import boto3
 from spotty.commands.abstract_command import AbstractCommand
-from spotty.providers.aws.helpers.resources import wait_stack_status_changed, get_ami
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.providers.aws.resources.image import Image
+from spotty.providers.aws.resources.stack import Stack
 from spotty.providers.aws.validation import DEFAULT_AMI_NAME
 
 
@@ -24,41 +25,40 @@ class DeleteAmiCommand(AbstractCommand):
         ec2 = boto3.client('ec2', region_name=region)
 
         # get image info
-        ami_info = get_ami(ec2, ami_name)
-        if not ami_info:
+        ami = Image.get_by_name(ec2, ami_name)
+        if not ami:
             raise ValueError('AMI with name "%s" not found.' % ami_name)
 
         # get stack ID for the image
-        tag_values = [tag['Value'] for tag in ami_info['Tags'] if tag['Key'] == 'spotty:stack-id']
-        if not len(tag_values):
+        stack_id = ami.get_tag_value('spotty:stack-id')
+        if not stack_id:
             raise ValueError('AMI wasn\'t created by Spotty')
 
         # ask user to confirm the deletion
-        ami_id = ami_info['ImageId']
         confirm = input('AMI "%s" (ID=%s) will be deleted.\n'
                         'Type "y" to confirm: '
-                        % (ami_name, ami_id))
+                        % (ami_name, ami.image_id))
         if confirm != 'y':
             output.write('You didn\'t confirm the operation.')
             return
 
         # delete the image
-        stack_id = tag_values[0]
-        cf.delete_stack(StackName=stack_id)
+        stack = Stack.get_by_name(cf, stack_id)
+        stack.delete()
 
         output.write('Waiting for the AMI to be deleted...')
 
         # wait for the deletion to be completed
         with output.prefix('  '):
-            status, stack = wait_stack_status_changed(cf, stack_id=stack_id, waiting_status='DELETE_IN_PROGRESS',
-                                                      resource_messages=[],
-                                                      resource_success_status='DELETE_COMPLETE', output=output)
+            stack = stack.wait_status_changed(waiting_status='DELETE_IN_PROGRESS',
+                                              resource_messages=[],
+                                              resource_success_status='DELETE_COMPLETE', output=output)
 
-        if status == 'DELETE_COMPLETE':
+        if stack.status == 'DELETE_COMPLETE':
             output.write('\n'
-                         '--------------------\n'
+                         '-----------------------------\n'
                          'AMI was successfully deleted.\n'
-                         '--------------------')
+                         '-----------------------------')
         else:
             raise ValueError('Stack "%s" not deleted.\n'
                              'See CloudFormation and CloudWatch logs for details.' % stack_id)

@@ -17,7 +17,10 @@ class KeyPairResource(object):
     def key_path(self):
         return os.path.join(get_spotty_keys_dir(), self._key_name)
 
-    def create_key(self):
+    def create_key(self, dry_run=False):
+        if dry_run:
+            return self._key_name
+
         key_path = self.key_path
         key_file_exists = os.path.isfile(key_path)
         aws_key_exists = self._key_exists()

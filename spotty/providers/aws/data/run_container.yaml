@@ -63,7 +63,7 @@ Parameters:
     Description: S3 bucket with the project
     Type: String
     Default: ''
-  ProjectDirectory:
+  HostProjectDirectory:
     Description: Destination directory for the project
     Type: String
     Default: ''
@@ -244,9 +244,9 @@ Resources:
               group: root
               mode: '000400'
               content: !Sub |
-                if [ -n "${ProjectS3Bucket}" ] && [ -n "${ProjectDirectory}" ]; then
-                  mkdir -p ${ProjectDirectory}
-                  aws s3 sync --exact-timestamps s3://${ProjectS3Bucket}/project ${ProjectDirectory}
+                if [ -n "${ProjectS3Bucket}" ] && [ -n "${HostProjectDirectory}" ]; then
+                  mkdir -p ${HostProjectDirectory}
+                  aws s3 sync --exact-timestamps s3://${ProjectS3Bucket}/project ${HostProjectDirectory}
                 fi
           commands:
             sync_project:
@@ -299,7 +299,7 @@ Resources:
 
                   # run docker container
                   CONTAINER_NAME=spotty
-                  docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAMS \
+                  docker run $NVIDIA_RUNTIME --net=host --privileged -td $VOLUME_PARAMS \
                     -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker \
                     --name $CONTAINER_NAME $DOCKER_IMAGE /bin/sh
 
@@ -366,212 +366,6 @@ Resources:
         IpProtocol: tcp
         FromPort: 22
         ToPort: 22
-
-  # function to terminate the instance before detaching the volume
-  # (otherwise the volume will be in busy state, because it's mounted to the instance)
-  TerminateInstance:
-    Type: Custom::InstanceTermination
-    DependsOn: []
-    Properties:
-      ServiceToken: !GetAtt TerminateInstanceFunction.Arn
-      InstanceId: !Ref SpotInstance
-  TerminateInstanceFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Handler: index.handler
-      Role: !GetAtt TerminateInstanceLambdaExecutionRole.Arn
-      Runtime: nodejs4.3
-      Timeout: 30
-      Code:
-        ZipFile: !Sub |
-          var aws=require("aws-sdk");var response=require('cfn-response');exports.handler=function(event,context){console.log("request received:\n"+JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{}
-          console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
-          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
-          if(event.RequestType!=='Delete'){console.log('Non-delete request is ignored');return success()}
-          var instanceId=event.ResourceProperties.InstanceId;if(!instanceId){return failed('InstanceId required')}
-          var ec2=new aws.EC2({region:event.ResourceProperties.Region});ec2.terminateInstances({InstanceIds:[instanceId]}).promise().then((data)=>{console.log('"terminateInstances" Response:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}
-  TerminateInstanceLambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-              - lambda.amazonaws.com
-          Action:
-            - 'sts:AssumeRole'
-      Path: /
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
-      Policies:
-      - PolicyName: EC2Policy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-              - 'ec2:TerminateInstances'
-              Resource: ['*']
-  TerminateInstanceFunctionRetention:
-    Type: Custom::LogsRetention
-    DependsOn: TerminateInstance
-    Properties:
-      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
-      LogGroupName: !Join ['', ['/aws/lambda/', !Ref TerminateInstanceFunction]]
-      RetentionInDays: 1
-
-  # function to delete the snapshot that was used to create the volume
-  DeleteSnapshotFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Handler: index.handler
-      Role: !GetAtt DeleteSnapshotLambdaExecutionRole.Arn
-      Runtime: nodejs4.3
-      Timeout: 30
-      Code:
-        ZipFile: !Sub |
-          var aws=require('aws-sdk');var response=require('cfn-response');exports.handler=function(event,context){console.log('Request received:\n',JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{};console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
-          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
-          if(event.RequestType!=='Delete'){console.log('Non-delete request is ignored');return success()}
-          var snapshotId=event.ResourceProperties.SnapshotId;if(!snapshotId){return failed('SnapshotId required')}
-          var ec2=new aws.EC2({region:event.ResourceProperties.Region});ec2.describeSnapshots({Filters:[{Name:'snapshot-id',Values:[snapshotId]}]}).promise().then((data)=>{console.log('"describeSnapshots" response:\n',JSON.stringify(data));if(!data.Snapshots.length){console.log('Snapshot not found');return null}
-          return ec2.deleteSnapshot({SnapshotId:snapshotId}).promise()}).then((data)=>{console.log('"deleteSnapshot" response:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}
-  DeleteSnapshotLambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-              - lambda.amazonaws.com
-          Action:
-            - 'sts:AssumeRole'
-      Path: /
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
-      Policies:
-      - PolicyName: EC2Policy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-              - 'ec2:DescribeSnapshots'
-              - 'ec2:DeleteSnapshot'
-              Resource: ['*']
-  DeleteSnapshotFunctionRetention:
-    Type: Custom::LogsRetention
-    DependsOn: []
-    Properties:
-      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
-      LogGroupName: !Join ['', ['/aws/lambda/', !Ref DeleteSnapshotFunction]]
-      RetentionInDays: 1
-
-  # function to rename the snapshot that was used to create the volume
-  RenameSnapshotFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Handler: index.handler
-      Role: !GetAtt RenameSnapshotLambdaExecutionRole.Arn
-      Runtime: nodejs4.3
-      Timeout: 30
-      Code:
-        ZipFile: !Sub |
-          var aws=require('aws-sdk');var response=require('cfn-response');exports.handler=function(event,context){console.log('Request received:\n',JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{};console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
-          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
-          if(event.RequestType!=='Delete'){console.log('Non-delete request is ignored');return success()}
-          var snapshotId=event.ResourceProperties.SnapshotId;if(!snapshotId){return failed('SnapshotId required')}
-          var ec2=new aws.EC2({region:event.ResourceProperties.Region});ec2.describeSnapshots({Filters:[{Name:'snapshot-id',Values:[snapshotId]}]}).promise().then((data)=>{console.log('"describeSnapshots" response:\n',JSON.stringify(data));if(!data.Snapshots.length){console.log('Snapshot not found');return null}
-          var snapshotName=data.Snapshots[0].Tags.filter(function(el){return el.Key=='Name'})[0].Value;var snapshotDate=data.Snapshots[0].StartTime,newSnapshotName=snapshotName.substring(0,244)+'-'+Math.floor(snapshotDate.getTime()/1000);return ec2.createTags({Resources:[snapshotId],Tags:[{Key:'Name',Value:newSnapshotName}],}).promise()}).then((data)=>{console.log('"deleteSnapshot" response:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}
-  RenameSnapshotLambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-              - lambda.amazonaws.com
-          Action:
-            - 'sts:AssumeRole'
-      Path: /
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
-      Policies:
-      - PolicyName: EC2Policy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-              - 'ec2:DescribeSnapshots'
-              - 'ec2:CreateTags'
-              Resource: ['*']
-  RenameSnapshotFunctionRetention:
-    Type: Custom::LogsRetention
-    DependsOn: []
-    Properties:
-      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
-      LogGroupName: !Join ['', ['/aws/lambda/', !Ref RenameSnapshotFunction]]
-      RetentionInDays: 1
-
-  # function to set logs retention for a log group to 1 day (for lambdas by default they never expire)
-  SetLogsRetentionFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Handler: index.handler
-      Role: !GetAtt SetLogsRetentionLambdaExecutionRole.Arn
-      Runtime: nodejs4.3
-      Timeout: 30
-      Code:
-        ZipFile: |
-          var aws=require("aws-sdk");var response=require('cfn-response');exports.handler=function(event,context){console.log("request received:\n"+JSON.stringify(event));var physicalId=event.PhysicalResourceId;function success(data){data=data||{}
-          console.log('SUCCESS:\n',data);return response.send(event,context,response.SUCCESS,data,physicalId)}
-          function failed(err){console.log('FAILED:\n',err);return response.send(event,context,response.FAILED,err,physicalId)}
-          if(event.RequestType!=='Create'){console.log('Non-create request is ignored');return success()}
-          var logGroupName=event.ResourceProperties.LogGroupName;if(!logGroupName){return failed('LogGroupName required')}
-          var retentionInDays=event.ResourceProperties.RetentionInDays;if(!retentionInDays){return failed('RetentionInDays required')}
-          var cloudwatchlogs=new aws.CloudWatchLogs();cloudwatchlogs.putRetentionPolicy({logGroupName:logGroupName,retentionInDays:retentionInDays}).promise().then((data)=>{console.log('"putRetentionPolicy" Response:\n',JSON.stringify(data));success()}).catch((err)=>failed(err))}
-  SetLogsRetentionLambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-              - lambda.amazonaws.com
-          Action:
-            - 'sts:AssumeRole'
-      Path: /
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
-      Policies:
-      - PolicyName: CloudWatchLogsPolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-              - logs:PutRetentionPolicy
-              Resource:
-              - arn:aws:logs:*:*:*
-  SetLogsRetentionFunctionRetention:
-    Type: Custom::LogsRetention
-    Properties:
-      ServiceToken: !GetAtt SetLogsRetentionFunction.Arn
-      LogGroupName: !Join ['', ['/aws/lambda/', !Ref SetLogsRetentionFunction]]
-      RetentionInDays: 1
 
   DockerReadyWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
