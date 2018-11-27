@@ -13,13 +13,10 @@ class SyncCommand(AbstractConfigCommand):
         super().configure(parser)
         parser.add_argument('--dry-run', action='store_true', help='Show files to be synced')
 
-    def _run(self, project_dir: str, config: dict, instance_manager: AbstractInstanceManager,
-             args: Namespace, output: AbstractOutputWriter):
-        sync_filters = config['project']['syncFilters']
-
+    def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
         dry_run = args.dry_run
         with output.prefix('[dry-run] ' if dry_run else ''):
             output.write('Syncing the project with the instance...')
-            instance_manager.sync(project_dir, sync_filters, output, dry_run)
+            instance_manager.sync(output, dry_run)
 
         output.write('Done')

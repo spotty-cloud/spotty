@@ -24,7 +24,6 @@ class Volume(object):
 
     @property
     def name(self) -> str:
-        # TODO: check if there is an empty array if volume has no tags
         volume_name = [tag['Value'] for tag in self._volume_info['Tags'] if tag['Key'] == 'Name']
         if not volume_name:
             return ''

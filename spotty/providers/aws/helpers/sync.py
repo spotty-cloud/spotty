@@ -9,7 +9,7 @@ def sync_project_with_s3(project_dir, bucket_name, region, sync_filters, dry_run
                                   filters=sync_filters, capture_output=False, dry_run=dry_run)
 
 
-def sync_instance_with_s3(host: str, user: str, key_path: str, local_ssh_port: None):
+def sync_instance_with_s3(host: str, user: str, key_path: str, local_ssh_port: int = None):
     # command to sync S3 with the instance
     remote_cmd = subprocess.list2cmdline(['sudo', '-i', '/bin/bash', '-e', '/tmp/scripts/sync_project.sh',
                                           '>', '/dev/null'])

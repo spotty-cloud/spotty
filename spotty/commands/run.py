@@ -19,10 +19,7 @@ class RunCommand(AbstractConfigCommand):
         parser.add_argument('script_name', metavar='SCRIPT_NAME', type=str, help='Script name')
         parser.add_argument('script_params', metavar='PARAMETER=VALUE', nargs='*', type=str, help='Script parameters')
 
-    def _run(self, project_dir: str, config: dict, instance_manager: AbstractInstanceManager,
-             args: Namespace, output: AbstractOutputWriter):
-        sync_filters = config['project']['syncFilters']
-
+    def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
         if args.instance_name and '=' in args.script_name:
             # fix argument values if at least two arguments provided and the second argument is a script parameter
             instance_name = None
@@ -34,7 +31,8 @@ class RunCommand(AbstractConfigCommand):
             script_params = args.script_params
 
         # check that the script exists
-        if script_name not in config['scripts']:
+        scripts = instance_manager.project_config.scripts
+        if script_name not in scripts:
             raise ValueError('Script "%s" is not defined in the configuration file.' % script_name)
 
         # get script parameters
@@ -56,13 +54,13 @@ class RunCommand(AbstractConfigCommand):
 
         # sync the project with the instance
         if args.sync:
-            instance_manager.sync(project_dir, sync_filters, output)
+            instance_manager.sync(output)
 
         # tmux session name
         session_name = args.session_name if args.session_name else 'spotty-script-%s' % script_name
 
         # replace script parameters
-        script_content = pystache.render(config['scripts'][script_name], script_params)
+        script_content = pystache.render(scripts[script_name], script_params)
 
         # run the script on the instance
         run_script(instance_manager.ip_address, instance_manager.ssh_user, instance_manager.ssh_key_path,

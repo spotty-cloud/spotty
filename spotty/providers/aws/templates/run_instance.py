@@ -174,8 +174,8 @@ class RunInstanceTemplate(object):
             # set snapshot ID
             volume_resource['Properties']['SnapshotId'] = snapshot.snapshot_id
 
-            output.write('- volume "%s" will be restored\nfrom the snapshot "%s" (%s)'
-                         % (volume.ec2_volume_name, snapshot.name, snapshot.snapshot_id))
+            output.write('- volume "%s" will be restored from the snapshot "%s"'
+                         % (volume.ec2_volume_name, snapshot.name))
 
         else:
             # empty volume will be created, check that the size is specified

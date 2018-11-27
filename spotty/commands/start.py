@@ -7,7 +7,7 @@ from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 class StartCommand(AbstractConfigCommand):
 
     name = 'start'
-    description = 'Run spot instance, sync the project and start the Docker container'
+    description = 'Run a spot instance, sync the project and start the Docker container'
 
     def configure(self, parser: ArgumentParser):
         super().configure(parser)
@@ -15,14 +15,11 @@ class StartCommand(AbstractConfigCommand):
                                                                    'using the specified command without actually '
                                                                    'running them')
 
-    def _run(self, project_dir: str, config: dict, instance_manager: AbstractInstanceManager,
-             args: Namespace, output: AbstractOutputWriter):
-        sync_filters = config['project']['syncFilters']
-
+    def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
         # start the instance
         dry_run = args.dry_run
         with output.prefix('[dry-run] ' if dry_run else ''):
-            instance_manager.start(project_dir, sync_filters, output, dry_run)
+            instance_manager.start(output, dry_run)
 
         if not dry_run:
             output.write('\n' + instance_manager.status_text)

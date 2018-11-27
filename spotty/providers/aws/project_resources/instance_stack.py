@@ -59,15 +59,17 @@ class InstanceStackResource(object):
 
         return stack
 
-    def delete_stack(self, output: AbstractOutputWriter):
+    def delete_stack(self, output: AbstractOutputWriter, no_wait=False):
         stack = Stack.get_by_name(self._cf, self._stack_name)
 
-        output.write('Waiting for the stack to be deleted...')
+        if not no_wait:
+            output.write('Waiting for the stack to be deleted...')
 
         # delete the stack
         try:
             stack.delete()
-            stack.wait_stack_deleted()
+            if not no_wait:
+                stack.wait_stack_deleted()
         except Exception as e:
             raise ValueError('Stack "%s" was not deleted. Error: %s\n'
                              'See CloudFormation logs for details.' % (self._stack_name, str(e)))

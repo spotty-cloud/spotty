@@ -17,8 +17,7 @@ class SshCommand(AbstractConfigCommand):
                                                                          'container')
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')
 
-    def _run(self, project_dir: str, config: dict, instance_manager: AbstractInstanceManager,
-             args: Namespace, output: AbstractOutputWriter):
+    def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
         if args.host_os:
             # connect to the host OS
             session_name = args.session_name if args.session_name else 'spotty-ssh-host-os'

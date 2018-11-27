@@ -9,8 +9,7 @@ class StopCommand(AbstractConfigCommand):
     name = 'stop'
     description = 'Terminate running instance and apply deletion policies for the volumes'
 
-    def _run(self, project_dir: str, config: dict, instance_manager: AbstractInstanceManager,
-             args: Namespace, output: AbstractOutputWriter):
+    def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
 
         instance_manager.stop(output)
 

@@ -1,4 +1,5 @@
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.config.project_config import ProjectConfig
 from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.providers.aws.helpers.instance_config import InstanceConfig
 from spotty.providers.aws.helpers.sync import sync_project_with_s3, sync_instance_with_s3
@@ -13,17 +14,17 @@ from spotty.utils import render_table
 
 class AwsInstanceManager(AbstractInstanceManager):
 
-    def __init__(self, project_name: str, instance_name: str, instance_params: dict, container_config: dict):
-        super().__init__(project_name, instance_name, instance_params, container_config)
+    def __init__(self, instance_config: dict, project_config: ProjectConfig):
+        super().__init__(instance_config, project_config)
 
-        self._config = InstanceConfig(self._instance_name, self._instance_params, self._project_name,
-                                      self._container_config)
-        self._stack = InstanceStackResource(self._project_name, self._instance_name, self._config.region)
-        self._template = RunInstanceTemplate(self._config)
+        self._instance_config = InstanceConfig(project_config.project_name, instance_config, project_config.container)
+        self._stack = InstanceStackResource(project_config.project_name, self._instance_config.name,
+                                            self._instance_config.region)
+        self._template = RunInstanceTemplate(self._instance_config)
 
     @property
-    def config(self) -> InstanceConfig:
-        return self._config
+    def instance_config(self) -> InstanceConfig:
+        return self._instance_config
 
     def is_running(self):
         instance = self._stack.get_instance()
@@ -32,16 +33,16 @@ class AwsInstanceManager(AbstractInstanceManager):
 
         return instance.is_running()
 
-    def start(self, project_dir: str, sync_filters: list, output: AbstractOutputWriter, dry_run=False):
+    def start(self, output: AbstractOutputWriter, dry_run=False):
         # check that it's not a Nitro-based instance
-        if is_nitro_instance(self._config.instance_type):
+        if is_nitro_instance(self.instance_config.instance_type):
             raise ValueError('Currently Nitro-based instances are not supported.')
 
         # check availability zone and subnet
-        self._config.check_az_and_subnet()
+        self.instance_config.check_az_and_subnet()
 
         # check the maximum price for a spot instance
-        self._config.check_max_price()
+        self.instance_config.check_max_price()
 
         # check if the instance is already running
         instance = self._stack.get_instance()
@@ -57,13 +58,14 @@ class AwsInstanceManager(AbstractInstanceManager):
             instance.wait_instance_terminated()
 
         # create or get existing bucket for the project
-        bucket_name = self._config.bucket.get_or_create_bucket(output, dry_run)
+        bucket_name = self.instance_config.bucket.get_or_create_bucket(output, dry_run)
 
         # sync the project with the bucket
-        sync_project_with_s3(project_dir, bucket_name, self._config.region, sync_filters, dry_run)
+        sync_project_with_s3(self.project_config.project_dir, bucket_name, self.instance_config.region,
+                             self.project_config.sync_filters, dry_run)
 
         # create or update instance profile
-        instance_profile_arn = create_or_update_instance_profile(self._config.region, output, dry_run)
+        instance_profile_arn = create_or_update_instance_profile(self.instance_config.region, output, dry_run)
 
         output.write('Preparing CloudFormation template...')
 
@@ -77,8 +79,8 @@ class AwsInstanceManager(AbstractInstanceManager):
         # print container volumes
         output.write('\nContainer volumes:')
         with output.prefix('  '):
-            volumes_dict = {volume.name: volume for volume in self._config.volumes}
-            for volume_mount in self._config.volume_mounts:
+            volumes_dict = {volume.name: volume for volume in self.instance_config.volumes}
+            for volume_mount in self.instance_config.volume_mounts:
                 if volume_mount.name in volumes_dict:
                     output.write('%s -> EBS volume (%s)'
                                  % (volume_mount.container_dir, volumes_dict[volume_mount.name].ec2_volume_name))
@@ -98,6 +100,9 @@ class AwsInstanceManager(AbstractInstanceManager):
             instance.terminate()
             instance.wait_instance_terminated()
 
+        # delete the stack
+        self._stack.delete_stack(output, no_wait=True)
+
         output.write('Applying deletion policies for the volumes...')
 
         # apply deletion policies for the volumes
@@ -107,13 +112,14 @@ class AwsInstanceManager(AbstractInstanceManager):
     def clean(self, output: AbstractOutputWriter):
         pass
 
-    def sync(self, project_dir: str, sync_filters: list, output: AbstractOutputWriter, dry_run=False):
+    def sync(self, output: AbstractOutputWriter, dry_run=False):
         # create or get existing bucket for the project
-        bucket_name = self._config.bucket.get_or_create_bucket(output, dry_run)
+        bucket_name = self.instance_config.bucket.get_or_create_bucket(output, dry_run)
 
         # sync the project with S3 bucket
         output.write('Syncing the project with S3 bucket...')
-        sync_project_with_s3(project_dir, bucket_name, self._config.region, sync_filters, dry_run)
+        sync_project_with_s3(self.project_config.project_dir, bucket_name, self.instance_config.region,
+                             self.project_config.sync_filters, dry_run)
 
         # sync S3 with the instance
         output.write('Syncing S3 bucket with the instance...')
@@ -160,11 +166,7 @@ class AwsInstanceManager(AbstractInstanceManager):
 
     @property
     def ssh_key_path(self):
-        return self._config.key_pair.key_path
-
-    @property
-    def local_ssh_port(self):
-        return self._config.local_ssh_port
+        return self.instance_config.key_pair.key_path
 
     def apply_deletion_policies(self, output: AbstractOutputWriter):
         """Applies deletion policies to the volumes."""
@@ -172,7 +174,7 @@ class AwsInstanceManager(AbstractInstanceManager):
         delete_snapshots = []
         delete_volumes = []
 
-        for volume in self._config.volumes:
+        for volume in self.instance_config.volumes:
             # get EC2 volume
             try:
                 ec2_volume = volume.get_ec2_volume()

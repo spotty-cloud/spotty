@@ -2,7 +2,7 @@ import base64
 import subprocess
 
 
-def get_ssh_command(host: str, user: str, key_path: str, remote_cmd: str, local_ssh_port: None,
+def get_ssh_command(host: str, user: str, key_path: str, remote_cmd: str, local_ssh_port: int = None,
                     quiet: bool = False) -> list:
     ssh_port = 22
 
@@ -19,7 +19,7 @@ def get_ssh_command(host: str, user: str, key_path: str, remote_cmd: str, local_
     return ssh_command
 
 
-def run_script(host, user, key_path, script_name, script_content, tmux_session_name, local_ssh_port: None):
+def run_script(host, user, key_path, script_name, script_content, tmux_session_name, local_ssh_port: int = None):
     # encode the script content to base64
     script_base64 = base64.b64encode(script_content.encode('utf-8')).decode('utf-8')
 

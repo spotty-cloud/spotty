@@ -17,24 +17,25 @@ VolumeMount = namedtuple('VolumeMount', ['name', 'host_dir', 'container_dir'])
 
 class InstanceConfig(object):
 
-    def __init__(self, instance_name: str, instance_params: dict, project_name: str, container_config: dict):
-        # validate instance configuration
-        self._params = validate_aws_instance_parameters(instance_params)
+    def __init__(self, project_name: str, instance_config: dict, container_config: ContainerConfig):
+        self._project_name = project_name
+        self._name = instance_config['name']
+        self._params = validate_aws_instance_parameters(instance_config['parameters'])
+        self._container = container_config
 
         self._ec2 = boto3.client('ec2', region_name=self.region)
 
         # volume configs
-        self._volumes = [VolumeConfig(self._ec2, volume['name'], volume['parameters'], project_name, instance_name)
+        self._volumes = [VolumeConfig(self._ec2, volume['name'], volume['parameters'], project_name, self._name)
                          for volume in self._params['volumes']]
-
-        # container config
-        self._container = ContainerConfig(container_config)
 
         # get container volumes and host project directory
         self._volume_mounts, self._host_project_dir = self._get_volume_mounts(self._volumes)
 
-        self._name = instance_name
-        self._project_name = project_name
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def region(self) -> str:
@@ -79,10 +80,6 @@ class InstanceConfig(object):
     @property
     def docker_data_root(self) -> str:
         return self._params['dockerDataRoot']
-
-    @property
-    def local_ssh_port(self) -> int:
-        return self._params['localSshPort']
 
     @property
     def ec2_instance_name(self) -> str:

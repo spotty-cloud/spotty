@@ -1,18 +1,21 @@
 from abc import ABC, abstractmethod
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.config.project_config import ProjectConfig
 
 
 class AbstractInstanceManager(ABC):
 
-    def __init__(self, project_name: str, instance_name: str, instance_params: dict, container_config: dict):
-        self._project_name = project_name
-        self._instance_name = instance_name
-        self._instance_params = instance_params
-        self._container_config = container_config
+    def __init__(self, instance_config: dict, project_config: ProjectConfig):
+        self._instance_config = instance_config
+        self._project_config = project_config
 
     @property
-    def instance_name(self):
-        return self._instance_name
+    def project_config(self) -> ProjectConfig:
+        return self._project_config
+
+    @property
+    def instance_config(self) -> dict:
+        return self._instance_config
 
     @abstractmethod
     def is_running(self):
@@ -20,7 +23,7 @@ class AbstractInstanceManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def start(self, project_dir: str, sync_filters: list, output: AbstractOutputWriter, dry_run=False):
+    def start(self, output: AbstractOutputWriter, dry_run=False):
         """Creates a stack with the instance."""
         raise NotImplementedError
 
@@ -35,7 +38,7 @@ class AbstractInstanceManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def sync(self, project_dir: str, sync_filters: list, output: AbstractOutputWriter, dry_run=False):
+    def sync(self, output: AbstractOutputWriter, dry_run=False):
         """Synchronizes the project code with the instance."""
         raise NotImplementedError
 
@@ -64,6 +67,6 @@ class AbstractInstanceManager(ABC):
         raise NotImplementedError
 
     @property
-    @abstractmethod
-    def local_ssh_port(self):
-        raise NotImplementedError
+    def local_ssh_port(self) -> int:
+        # TODO: add the check to the general config validator
+        return self._instance_config['parameters']['localSshPort']

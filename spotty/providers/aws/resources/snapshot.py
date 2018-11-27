@@ -24,7 +24,6 @@ class Snapshot(object):
 
     @property
     def name(self) -> str:
-        # TODO: check if there is an empty array if snapshot has no tags
         snapshot_name = [tag['Value'] for tag in self._snapshot_info['Tags'] if tag['Key'] == 'Name']
         if not snapshot_name:
             return ''
