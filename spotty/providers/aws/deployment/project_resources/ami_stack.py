@@ -1,8 +1,6 @@
 import boto3
-import yaml
-from cfn_tools import CfnYamlLoader, CfnYamlDumper
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.aws.resources.stack import Stack
+from spotty.providers.aws.aws_resources.stack import Stack
 from spotty.providers.aws.utils import data_dir
 from spotty.utils import random_string
 
@@ -11,37 +9,6 @@ class AmiStackResource(object):
 
     def __init__(self, region):
         self._cf = boto3.client('cloudformation', region_name=region)
-
-    def prepare_template(self, availability_zone: str, subnet_id: str, key_name: str, on_demand=False):
-        """Prepares CloudFormation template to run a Spot Instance."""
-
-        # read and update CF template
-        with open(data_dir('create_ami.yaml')) as f:
-            template = yaml.load(f, Loader=CfnYamlLoader)
-
-        # remove key parameter if key is not provided
-        if not key_name:
-            del template['Parameters']['KeyName']
-            del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['KeyName']
-
-        # set availability zone
-        if availability_zone:
-            template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['Placement'] = {
-                'AvailabilityZone': availability_zone,
-            }
-
-        # set subnet
-        if subnet_id:
-            template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['NetworkInterfaces'] = [{
-                'SubnetId': subnet_id,
-                'DeviceIndex': 0,
-            }]
-
-        # run on-demand instance
-        if on_demand:
-            del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['InstanceMarketOptions']
-
-        return yaml.dump(template, Dumper=CfnYamlDumper)
 
     def create_stack(self, template: str, instance_type: str, ami_name: str, key_name: str,
                      output: AbstractOutputWriter):

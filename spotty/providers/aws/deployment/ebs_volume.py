@@ -1,31 +1,25 @@
-from spotty.config.abstract_volume_config import AbstractVolumeConfig
-from spotty.providers.aws.resources.snapshot import Snapshot
-from spotty.providers.aws.resources.volume import Volume
+from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.providers.aws.aws_resources.snapshot import Snapshot
+from spotty.providers.aws.aws_resources.volume import Volume
 
 
-class VolumeConfig(AbstractVolumeConfig):
+class EbsVolume(AbstractInstanceVolume):
 
     DP_CREATE_SNAPSHOT = 'create_snapshot'
     DP_UPDATE_SNAPSHOT = 'update_snapshot'
     DP_RETAIN = 'retain'
     DP_DELETE = 'delete'
 
-    def __init__(self, ec2, volume_name, volume_params, project_name, instance_name):
+    def __init__(self, ec2, volume_config: dict, project_name: str, instance_name: str):
         self._ec2 = ec2
-        self._name = volume_name
-        self._params = volume_params
+        self._name = volume_config['name']
+        self._params = volume_config['parameters']
         self._project_name = project_name
         self._instance_name = instance_name
 
     @property
-    def name(self) -> str:
-        """Returns internal name for the volume."""
+    def name(self):
         return self._name
-
-    @property
-    def ec2_volume_name(self) -> str:
-        """Returns EBS volume name."""
-        return '%s-%s-%s' % (self._project_name, self._instance_name, self._name)
 
     @property
     def snapshot_name(self) -> str:
@@ -36,6 +30,15 @@ class VolumeConfig(AbstractVolumeConfig):
         return self._params['size']
 
     @property
+    def deletion_policy(self) -> str:
+        return self._params['deletionPolicy']
+
+    @property
+    def ec2_volume_name(self) -> str:
+        """Returns EBS volume name."""
+        return '%s-%s-%s' % (self._project_name, self._instance_name, self.name)
+
+    @property
     def mount_dir(self) -> str:
         if self._params['mountDir']:
             mount_dir = self._params['mountDir']
@@ -44,13 +47,13 @@ class VolumeConfig(AbstractVolumeConfig):
 
         return mount_dir
 
-    @property
-    def deletion_policy(self) -> str:
-        return self._params['deletionPolicy']
-
     def get_ec2_volume(self) -> Volume:
         return Volume.get_by_name(self._ec2, self.ec2_volume_name)
 
     def get_snapshot(self, from_volume_name=False) -> Snapshot:
-        snapshot_name = self.snapshot_name if self.snapshot_name and not from_volume_name else self.ec2_volume_name
+        if self.snapshot_name and not from_volume_name:
+            snapshot_name = self.snapshot_name
+        else:
+            snapshot_name = self.ec2_volume_name
+
         return Snapshot.get_by_name(self._ec2, snapshot_name)

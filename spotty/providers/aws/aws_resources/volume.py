@@ -1,4 +1,4 @@
-from spotty.providers.aws.resources.snapshot import Snapshot
+from spotty.providers.aws.aws_resources.snapshot import Snapshot
 
 
 class Volume(object):

@@ -2,9 +2,9 @@ from argparse import ArgumentParser, Namespace
 import boto3
 from spotty.commands.abstract_command import AbstractCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.aws.resources.image import Image
-from spotty.providers.aws.resources.stack import Stack
-from spotty.providers.aws.validation import DEFAULT_AMI_NAME
+from spotty.providers.aws.aws_resources.image import Image
+from spotty.providers.aws.aws_resources.stack import Stack
+from spotty.providers.aws.config.validation import DEFAULT_AMI_NAME
 
 
 class DeleteAmiCommand(AbstractCommand):

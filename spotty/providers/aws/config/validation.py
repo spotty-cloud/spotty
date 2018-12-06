@@ -1,14 +1,14 @@
 import os
 from schema import Schema, Optional, And, Regex, Or, Use
-from spotty.config.utils import validate_config
-
+from spotty.config.validation import get_instance_schema, validate_config
+from spotty.providers.aws.deployment.ebs_volume import EbsVolume
 
 AMI_NAME_REGEX = r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$'
 DEFAULT_AMI_NAME = 'SpottyAMI'
 
 
-def validate_aws_instance_parameters(params):
-    schema = Schema({
+def validate_aws_instance_parameters(params: dict):
+    instance_parameters = {
         'region': And(str, len),
         Optional('availabilityZone', default=''): str,
         Optional('subnetId', default=''): str,
@@ -35,27 +35,27 @@ def validate_aws_instance_parameters(params):
                                              And(lambda x: x > 0, error='"maxPrice" should be greater than 0 or '
                                                                         'should  not be specified.'),
                                              ),  # TODO: maxPrice can only be specified if spotInstance is true
-        Optional('volumes', default=[]): And(
-            [{
-                'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
-                'parameters': {
-                    Optional('mountDir', default=''): And(str, lambda x: x.startswith('/'),
-                                                          Use(lambda x: x.rstrip('/'))),
-                    Optional('snapshotName', default=''): str,
-                    Optional('size', default=0): And(int, lambda x: x > 0),
-                    Optional('deletionPolicy',
-                             default='create_snapshot'): And(str, lambda x: x in ['create_snapshot', 'update_snapshot',
-                                                                                  'retain', 'delete'],
-                                                             error='Incorrect value for "deletionPolicy".'
-                                                             ),
-                }
-            }],
-            And(lambda x: len(x) < 12, error='Maximum 11 volumes are supported at the moment.'),
-            # TODO:
-            # And(lambda x: unique_name(x), error='Each volume should have a unique name.'),
-        ),
-        Optional('localSshPort', default=None): And(int, lambda x: 0 <= x <= 65535),
-    })
+    }
+
+    volume_parameters = {
+        Optional('mountDir', default=''): And(str, lambda x: x.startswith('/'),
+                                              Use(lambda x: x.rstrip('/'))),
+        Optional('snapshotName', default=''): str,
+        Optional('size', default=0): And(int, lambda x: x > 0),
+        Optional('deletionPolicy',
+                 default=EbsVolume.DP_CREATE_SNAPSHOT): And(str, lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,
+                                                                                 EbsVolume.DP_UPDATE_SNAPSHOT,
+                                                                                 EbsVolume.DP_RETAIN,
+                                                                                 EbsVolume.DP_DELETE],
+                                                            error='Incorrect value for "deletionPolicy".'
+                                                            ),
+    }
+
+    volumes_checks = [
+        And(lambda x: len(x) < 12, error='Maximum 11 volumes are supported at the moment.'),
+    ]
+
+    schema = Schema(get_instance_schema(instance_parameters, volume_parameters, volumes_checks))
 
     return validate_config(schema, params)
 

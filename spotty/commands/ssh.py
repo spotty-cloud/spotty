@@ -32,5 +32,5 @@ class SshCommand(AbstractConfigCommand):
         # connect to the instance
         ssh_command = get_ssh_command(instance_manager.ip_address, instance_manager.ssh_user,
                                       instance_manager.ssh_key_path, remote_cmd,
-                                      instance_manager.local_ssh_port)
+                                      instance_manager.instance_config.local_ssh_port)
         subprocess.call(ssh_command)

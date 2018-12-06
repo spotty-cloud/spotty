@@ -3,7 +3,7 @@ import boto3
 from spotty.commands.abstract_command import AbstractCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.aws.helpers.spot_prices import get_spot_prices
-from spotty.providers.aws.validation import is_valid_instance_type
+from spotty.providers.aws.config.validation import is_valid_instance_type
 
 
 class SpotPricesCommand(AbstractCommand):

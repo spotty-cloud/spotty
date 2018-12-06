@@ -1,8 +1,8 @@
 import boto3
 from botocore.exceptions import ClientError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.aws.resources.stack import Stack
-from spotty.providers.aws.utils import data_dir
+from spotty.providers.aws.aws_resources.stack import Stack
+from spotty.providers.aws.deployment.cf_templates.instance_profile_template import prepare_instance_profile_template
 
 
 def create_or_update_instance_profile(region, output: AbstractOutputWriter, dry_run=False):
@@ -16,8 +16,7 @@ def create_or_update_instance_profile(region, output: AbstractOutputWriter, dry_
     cf = boto3.client('cloudformation', region_name=region)
 
     instance_profile_stack_name = 'spotty-instance-profile'
-    with open(data_dir('create_instance_profile.yaml')) as f:
-        instance_profile_stack_template = f.read()
+    template = prepare_instance_profile_template()
 
     stack = Stack.get_by_name(cf, instance_profile_stack_name)
     if stack:
@@ -27,7 +26,7 @@ def create_or_update_instance_profile(region, output: AbstractOutputWriter, dry_
             updated_stack = stack.update_stack(
                 cf=cf,
                 StackName=instance_profile_stack_name,
-                TemplateBody=instance_profile_stack_template,
+                TemplateBody=template,
                 Capabilities=['CAPABILITY_IAM'],
             )
         except ClientError as e:
@@ -48,7 +47,7 @@ def create_or_update_instance_profile(region, output: AbstractOutputWriter, dry_
         stack = Stack.create_stack(
             cf=cf,
             StackName=instance_profile_stack_name,
-            TemplateBody=instance_profile_stack_template,
+            TemplateBody=template,
             Capabilities=['CAPABILITY_IAM'],
             OnFailure='DELETE',
         )

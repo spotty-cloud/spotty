@@ -1,21 +1,19 @@
 from abc import ABC, abstractmethod
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.config.abstract_instance_config import AbstractInstanceConfig
 from spotty.config.project_config import ProjectConfig
 
 
 class AbstractInstanceManager(ABC):
 
-    def __init__(self, instance_config: dict, project_config: ProjectConfig):
-        self._instance_config = instance_config
+    def __init__(self, project_config: ProjectConfig, instance_config: dict):
         self._project_config = project_config
+        self._instance_config = self._get_instance_config(instance_config)
 
-    @property
-    def project_config(self) -> ProjectConfig:
-        return self._project_config
-
-    @property
-    def instance_config(self) -> dict:
-        return self._instance_config
+    @abstractmethod
+    def _get_instance_config(self, config: dict) -> AbstractInstanceConfig:
+        """Factory method to create a provider instance config."""
+        raise NotImplementedError
 
     @abstractmethod
     def is_running(self):
@@ -43,6 +41,7 @@ class AbstractInstanceManager(ABC):
         raise NotImplementedError
 
     @property
+    @abstractmethod
     def status_text(self):
         """Information about the running instance that will be
         shown to the user once the instance is started or the "status"
@@ -67,6 +66,9 @@ class AbstractInstanceManager(ABC):
         raise NotImplementedError
 
     @property
-    def local_ssh_port(self) -> int:
-        # TODO: add the check to the general config validator
-        return self._instance_config['parameters']['localSshPort']
+    def project_config(self) -> ProjectConfig:
+        return self._project_config
+
+    @property
+    def instance_config(self):
+        return self._instance_config

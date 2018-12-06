@@ -36,10 +36,12 @@ class AbstractConfigCommand(AbstractCommand):
         if not os.path.exists(config_abs_path):
             raise ValueError('Configuration file "%s" not found.' % config_path)
 
+        # get project configuration
         project_dir = os.path.dirname(config_abs_path)
         project_config = ProjectConfig(self._load_config(config_abs_path), project_dir)
-        instance_config = project_config.get_instance_config(args.instance_name)
-        instance_manager = InstanceManagerFactory.get_instance(instance_config, project_config)
+
+        # create an instance manger
+        instance_manager = InstanceManagerFactory.get_instance(project_config, args.instance_name)
 
         # run the command
         self._run(instance_manager, args, output)

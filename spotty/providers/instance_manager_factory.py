@@ -5,17 +5,17 @@ from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
 class InstanceManagerFactory(object):
 
-    INSTANCE_MANAGER_CLASSES = {
-        'aws': 'AwsInstanceManager',
-    }
+    SUPPORTED_PROVIDERS = ['aws']
 
     @classmethod
-    def get_instance(cls, instance_config: dict, project_config: ProjectConfig) -> AbstractInstanceManager:
+    def get_instance(cls, project_config: ProjectConfig, instance_name: str) -> AbstractInstanceManager:
+        instance_config = project_config.get_instance_config(instance_name)
         provider_name = instance_config['provider']
-        if provider_name not in cls.INSTANCE_MANAGER_CLASSES:
+        if provider_name not in cls.SUPPORTED_PROVIDERS:
             raise ValueError('Provider "%s" is not supported' % provider_name)
 
+        # get Instance Manger class for the provider
         InstanceManagerClass = getattr(import_module('spotty.providers.%s.instance_manager' % provider_name),
-                                       cls.INSTANCE_MANAGER_CLASSES[provider_name])
+                                       'InstanceManager')
 
-        return InstanceManagerClass(instance_config, project_config)
+        return InstanceManagerClass(project_config, instance_config)

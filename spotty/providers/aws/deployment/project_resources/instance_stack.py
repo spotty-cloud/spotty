@@ -1,7 +1,7 @@
 import boto3
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.aws.resources.instance import Instance
-from spotty.providers.aws.resources.stack import Stack
+from spotty.providers.aws.aws_resources.instance import Instance
+from spotty.providers.aws.aws_resources.stack import Stack
 
 
 class InstanceStackResource(object):

@@ -1,6 +1,26 @@
 import os
-from schema import Schema, And, Use, Optional, Or, Regex
-from spotty.config.utils import validate_config
+from schema import Schema, And, Use, Optional, Or, Regex, SchemaError
+
+
+def get_instance_schema(instance_parameters: dict, volume_parameters: dict, volumes_checks: list = None) -> dict:
+    if not volumes_checks:
+        volumes_checks = []
+
+    schema = {
+        Optional('volumes', default=[]): And(
+            [{
+                'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
+                Optional('type', default=''): str,
+                'parameters': volume_parameters,
+            }],
+            And(lambda x: len(x) == len(set([v['name'] for v in x])), error='Each volume must have a unique name.'),
+            *volumes_checks,
+        ),
+        Optional('localSshPort', default=None): Or(None, And(int, lambda x: 0 <= x <= 65535)),
+        **instance_parameters,
+    }
+
+    return schema
 
 
 def validate_basic_config(data, project_dir):
@@ -64,9 +84,11 @@ def validate_basic_config(data, project_dir):
         'instances': [{
             'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
             'provider': str,
-            'parameters': {
+            'parameters': get_instance_schema({
                 And(str, Regex(r'^[\w]+$')): object,
-            },
+            }, {
+                And(str, Regex(r'^[\w]+$')): object,
+            })
         }],
         Optional('scripts', default={}): {
             And(str, Regex(r'^[\w-]+$')): And(str, len),
@@ -165,3 +187,12 @@ def validate_basic_config(data, project_dir):
 #     })
 #
 #     return _validate(schema, data)
+
+
+def validate_config(schema: Schema, config):
+    try:
+        validated = schema.validate(config)
+    except SchemaError as e:
+        raise ValueError(e.errors[-1] if e.errors[-1] else e.autos[-1])
+
+    return validated

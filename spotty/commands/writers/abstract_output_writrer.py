@@ -11,7 +11,7 @@ class AbstractOutputWriter(ABC):
     def _write(self, msg: str):
         raise NotImplementedError
 
-    def write(self, msg: str):
+    def write(self, msg: str = ''):
         msg = '\n'.join([self._prefix + line for line in msg.split('\n')])
         self._write(msg)
 

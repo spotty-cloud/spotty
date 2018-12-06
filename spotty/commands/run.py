@@ -17,18 +17,11 @@ class RunCommand(AbstractConfigCommand):
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')
         parser.add_argument('-S', '--sync', action='store_true', help='Sync the project before running the script')
         parser.add_argument('script_name', metavar='SCRIPT_NAME', type=str, help='Script name')
-        parser.add_argument('script_params', metavar='PARAMETER=VALUE', nargs='*', type=str, help='Script parameters')
+        parser.add_argument('-p', '--parameters', metavar='PARAMETER=VALUE', nargs='*', type=str, help='Script parameters')
 
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
-        if args.instance_name and '=' in args.script_name:
-            # fix argument values if at least two arguments provided and the second argument is a script parameter
-            instance_name = None
-            script_name = args.instance_name
-            script_params = [args.script_name] + args.script_params
-        else:
-            instance_name = args.instance_name
-            script_name = args.script_name
-            script_params = args.script_params
+        script_name = args.script_name
+        script_params = args.parameters
 
         # check that the script exists
         scripts = instance_manager.project_config.scripts
@@ -50,7 +43,7 @@ class RunCommand(AbstractConfigCommand):
 
         # check that the instance is started
         if not instance_manager.is_running():
-            raise ValueError('Instance "%s" is not started.' % instance_name)
+            raise ValueError('Instance "%s" is not started.' % instance_manager.instance_config.instance_name)
 
         # sync the project with the instance
         if args.sync:
@@ -64,4 +57,4 @@ class RunCommand(AbstractConfigCommand):
 
         # run the script on the instance
         run_script(instance_manager.ip_address, instance_manager.ssh_user, instance_manager.ssh_key_path,
-                   script_name, script_content, session_name, instance_manager.local_ssh_port)
+                   script_name, script_content, session_name, instance_manager.instance_config.local_ssh_port)
