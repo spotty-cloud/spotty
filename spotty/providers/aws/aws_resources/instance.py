@@ -10,10 +10,16 @@ class Instance(object):
 
     @staticmethod
     def get_by_stack_name(ec2, stack_name):
-        """Returns an instance by its stack name."""
+        """Returns the running instance by its stack name
+           or None if the instance is not running.
+        """
         res = ec2.describe_instances(Filters=[
             {'Name': 'tag:aws:cloudformation:stack-name', 'Values': [stack_name]},
+            {'Name': 'instance-state-name', 'Values': ['running']},
         ])
+
+        if len(res['Reservations']) > 1:
+            raise ValueError('Several running instances for the stack "%s" are found.' % stack_name)
 
         if not len(res['Reservations']):
             return None
@@ -58,9 +64,6 @@ class Instance(object):
     @property
     def lifecycle(self) -> str:
         return self._instance_info['InstanceLifecycle']
-
-    def is_running(self):
-        return self.state == 'running'
 
     def get_spot_price(self):
         """Get current Spot Instance price for this instance."""

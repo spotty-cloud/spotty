@@ -1,5 +1,5 @@
 from time import sleep
-from botocore.exceptions import EndpointConnectionError
+from botocore.exceptions import EndpointConnectionError, ClientError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
@@ -12,7 +12,15 @@ class Stack(object):
     @staticmethod
     def get_by_name(cf, stack_name: str):
         """Returns a Stack by its name."""
-        res = cf.describe_stacks(StackName=stack_name)
+        try:
+            res = cf.describe_stacks(StackName=stack_name)
+        except ClientError as e:
+            # ignore an exception if it raised because the stack doesn't exist
+            error_code = e.response.get('Error', {}).get('Code')
+            if error_code != 'ValidationError':
+                raise e
+
+            res = {'Stacks': []}
 
         if not len(res['Stacks']):
             return None

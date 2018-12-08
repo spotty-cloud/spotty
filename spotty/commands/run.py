@@ -16,12 +16,17 @@ class RunCommand(AbstractConfigCommand):
         super().configure(parser)
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')
         parser.add_argument('-S', '--sync', action='store_true', help='Sync the project before running the script')
+        parser.add_argument('-l', '--logging', action='store_true', help='Log the script outputs to the file')
+        parser.add_argument('-r', '--restart', action='store_true',
+                            help='Restart the script (kills previous session if it exists)')
         parser.add_argument('script_name', metavar='SCRIPT_NAME', type=str, help='Script name')
-        parser.add_argument('-p', '--parameters', metavar='PARAMETER=VALUE', nargs='*', type=str, help='Script parameters')
+        parser.add_argument('-p', '--parameters', metavar='PARAMETER=VALUE', nargs='*', type=str, default=[],
+                            help='Script parameters')
 
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
         script_name = args.script_name
         script_params = args.parameters
+        logging = args.logging
 
         # check that the script exists
         scripts = instance_manager.project_config.scripts
@@ -53,8 +58,15 @@ class RunCommand(AbstractConfigCommand):
         session_name = args.session_name if args.session_name else 'spotty-script-%s' % script_name
 
         # replace script parameters
-        script_content = pystache.render(scripts[script_name], script_params)
+        script_content = pystache.render(scripts[script_name], params)
 
         # run the script on the instance
-        run_script(instance_manager.ip_address, instance_manager.ssh_user, instance_manager.ssh_key_path,
-                   script_name, script_content, session_name, instance_manager.instance_config.local_ssh_port)
+        run_script(host=instance_manager.ip_address,
+                   user=instance_manager.ssh_user,
+                   key_path=instance_manager.ssh_key_path,
+                   script_name=script_name,
+                   script_content=script_content,
+                   tmux_session_name=session_name,
+                   restart=args.restart,
+                   logging=logging,
+                   local_ssh_port=instance_manager.instance_config.local_ssh_port)

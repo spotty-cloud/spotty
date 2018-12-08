@@ -210,6 +210,12 @@ Resources:
                 # create directory for "spotty run" logs
                 mkdir -p /var/log/spotty-run
                 chmod 777 /var/log/spotty-run
+            /home/ubuntu/.tmux.conf:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000664'
+              content: !Sub |
+                bind-key x kill-pane
           commands:
             prepare_instance:
               command: '/bin/bash -xe /tmp/scripts/prepare_instance.sh'

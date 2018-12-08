@@ -19,17 +19,13 @@ class InstanceManager(AbstractInstanceManager):
         return InstanceConfig(config)
 
     def is_running(self):
-        instance = self.deployment.get_instance()
-        if not instance:
-            return False
-
-        return instance.is_running()
+        return bool(self.deployment.get_instance())
 
     def start(self, output: AbstractOutputWriter, dry_run=False):
         if not dry_run:
             # check if the instance is already running
             instance = self.deployment.get_instance()
-            if instance and instance.is_running():
+            if instance:
                 print('Are you sure you want to restart the instance with new parameters?')
                 res = input('Type "y" to confirm: ')
                 if res != 'y':
@@ -45,7 +41,7 @@ class InstanceManager(AbstractInstanceManager):
     def stop(self, output: AbstractOutputWriter):
         # terminate the instance
         instance = self.deployment.get_instance()
-        if instance and instance.is_running():
+        if instance:
             output.write('Terminating the instance...')
             instance.terminate()
             instance.wait_instance_terminated()
