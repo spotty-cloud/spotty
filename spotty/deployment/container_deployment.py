@@ -45,7 +45,7 @@ class ContainerDeployment(object):
         return self._host_project_dir
 
     @property
-    def volume_mounts(self):
+    def volume_mounts(self) -> List[VolumeMount]:
         return self._volume_mounts
 
     def _get_volume_mounts(self, volumes: List[AbstractInstanceVolume]):
@@ -56,16 +56,16 @@ class ContainerDeployment(object):
         # get container volumes mapping
         volume_mounts = []
         for container_volume in self.config.volumes:
-            container_dir = container_volume['path']
-            if container_dir in mount_dirs:
-                host_dir = mount_dirs[container_volume['name']]
+            volume_name = container_volume['name']
+            if volume_name in mount_dirs:
+                host_dir = mount_dirs[volume_name]
             else:
-                host_dir = '/tmp/spotty/volumes/%s-%s' % (container_volume['name'], random_string(8))
+                host_dir = '/tmp/spotty/volumes/%s-%s' % (volume_name, random_string(8))
 
             volume_mounts.append(VolumeMount(
                 name=container_volume['name'],
                 host_dir=host_dir,
-                container_dir=container_dir,
+                container_dir=container_volume['path'],
             ))
 
         # get project directory

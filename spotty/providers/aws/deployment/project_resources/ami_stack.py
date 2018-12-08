@@ -1,7 +1,6 @@
 import boto3
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.aws.aws_resources.stack import Stack
-from spotty.providers.aws.utils import data_dir
 from spotty.utils import random_string
 
 
