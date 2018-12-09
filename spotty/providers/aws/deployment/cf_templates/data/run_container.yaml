@@ -132,67 +132,10 @@ Resources:
       'AWS::CloudFormation::Init':
         configSets:
           init:
-            - cwlogs_config
             - prepare_instance_config
             - mount_volumes_config
             - sync_project_config
             - docker_container_config
-        cwlogs_config:
-          files:
-            /tmp/cwlogs/logs.conf:
-              content: !Sub |
-                [general]
-                state_file = /var/awslogs/agent-state
-
-                [/var/log/cloud-init-output.log]
-                file = /var/log/cloud-init-output.log
-                log_group_name = ${InstanceLogGroup}
-                log_stream_name = {instance_id}/cloud-init-output.log
-                datetime_format = %d/%b/%Y:%H:%M:%S
-
-                [/var/log/cfn-init.log]
-                file = /var/log/cfn-init.log
-                log_group_name = ${InstanceLogGroup}
-                log_stream_name = {instance_id}/cfn-init.log
-                datetime_format = %d/%b/%Y:%H:%M:%S
-
-                [/var/log/cfn-init-cmd.log]
-                file = /var/log/cfn-init-cmd.log
-                log_group_name = ${InstanceLogGroup}
-                log_stream_name = {instance_id}/cfn-init-cmd.log
-                datetime_format = %d/%b/%Y:%H:%M:%S
-
-                [/var/log/cfn-hup.log]
-                file = /var/log/cfn-hup.log
-                log_group_name = ${InstanceLogGroup}
-                log_stream_name = {instance_id}/cfn-hup.log
-                datetime_format = %d/%b/%Y:%H:%M:%S
-
-                [/var/log/cfn-wire.log]
-                file = /var/log/cfn-wire.log
-                log_group_name = ${InstanceLogGroup}
-                log_stream_name = {instance_id}/cfn-wire.log
-                datetime_format = %d/%b/%Y:%H:%M:%S
-
-                [/var/log/docker-commands.log]
-                file = /var/log/docker-commands.log
-                log_group_name = ${InstanceLogGroup}
-                log_stream_name = {instance_id}/docker-commands.log
-                datetime_format = %d/%b/%Y:%H:%M:%S
-              mode: '000400'
-              owner: root
-              group: root
-            /tmp/cwlogs/run.sh:
-              content: !Sub |
-                curl https://s3.amazonaws.com//aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -O
-                chmod +x ./awslogs-agent-setup.py
-                ./awslogs-agent-setup.py -n -r ${AWS::Region} -c /tmp/cwlogs/logs.conf
-              mode: '000400'
-              owner: root
-              group: root
-          commands:
-            run_cw_agent:
-              command: '/bin/bash -xe /tmp/cwlogs/run.sh'
         prepare_instance_config:
           files:
             /tmp/scripts/prepare_instance.sh:
@@ -343,12 +286,6 @@ Resources:
             run_container:
               command: /bin/bash -xe /tmp/scripts/run_container.sh
 
-  InstanceLogGroup:
-    Type: AWS::Logs::LogGroup
-    DeletionPolicy: Retain
-    Properties:
-      RetentionInDays: 1
-
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -383,7 +320,5 @@ Resources:
 Outputs:
   InstanceId:
     Value: !Ref SpotInstance
-  InstanceLogGroup:
-    Value: !Ref InstanceLogGroup
   AvailabilityZone:
     Value: !GetAtt SpotInstance.AvailabilityZone
