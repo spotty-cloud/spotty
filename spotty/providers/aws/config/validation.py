@@ -1,6 +1,6 @@
 import os
 from schema import Schema, Optional, And, Regex, Or, Use
-from spotty.config.validation import get_instance_schema, validate_config
+from spotty.config.validation import get_instance_schema, validate_config, has_prefix
 from spotty.providers.aws.deployment.ebs_volume import EbsVolume
 
 AMI_NAME_REGEX = r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$'
@@ -20,26 +20,27 @@ def validate_aws_instance_parameters(params: dict):
                                                    Use(int),
                                                    And(lambda x: x > 0,
                                                        error='"rootVolumeSize" should be greater than 0 or should '
-                                                             ' not be specified.'),
+                                                             'not be specified.'),
                                                    ),
-        # TODO: check that mountDir for dockerDataRoot exists
         Optional('dockerDataRoot', default=''): And(str,
                                                     And(os.path.isabs,
                                                         error='Use an absolute path when specifying a Docker '
                                                               'data root directory'),
                                                     Use(lambda x: x.rstrip('/')),
-                                                ),
+                                                    ),
         Optional('maxPrice', default=0): And(Or(float, int, str), Use(str),
                                              Regex(r'^\d+(\.\d{1,6})?$', error='Incorrect value for "maxPrice".'),
                                              Use(float),
                                              And(lambda x: x > 0, error='"maxPrice" should be greater than 0 or '
                                                                         'should  not be specified.'),
-                                             ),  # TODO: maxPrice can only be specified if spotInstance is true
+                                             ),
     }
 
     volume_parameters = {
-        Optional('mountDir', default=''): And(str, lambda x: x.startswith('/'),
-                                              Use(lambda x: x.rstrip('/'))),
+        Optional('mountDir', default=''): And(str,
+                                              And(os.path.isabs, error='Use absolute paths for mount directories'),
+                                              Use(lambda x: x.rstrip('/'))
+                                              ),
         Optional('snapshotName', default=''): str,
         Optional('size', default=0): And(int, lambda x: x > 0),
         Optional('deletionPolicy',
@@ -53,26 +54,24 @@ def validate_aws_instance_parameters(params: dict):
 
     volumes_checks = [
         And(lambda x: len(x) < 12, error='Maximum 11 volumes are supported at the moment.'),
+        And(lambda x: not has_prefix([(volume['parameters']['mountDir'] + '/') for volume in x
+                                      if volume['parameters']['mountDir']]),
+            error='Mount directories cannot be prefixes for each other.'),
     ]
 
-    schema = Schema(get_instance_schema(instance_parameters, volume_parameters, volumes_checks))
+    instance_checks = [
+        And(lambda x: not x['onDemandInstance'] or not x['maxPrice'],
+            error='"maxPrice" cannot be specified for on-demand instances'),
+        And(lambda x: not x['dockerDataRoot'] or
+                      [True for v in x['volumes'] if v['parameters']['mountDir'] and
+                       (x['dockerDataRoot'] + '/').startswith(v['parameters']['mountDir'] + '/')],
+            error='The "mountDir" of one of the volumes must be a prefix for the "dockerDataRoot" path.'),
+    ]
+
+    schema = Schema(get_instance_schema(instance_parameters, volume_parameters, instance_checks, volumes_checks))
 
     return validate_config(schema, params)
 
-
-# def validate_ami_config(data):
-#     schema = Schema({
-#         'instance': {
-#             'region': And(str, len),
-#             Optional('availabilityZone', default=''): str,
-#             Optional('subnetId', default=''): str,
-#             'instanceType': And(str, len),
-#             Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
-#             Optional('keyName', default=''): str,
-#         },
-#     }, ignore_extra_keys=True)
-#
-#     return validate_config(schema, data)
 
 def is_gpu_instance(instance_type: str):
     return instance_type in [

@@ -6,8 +6,6 @@ from spotty.utils import filter_list
 class ProjectConfig(object):
 
     def __init__(self, config: dict, project_dir: str):
-        # TODO: check if it's an old config, convert it to the new one and print a warning
-
         # validate the config
         config = validate_basic_config(config, project_dir)
 

@@ -240,7 +240,8 @@ class InstanceDeployment(object):
         ami = self.get_ami()
         if not ami:
             raise ValueError('AMI with name "%s" not found.\n'
-                             'Use "spotty aws create-ami" command to create an AMI with NVIDIA Docker.' % ami.name)
+                             'Use the "spotty aws create-ami" command to create an AMI with NVIDIA Docker.'
+                             % self.instance_config.ami_name)
 
         # check root volume size
         root_volume_size = self.instance_config.root_volume_size
