@@ -32,7 +32,7 @@ class DeleteAmiCommand(AbstractCommand):
         # get stack ID for the image
         stack_id = ami.get_tag_value('spotty:stack-id')
         if not stack_id:
-            raise ValueError('AMI wasn\'t created by Spotty')
+            raise ValueError('AMI "%s" wasn\'t created by Spotty.' % ami_name)
 
         # ask user to confirm the deletion
         confirm = input('AMI "%s" (ID=%s) will be deleted.\n'

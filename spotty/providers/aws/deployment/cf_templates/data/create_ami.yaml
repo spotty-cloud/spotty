@@ -1,6 +1,6 @@
 Description: Spotty NVIDIA Docker AMI
 Metadata:
-  Version: 1.0.1
+  Version: 1.0.2
 Parameters:
   InstanceType:
     Description: Instance type to launch EC2 Spot instance
@@ -112,13 +112,6 @@ Resources:
             curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
             easy_install aws-cfn-bootstrap-latest
 
-            # install CloudWatch agent
-            /usr/local/bin/cfn-init \
-              --stack ${AWS::StackName} \
-              --resource SpotInstanceLaunchTemplate \
-              --region ${AWS::Region} \
-              -c cwlogs
-
             # install NVIDIA Docker
             /usr/local/bin/cfn-init \
               --stack ${AWS::StackName} \
@@ -170,8 +163,6 @@ Resources:
             - init_config
           ami:
             - ami_config
-          cwlogs:
-            - cwlogs_config
         init_config:
           files:
             /tmp/scripts/init.sh:
@@ -223,6 +214,9 @@ Resources:
                 # install jq
                 apt-get install -y jq
 
+                # flush the disk buffers
+                sync
+
                 # create AMI
                 INSTANCE_ID=`curl http://169.254.169.254/latest/meta-data/instance-id`
                 IMAGE_ID=`aws ec2 create-image --instance-id $INSTANCE_ID --name "${ImageName}" --no-reboot | jq -r '.ImageId'`
@@ -235,48 +229,6 @@ Resources:
           commands:
             create_ami:
               command: '/bin/bash -xe /tmp/scripts/create_ami.sh'
-        cwlogs_config:
-          files:
-            /tmp/cwlogs/logs.conf:
-              content: !Sub |
-                [general]
-                state_file= /var/awslogs/agent-state
-
-                [/var/log/cloud-init-output.log]
-                file = /var/log/cloud-init-output.log
-                log_group_name = ${InstanceLogGroup}
-                log_stream_name = {instance_id}/cloud-init-output.log
-                datetime_format = %d/%b/%Y:%H:%M:%S
-
-                [/var/log/cfn-init.log]
-                file = /var/log/cfn-init.log
-                log_group_name = ${InstanceLogGroup}
-                log_stream_name = {instance_id}/cfn-init.log
-                datetime_format = %d/%b/%Y:%H:%M:%S
-
-                [/var/log/cfn-init-cmd.log]
-                file = /var/log/cfn-init-cmd.log
-                log_group_name = ${InstanceLogGroup}
-                log_stream_name = {instance_id}/cfn-init-cmd.log
-                datetime_format = %d/%b/%Y:%H:%M:%S
-              mode: '000400'
-              owner: root
-              group: root
-            /tmp/cwlogs/run.sh:
-              content: !Sub |
-                curl https://s3.amazonaws.com//aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -O
-                chmod +x ./awslogs-agent-setup.py
-                ./awslogs-agent-setup.py -n -r ${AWS::Region} -c /tmp/cwlogs/logs.conf
-                systemctl disable awslogs
-              mode: '000400'
-              owner: root
-              group: root
-          commands:
-            run_cw_agent:
-              command: '/bin/bash -xe /tmp/cwlogs/run.sh'
-
-  InstanceLogGroup:
-    Type: AWS::Logs::LogGroup
 
   LogRole:
     Type: AWS::IAM::Role
@@ -448,6 +400,3 @@ Outputs:
   NewAMI:
     Description: Created AMI ID
     Value: !Ref DeleteAMI
-  InstanceLogGroup:
-    Description: CloudWatch log group name for the instance
-    Value: !Ref InstanceLogGroup

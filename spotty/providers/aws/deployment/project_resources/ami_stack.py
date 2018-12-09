@@ -10,7 +10,7 @@ class AmiStackResource(object):
         self._cf = boto3.client('cloudformation', region_name=region)
 
     def create_stack(self, template: str, instance_type: str, ami_name: str, key_name: str,
-                     output: AbstractOutputWriter):
+                     keep_instance: bool, output: AbstractOutputWriter):
         """Runs CloudFormation template."""
         params = {
             'InstanceType': instance_type,
@@ -27,7 +27,7 @@ class AmiStackResource(object):
             TemplateBody=template,
             Parameters=[{'ParameterKey': key, 'ParameterValue': value} for key, value in params.items()],
             Capabilities=['CAPABILITY_IAM'],
-            OnFailure='DELETE',
+            OnFailure='DO_NOTHING' if keep_instance else 'DELETE',
         )
 
         output.write('Waiting for the AMI to be created...')

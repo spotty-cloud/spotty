@@ -124,11 +124,14 @@ class InstanceDeployment(object):
         if not dry_run:
             self.instance_stack.create_or_update_stack(template, parameters, output)
 
-    def create_ami(self, key_name, output: AbstractOutputWriter):
+    def create_ami(self, key_name, keep_instance: bool, output: AbstractOutputWriter):
         # check that it's a GPU instance type
         instance_type = self.instance_config.instance_type
         if not is_gpu_instance(instance_type):
             raise ValueError('"%s" is not a GPU instance' % instance_type)
+
+        if keep_instance and not key_name:
+            output.write('Key Pair name is not specified, you will not be able to connect to the instance.')
 
         # check that an image with this name doesn't exist yet
         ami = self.get_ami()
@@ -150,7 +153,7 @@ class InstanceDeployment(object):
         # create stack
         ami_stack = AmiStackResource(self.instance_config.region)
         ami_name = self.instance_config.ami_name
-        ami_stack.create_stack(template, instance_type, ami_name, key_name, output)
+        ami_stack.create_stack(template, instance_type, ami_name, key_name, keep_instance, output)
 
     def _check_az_and_subnet(self):
         # get all availability zones for the region
