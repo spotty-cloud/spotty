@@ -37,6 +37,8 @@ setup(name='spotty',
           'schema',
           'pystache',
       ],
+      tests_require=['moto'],
+      test_suite='tests',
       classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Science/Research',
