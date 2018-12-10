@@ -34,7 +34,7 @@ args = parser.parse_args()
 
 # logging
 logging_level = logging.DEBUG if 'debug' in args and args.debug else logging.WARNING
-logging.basicConfig(level=logging_level, format='%(levelname)s %(message)s')
+logging.basicConfig(level=logging_level, format='[%(levelname)s] %(message)s')
 
 if 'command' not in args:
     parser.print_help()

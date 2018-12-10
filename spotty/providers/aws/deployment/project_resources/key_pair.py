@@ -1,6 +1,5 @@
 import os
 import boto3
-from botocore.exceptions import ClientError
 from spotty.configuration import get_spotty_keys_dir
 
 
@@ -9,25 +8,23 @@ class KeyPairResource(object):
     def __init__(self, project_name: str, region: str):
         self._ec2 = boto3.client('ec2', region_name=region)
         self._region = region
-        # TODO: if a case of a key name was changed, the key will not be found,
-        # TODO: but AWS will raise an error if you will try to create it
-        self._key_name = 'spotty-%s-%s' % (project_name, region)
+        self._key_name = 'spotty-key-%s-%s' % (project_name.lower(), region)
 
     @property
     def key_path(self):
         return os.path.join(get_spotty_keys_dir(), self._key_name)
 
-    def create_key(self, dry_run=False):
+    def get_or_create_key(self, dry_run=False):
         if dry_run:
             return self._key_name
 
         key_path = self.key_path
         key_file_exists = os.path.isfile(key_path)
-        aws_key_exists = self._key_exists()
+        ec2_key_exists = self._ec2_key_exists()
 
-        if not aws_key_exists or not key_file_exists:
+        if not ec2_key_exists or not key_file_exists:
             # remove key from AWS (key file not found)
-            if aws_key_exists:
+            if ec2_key_exists:
                 self._ec2.delete_key_pair(KeyName=self._key_name)
 
             # create new key
@@ -42,18 +39,21 @@ class KeyPairResource(object):
         return self._key_name
 
     def delete_key(self):
-        if self._key_exists():
+        # delete EC2 Key Pair
+        if self._ec2_key_exists():
             self._ec2.delete_key_pair(KeyName=self._key_name)
 
+        # delete the key file
         key_path = self.key_path
         if os.path.isfile(key_path):
             os.unlink(key_path)
 
-    def _key_exists(self):
-        key_exists = True
-        try:
-            self._ec2.describe_key_pairs(KeyNames=[self._key_name])
-        except ClientError:
-            key_exists = False
+    def _ec2_key_exists(self):
+        res = self._ec2.describe_key_pairs(Filters=[{'Name': 'key-name', 'Values': [self._key_name]}])
+        if 'KeyPairs' not in res:
+            return False
 
-        return key_exists
+        if len(res['KeyPairs']) > 1:
+            raise ValueError('Several keys with the name "%s" found.' % self._key_name)
+
+        return bool(res['KeyPairs'])

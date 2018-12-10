@@ -9,9 +9,9 @@ DEFAULT_AMI_NAME = 'SpottyAMI'
 
 def validate_aws_instance_parameters(params: dict):
     instance_parameters = {
-        'region': And(str, len),
-        Optional('availabilityZone', default=''): str,
-        Optional('subnetId', default=''): str,
+        'region': And(str, Regex(r'^[a-z0-9-]+$')),
+        Optional('availabilityZone', default=''): And(str, Regex(r'^[a-z0-9-]+$')),
+        Optional('subnetId', default=''): And(str, Regex(r'^[a-z0-9-]+$')),
         'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
         Optional('onDemandInstance', default=False): bool,
         Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),

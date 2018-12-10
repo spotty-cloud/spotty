@@ -255,7 +255,7 @@ class InstanceDeployment(object):
             root_volume_size = ami.size + 5
 
         # create key pair
-        key_name = self.key_pair.create_key(dry_run)
+        key_name = self.key_pair.get_or_create_key(dry_run)
 
         # split container volumes mapping to two different lists
         docker_host_dirs = []
