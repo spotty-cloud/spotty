@@ -36,7 +36,7 @@ class EbsVolume(AbstractInstanceVolume):
     @property
     def ec2_volume_name(self) -> str:
         """Returns EBS volume name."""
-        return '%s-%s-%s' % (self._project_name, self._instance_name, self.name)
+        return '%s-%s-%s' % (self._project_name.lower(), self._instance_name.lower(), self.name.lower())
 
     @property
     def mount_dir(self) -> str:

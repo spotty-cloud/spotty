@@ -8,8 +8,7 @@ class InstanceManagerFactory(object):
     SUPPORTED_PROVIDERS = ['aws']
 
     @classmethod
-    def get_instance(cls, project_config: ProjectConfig, instance_name: str) -> AbstractInstanceManager:
-        instance_config = project_config.get_instance_config(instance_name)
+    def get_instance(cls, project_config: ProjectConfig, instance_config: dict) -> AbstractInstanceManager:
         provider_name = instance_config['provider']
         if provider_name not in cls.SUPPORTED_PROVIDERS:
             raise ValueError('Provider "%s" is not supported' % provider_name)

@@ -33,14 +33,6 @@ class ProjectConfig(object):
     def scripts(self) -> dict:
         return self._config['scripts']
 
-    def get_instance_config(self, instance_name: str = None) -> dict:
-        if not instance_name:
-            instance_config = self._config['instances'][0]
-        else:
-            instance_configs = filter_list(self._config['instances'], 'name', instance_name)
-            if not instance_configs:
-                raise ValueError('Instance "%s" not found in the configuration file' % instance_name)
-
-            instance_config = instance_configs[0]
-
-        return instance_config
+    @property
+    def instances(self) -> list:
+        return self._config['instances']

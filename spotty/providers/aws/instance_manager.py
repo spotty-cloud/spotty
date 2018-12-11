@@ -45,6 +45,8 @@ class InstanceManager(AbstractInstanceManager):
             output.write('Terminating the instance...')
             instance.terminate()
             instance.wait_instance_terminated()
+        else:
+            output.write('The instance is already terminated.')
 
         # delete the stack
         self.deployment.instance_stack.delete_stack(output, no_wait=True)

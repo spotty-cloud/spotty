@@ -69,15 +69,18 @@ def validate_basic_config(data, project_dir):
             And(lambda x: x['image'] or x['file'], error='Either "image" or "file" should be specified.'),
             And(lambda x: not (x['image'] and x['file']), error='"image" and "file" cannot be specified together.'),
         ),
-        'instances': [{
-            'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
-            'provider': str,
-            'parameters': get_instance_schema({
-                And(str, Regex(r'^[\w]+$')): object,
-            }, {
-                And(str, Regex(r'^[\w]+$')): object,
-            })
-        }],
+        'instances': And(
+            [{
+                'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
+                'provider': str,
+                'parameters': get_instance_schema({
+                    And(str, Regex(r'^[\w]+$')): object,
+                }, {
+                    And(str, Regex(r'^[\w]+$')): object,
+                })
+            }],
+            And(lambda x: is_unique_value(x, 'name'), error='Each instance must have a unique name.'),
+        ),
         Optional('scripts', default={}): {
             And(str, Regex(r'^[\w-]+$')): And(str, len),
         },

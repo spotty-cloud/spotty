@@ -9,10 +9,8 @@ class InstanceStackResource(object):
     def __init__(self, project_name: str, instance_name: str, region: str):
         self._cf = boto3.client('cloudformation', region_name=region)
         self._ec2 = boto3.client('ec2', region_name=region)
-
-        self._project_name = project_name
         self._region = region
-        self._stack_name = 'spotty-instance-%s-%s' % (project_name, instance_name)
+        self._stack_name = 'spotty-instance-%s-%s' % (project_name.lower(), instance_name.lower())
 
     @property
     def name(self):
@@ -61,6 +59,8 @@ class InstanceStackResource(object):
 
     def delete_stack(self, output: AbstractOutputWriter, no_wait=False):
         stack = Stack.get_by_name(self._cf, self._stack_name)
+        if not stack:
+            return
 
         if not no_wait:
             output.write('Waiting for the stack to be deleted...')

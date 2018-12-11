@@ -34,7 +34,7 @@ class InstanceDeployment(object):
 
     @property
     def ec2_instance_name(self) -> str:
-        return '%s-%s' % (self._project_name, self.instance_config.name)
+        return '%s-%s' % (self._project_name.lower(), self.instance_config.name.lower())
 
     @property
     def bucket(self) -> BucketResource:
@@ -300,11 +300,15 @@ class InstanceDeployment(object):
 
         # get volumes
         volumes = self._get_volumes()
+        ebs_volumes = [volume for volume in volumes if isinstance(volume, EbsVolume)]
 
-        for volume in volumes:
-            if not isinstance(volume, EbsVolume):
-                continue
+        # no volumes
+        if not ebs_volumes:
+            output.write('- no EBS volumes configured')
+            return
 
+        # apply deletion policies
+        for volume in ebs_volumes:
             # get EC2 volume
             try:
                 ec2_volume = volume.get_ec2_volume()
