@@ -78,7 +78,7 @@ class InstanceManager(AbstractInstanceManager):
     def status_text(self):
         instance = self.deployment.get_instance()
         if not instance:
-            raise InstanceNotRunningError()
+            raise InstanceNotRunningError(self.instance_config.name)
 
         table = [
             ('Instance State', instance.state),
@@ -102,7 +102,7 @@ class InstanceManager(AbstractInstanceManager):
     def ip_address(self):
         instance = self.deployment.get_instance()
         if not instance:
-            raise InstanceNotRunningError()
+            raise InstanceNotRunningError(self.instance_config.name)
 
         ip_address = instance.public_ip_address if instance.public_ip_address else instance.private_ip_address
 

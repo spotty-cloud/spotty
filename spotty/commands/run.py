@@ -3,6 +3,7 @@ import re
 import pystache
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.helpers.ssh import run_script
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
@@ -48,7 +49,7 @@ class RunCommand(AbstractConfigCommand):
 
         # check that the instance is started
         if not instance_manager.is_running():
-            raise ValueError('Instance "%s" is not started.' % instance_manager.instance_config.instance_name)
+            raise InstanceNotRunningError(instance_manager.instance_config.name)
 
         # sync the project with the instance
         if args.sync:

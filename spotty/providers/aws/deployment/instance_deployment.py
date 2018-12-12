@@ -137,7 +137,7 @@ class InstanceDeployment(object):
         # check that an image with this name doesn't exist yet
         ami = self.get_ami()
         if ami:
-            raise ValueError('AMI with name "%s" already exists.' % ami.name)
+            raise ValueError('AMI with the name "%s" already exists.' % ami.name)
 
         # check availability zone and subnet
         self._check_az_and_subnet()
@@ -191,8 +191,8 @@ class InstanceDeployment(object):
                 zones_wo_subnet = [zone_name for zone_name in zone_names if zone_name not in default_azs]
                 if zones_wo_subnet:
                     raise ValueError('Default subnets for the following availability zones were not found: %s.\n'
-                                     'Use "subnetId" and "availabilityZone" parameters or create missing default subnets.'
-                                     % ', '.join(zones_wo_subnet))
+                                     'Use "subnetId" and "availabilityZone" parameters or create missing default '
+                                     'subnets.' % ', '.join(zones_wo_subnet))
 
     def _check_max_price(self, availability_zone=''):
         if not self.instance_config.on_demand and self.instance_config.max_price:

@@ -27,7 +27,7 @@ class DeleteAmiCommand(AbstractCommand):
         # get image info
         ami = Image.get_by_name(ec2, ami_name)
         if not ami:
-            raise ValueError('AMI with name "%s" not found.' % ami_name)
+            raise ValueError('AMI with the name "%s" not found.' % ami_name)
 
         # get stack ID for the image
         stack_id = ami.get_tag_value('spotty:stack-id')

@@ -51,9 +51,9 @@ class AmiStackResource(object):
             output.write('\n'
                          '--------------------------------------------------\n'
                          'AMI "%s" (ID=%s) was successfully created.\n'
-                         'Use "spotty start" command to run a Spot Instance.\n'
+                         'Use the "spotty start" command to run an instance.\n'
                          '--------------------------------------------------'
                          % (ami_name, ami_id))
         else:
             raise ValueError('Stack "%s" was not created.\n'
-                             'See CloudFormation and CloudWatch logs for details.' % stack_name)
+                             'Please, see CloudFormation logs for the details.' % stack_name)

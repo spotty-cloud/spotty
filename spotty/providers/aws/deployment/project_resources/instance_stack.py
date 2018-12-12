@@ -52,7 +52,7 @@ class InstanceStackResource(object):
 
         if stack.status != 'CREATE_COMPLETE':
             raise ValueError('Stack "%s" was not created.\n'
-                             'Please, see CloudFormation and CloudWatch logs for the details.'
+                             'Please, see CloudFormation logs for the details.'
                              % self._stack_name)
 
         return stack
