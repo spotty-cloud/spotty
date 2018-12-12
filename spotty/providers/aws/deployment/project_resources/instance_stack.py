@@ -40,7 +40,7 @@ class InstanceStackResource(object):
         output.write('Waiting for the stack to be created...')
 
         resource_messages = [
-            ('SpotInstance', 'launching the instance'),
+            ('Instance', 'launching the instance'),
             ('DockerReadyWaitCondition', 'waiting for the Docker container to be ready'),
         ]
 

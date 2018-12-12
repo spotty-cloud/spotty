@@ -14,7 +14,7 @@ def prepare_instance_template(instance_config: InstanceConfig, volumes: List[Abs
     """Prepares CloudFormation template to run a Spot Instance."""
 
     # read and update CF template
-    with open(os.path.join(os.path.dirname(__file__), 'data', 'run_container.yaml')) as f:
+    with open(os.path.join(os.path.dirname(__file__), 'data', 'instance.yaml')) as f:
         template = yaml.load(f, Loader=CfnYamlLoader)
 
     # get volume resources and updated availability zone
@@ -25,7 +25,7 @@ def prepare_instance_template(instance_config: InstanceConfig, volumes: List[Abs
 
     # set availability zone
     if availability_zone:
-        template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['Placement'] = {
+        template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData']['Placement'] = {
             'AvailabilityZone': availability_zone,
         }
         output.write('- availability zone: %s' % availability_zone)
@@ -34,14 +34,14 @@ def prepare_instance_template(instance_config: InstanceConfig, volumes: List[Abs
 
     # set subnet
     if instance_config.subnet_id:
-        template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['NetworkInterfaces'] = [
+        template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData']['NetworkInterfaces'] = [
             {
                 'SubnetId': instance_config.subnet_id,
                 'DeviceIndex': 0,
-                'Groups': template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData'][
+                'Groups': template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData'][
                     'SecurityGroupIds'],
             }]
-        del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['SecurityGroupIds']
+        del template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData']['SecurityGroupIds']
 
     # add ports to the security group
     for port in container.config.ports:
@@ -60,13 +60,13 @@ def prepare_instance_template(instance_config: InstanceConfig, volumes: List[Abs
 
     if instance_config.on_demand:
         # run on-demand instance
-        del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData'][
+        del template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData'][
             'InstanceMarketOptions']
         output.write('- on-demand instance')
     else:
         # set maximum price
         if instance_config.max_price:
-            template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData'] \
+            template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData'] \
                 ['InstanceMarketOptions']['SpotOptions']['MaxPrice'] = instance_config.max_price
 
         output.write('- maximum Spot Instance price: %s'
@@ -74,7 +74,7 @@ def prepare_instance_template(instance_config: InstanceConfig, volumes: List[Abs
 
     # set initial docker commands
     if container.config.commands:
-        template['Resources']['SpotInstanceLaunchTemplate']['Metadata']['AWS::CloudFormation::Init'] \
+        template['Resources']['InstanceLaunchTemplate']['Metadata']['AWS::CloudFormation::Init'] \
             ['docker_container_config']['files']['/tmp/docker/docker_commands.sh']['content'] \
             = container.config.commands
 
@@ -86,7 +86,7 @@ def _get_volume_attachment_resource(volume_id, device_name):
         'Type': 'AWS::EC2::VolumeAttachment',
         'Properties': {
             'Device': device_name,
-            'InstanceId': {'Ref': 'SpotInstance'},
+            'InstanceId': {'Ref': 'Instance'},
             'VolumeId': volume_id,
         },
     }
@@ -100,7 +100,7 @@ def _get_volume_resource(volume: EbsVolume, output: AbstractOutputWriter):
         'Type': 'AWS::EC2::Volume',
         'DeletionPolicy': 'Retain',
         'Properties': {
-            'AvailabilityZone': {'Fn::GetAtt': ['SpotInstance', 'AvailabilityZone']},
+            'AvailabilityZone': {'Fn::GetAtt': ['Instance', 'AvailabilityZone']},
             'Tags': [{
                 'Key': 'Name',
                 'Value': volume.ec2_volume_name,

@@ -1,4 +1,4 @@
-Description: Spotty EC2 Spot Instance
+Description: Spotty EC2 Instance
 Parameters:
   VpcId:
     Description: VPC ID
@@ -7,10 +7,10 @@ Parameters:
     Description: Instance Profile ARN
     Type: String
   InstanceType:
-    Description: Instance type to launch EC2 Spot Instance
+    Description: Instance type
     Type: String
   KeyName:
-    Description: Key name to get an access o the instance
+    Description: EC2 Key Pair name
     Type: AWS::EC2::KeyPair::KeyName
   ImageId:
     Description: AMI ID
@@ -68,14 +68,14 @@ Parameters:
     Type: String
     Default: ''
 Resources:
-  SpotInstance:
+  Instance:
     Type: AWS::EC2::Instance
     Properties:
       LaunchTemplate:
-        LaunchTemplateId: !Ref SpotInstanceLaunchTemplate
-        Version: !GetAtt SpotInstanceLaunchTemplate.LatestVersionNumber
+        LaunchTemplateId: !Ref InstanceLaunchTemplate
+        Version: !GetAtt InstanceLaunchTemplate.LatestVersionNumber
 
-  SpotInstanceLaunchTemplate:
+  InstanceLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
@@ -117,7 +117,7 @@ Resources:
             # prepare the instance and run Docker container
             /usr/local/bin/cfn-init \
               --stack ${AWS::StackName} \
-              --resource SpotInstanceLaunchTemplate \
+              --resource InstanceLaunchTemplate \
               --region ${AWS::Region} \
               -c init \
               -v
@@ -312,13 +312,13 @@ Resources:
 
   DockerReadyWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
-    DependsOn: SpotInstance
+    DependsOn: Instance
     CreationPolicy:
       ResourceSignal:
         Timeout: PT10M
 
 Outputs:
   InstanceId:
-    Value: !Ref SpotInstance
+    Value: !Ref Instance
   AvailabilityZone:
-    Value: !GetAtt SpotInstance.AvailabilityZone
+    Value: !GetAtt Instance.AvailabilityZone

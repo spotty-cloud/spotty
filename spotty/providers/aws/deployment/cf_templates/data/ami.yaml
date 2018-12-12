@@ -3,13 +3,13 @@ Metadata:
   Version: 1.0.2
 Parameters:
   InstanceType:
-    Description: Instance type to launch EC2 Spot instance
+    Description: Instance type
     Type: String
   ImageName:
     Description: AMI name
     Type: String
   KeyName:
-    Description: Key name to get an access o the instance
+    Description: EC2 Key Pair name
     Type: AWS::EC2::KeyPair::KeyName
 Resources:
   FindBaseAMI:
@@ -69,14 +69,14 @@ Resources:
       LogGroupName: !Join ['', ['/aws/lambda/', !Ref FindBaseAMIFunction]]
       RetentionInDays: 1
 
-  SpotInstance:
+  Instance:
     Type: AWS::EC2::Instance
     Properties:
       LaunchTemplate:
-        LaunchTemplateId: !Ref SpotInstanceLaunchTemplate
-        Version: !GetAtt SpotInstanceLaunchTemplate.LatestVersionNumber
+        LaunchTemplateId: !Ref InstanceLaunchTemplate
+        Version: !GetAtt InstanceLaunchTemplate.LatestVersionNumber
 
-  SpotInstanceLaunchTemplate:
+  InstanceLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
@@ -115,7 +115,7 @@ Resources:
             # install NVIDIA Docker
             /usr/local/bin/cfn-init \
               --stack ${AWS::StackName} \
-              --resource SpotInstanceLaunchTemplate \
+              --resource InstanceLaunchTemplate \
               --region ${AWS::Region} \
               -c init \
               -v
@@ -136,7 +136,7 @@ Resources:
             # create the AMI
             /usr/local/bin/cfn-init \
               --stack ${AWS::StackName} \
-              --resource SpotInstanceLaunchTemplate \
+              --resource InstanceLaunchTemplate \
               --region ${AWS::Region} \
               -c ami \
               -v
@@ -230,7 +230,13 @@ Resources:
             create_ami:
               command: '/bin/bash -xe /tmp/scripts/create_ami.sh'
 
-  LogRole:
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+      - Ref: InstanceRole
+  InstanceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -244,18 +250,6 @@ Resources:
           - sts:AssumeRole
       Path: '/'
       Policies:
-      - PolicyName: LogsPolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - logs:Create*
-            - logs:PutLogEvents
-            - s3:GetObject
-            Resource:
-            - arn:aws:logs:*:*:*
-            - arn:aws:s3:::*
       - PolicyName: AMICreationPolicy
         PolicyDocument:
           Version: '2012-10-17'
@@ -266,23 +260,17 @@ Resources:
             - 'ec2:CreateImage'
             - 'ec2:CreateTags'
             Resource: ['*']
-  InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Path: '/'
-      Roles:
-      - Ref: LogRole
 
   InstanceReadyWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
-    DependsOn: SpotInstance
+    DependsOn: Instance
     CreationPolicy:
       ResourceSignal:
         Timeout: PT20M
 
   AMICreatedWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
-    DependsOn: SpotInstance
+    DependsOn: Instance
     CreationPolicy:
       ResourceSignal:
         Timeout: PT30M

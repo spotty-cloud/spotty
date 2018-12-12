@@ -91,7 +91,8 @@ class InstanceDeployment(object):
                              project_config.sync_filters, dry_run)
 
         # create or update instance profile
-        instance_profile_arn = create_or_update_instance_profile(self.instance_config.region, output, dry_run)
+        if not dry_run:
+            instance_profile_arn = create_or_update_instance_profile(self.instance_config.region, output)
 
         output.write('Preparing CloudFormation template...')
 

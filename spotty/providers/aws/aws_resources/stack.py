@@ -56,9 +56,17 @@ class Stack(object):
     def delete(self):
         return self._cf.delete_stack(StackName=self.stack_id)
 
-    def wait_stack_deleted(self):
+    def wait_stack_created(self, delay=30):
+        waiter = self._cf.get_waiter('stack_create_complete')
+        waiter.wait(StackName=self.stack_id, WaiterConfig={'Delay': delay})
+
+    def wait_stack_updated(self, delay=30):
+        waiter = self._cf.get_waiter('stack_update_complete')
+        waiter.wait(StackName=self.stack_id, WaiterConfig={'Delay': delay})
+
+    def wait_stack_deleted(self, delay=30):
         waiter = self._cf.get_waiter('stack_delete_complete')
-        waiter.wait(StackName=self.stack_id)
+        waiter.wait(StackName=self.stack_id, WaiterConfig={'Delay': delay})
 
     def wait_status_changed(self, waiting_status, resource_messages, resource_success_status,
                             output: AbstractOutputWriter, delay=5):

@@ -1,12 +1,12 @@
-Description: Spotty EC2 Spot Instance Profile
+Description: Spotty EC2 Instance Profile
 Resources:
-  SpotInstanceProfile:
+  InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: '/'
       Roles:
-      - Ref: SpotInstanceRole
-  SpotInstanceRole:
+      - Ref: InstanceRole
+  InstanceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -20,18 +20,6 @@ Resources:
           - sts:AssumeRole
       Path: '/'
       Policies:
-      - PolicyName: LogRolePolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - logs:Create*
-            - logs:PutLogEvents
-            - s3:GetObject
-            Resource:
-            - arn:aws:logs:*:*:*
-            - arn:aws:s3:::*
       - PolicyName: S3RolePolicy
         PolicyDocument:
           Version: '2012-10-17'
@@ -48,4 +36,4 @@ Resources:
             - arn:aws:s3:::*
 Outputs:
   ProfileArn:
-    Value: !GetAtt SpotInstanceProfile.Arn
+    Value: !GetAtt InstanceProfile.Arn

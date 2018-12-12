@@ -201,7 +201,7 @@ def convert_old_config(config):
             'ports': config['instance']['ports'],
         },
         'instances': [{
-            'name': 'i1',
+            'name': 'instance',
             'provider': 'aws',
             'parameters': {
                 'region': config['instance']['region'],

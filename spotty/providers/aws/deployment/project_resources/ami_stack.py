@@ -34,7 +34,7 @@ class AmiStackResource(object):
 
         resource_messages = [
             ('InstanceProfile', 'creating IAM role for the instance'),
-            ('SpotInstance', 'launching the instance'),
+            ('Instance', 'launching the instance'),
             ('InstanceReadyWaitCondition', 'installing NVIDIA Docker'),
             ('AMICreatedWaitCondition', 'creating AMI and terminating the instance'),
         ]
