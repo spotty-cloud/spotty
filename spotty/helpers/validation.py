@@ -39,6 +39,7 @@ def validate_instance_config(data):
             Optional('availabilityZone', default=''): str,
             Optional('subnetId', default=''): str,
             'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
+            Optional('onDemandInstance', default=False): bool,
             Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
             Optional('keyName', default=''): str,
             Optional('rootVolumeSize', default=0): And(Or(int, str), Use(str),
@@ -115,6 +116,7 @@ def validate_ami_config(data):
             'instanceType': And(str, len),
             Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
             Optional('keyName', default=''): str,
+            Optional('onDemandInstance', default=False): bool,
         },
     }, ignore_extra_keys=True)
 

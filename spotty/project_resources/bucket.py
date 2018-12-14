@@ -1,4 +1,5 @@
 import boto3
+import re
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.utils import random_string
 
@@ -12,8 +13,8 @@ class BucketResource(object):
 
     def _find_bucket(self):
         res = self._s3.list_buckets()
-        buckets = [bucket['Name'] for bucket in res['Buckets']
-                   if bucket['Name'].startswith(self._bucket_prefix + '-') and bucket['Name'].endswith(self._region)]
+        regex = re.compile('-'.join([self._bucket_prefix, '[a-z0-9]{12}', self._region]))
+        buckets = [bucket['Name'] for bucket in res['Buckets'] if regex.match(bucket['Name']) is not None]
 
         if len(buckets) > 1:
             raise ValueError('Found several buckets in the same region: %s.' % ', '.join(buckets))

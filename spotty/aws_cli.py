@@ -1,6 +1,7 @@
 import json
 import logging
 import subprocess
+from shutil import which
 
 
 class AwsCommandError(Exception):
@@ -36,7 +37,11 @@ class AwsCli(object):
         return self._run(args, False, capture_output=capture_output)
 
     def _run(self, args: list, json_format=True, capture_output=True):
-        command_args = ['aws']
+        aws_cmd = 'aws'
+        if which(aws_cmd) is None:
+            raise ValueError('AWS CLI is not installed.')
+
+        command_args = [aws_cmd]
         if self._profile:
             command_args += ['--profile', self._profile]
 
