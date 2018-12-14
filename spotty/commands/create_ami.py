@@ -36,7 +36,7 @@ class CreateAmiCommand(AbstractConfigCommand):
         ec2 = boto3.client('ec2', region_name=region)
 
         # check that an image with this name doesn't exist yet
-        ami_name = self._config['instance']['amiName']
+        ami_name = instance_config['amiName']
         ami_info = get_ami(ec2, ami_name)
         if ami_info:
             raise ValueError('AMI with name "%s" already exists.' % ami_name)
@@ -47,8 +47,9 @@ class CreateAmiCommand(AbstractConfigCommand):
         ami_stack = AmiStackResource(cf)
 
         # prepare CF template
+        on_demand = instance_config['onDemandInstance']
         key_name = instance_config.get('keyName', '')
-        template = ami_stack.prepare_template(availability_zone, subnet_id, key_name)
+        template = ami_stack.prepare_template(availability_zone, subnet_id, on_demand, key_name)
 
         # create stack
         res, stack_name = ami_stack.create_stack(template, instance_type, ami_name, key_name)

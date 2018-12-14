@@ -369,7 +369,7 @@ Resources:
     Properties:
       Handler: index.handler
       Role: !GetAtt TerminateInstanceLambdaExecutionRole.Arn
-      Runtime: nodejs4.3
+      Runtime: nodejs8.10
       Timeout: 30
       Code:
         ZipFile: !Sub |
@@ -418,7 +418,7 @@ Resources:
     Properties:
       Handler: index.handler
       Role: !GetAtt DeleteSnapshotLambdaExecutionRole.Arn
-      Runtime: nodejs4.3
+      Runtime: nodejs8.10
       Timeout: 30
       Code:
         ZipFile: !Sub |
@@ -468,7 +468,7 @@ Resources:
     Properties:
       Handler: index.handler
       Role: !GetAtt RenameSnapshotLambdaExecutionRole.Arn
-      Runtime: nodejs4.3
+      Runtime: nodejs8.10
       Timeout: 30
       Code:
         ZipFile: !Sub |
@@ -518,7 +518,7 @@ Resources:
     Properties:
       Handler: index.handler
       Role: !GetAtt SetLogsRetentionLambdaExecutionRole.Arn
-      Runtime: nodejs4.3
+      Runtime: nodejs8.10
       Timeout: 30
       Code:
         ZipFile: |

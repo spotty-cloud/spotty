@@ -20,7 +20,7 @@ def create_or_update_instance_profile(cf, output: AbstractOutputWriter):
                 Capabilities=['CAPABILITY_IAM'],
             )
         except ClientError as e:
-            res = {}
+            res = None
             error_code = e.response.get('Error', {}).get('Code', 'Unknown')
             if error_code != 'ValidationError':
                 raise e
@@ -29,12 +29,8 @@ def create_or_update_instance_profile(cf, output: AbstractOutputWriter):
             output.write('Updating IAM role for the instance...')
 
             # wait for the stack to be updated
-            status, info = wait_stack_status_changed(cf, stack_id=res['StackId'], waiting_status='UPDATE_IN_PROGRESS',
-                                                     resource_messages=None, resource_success_status=None,
-                                                     output=output)
-        else:
-            info = cf.describe_stacks(StackName=instance_profile_stack_name)['Stacks'][0]
-            status = info['StackStatus']
+            waiter = cf.get_waiter('stack_update_complete')
+            waiter.wait(StackName=res['StackId'], WaiterConfig={'Delay': 10})
     else:
         output.write('Creating IAM role for the instance...')
 
@@ -46,10 +42,11 @@ def create_or_update_instance_profile(cf, output: AbstractOutputWriter):
         )
 
         # wait for the stack to be created
-        status, info = wait_stack_status_changed(cf, stack_id=res['StackId'], waiting_status='CREATE_IN_PROGRESS',
-                                                 resource_messages=None, resource_success_status=None,
-                                                 output=output)
+        waiter = cf.get_waiter('stack_create_complete')
+        waiter.wait(StackName=res['StackId'], WaiterConfig={'Delay': 10})
 
+    info = cf.describe_stacks(StackName=instance_profile_stack_name)['Stacks'][0]
+    status = info['StackStatus']
     if status not in ['CREATE_COMPLETE', 'UPDATE_COMPLETE']:
         raise ValueError('Stack "%s" failed.\n'
                          'Please, see CloudFormation logs for the details.' % instance_profile_stack_name)
