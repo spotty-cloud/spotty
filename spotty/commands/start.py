@@ -60,10 +60,11 @@ class StartCommand(AbstractConfigCommand):
         volumes = instance_config['volumes']
         ports = instance_config['ports']
         max_price = instance_config['maxPrice']
+        on_demand = instance_config['onDemandInstance']
         docker_commands = instance_config['docker']['commands']
 
         template = stack.prepare_template(ec2, availability_zone, subnet_id, instance_type, volumes, ports, max_price,
-                                          docker_commands)
+                                          on_demand, docker_commands)
 
         # create stack
         ami_name = instance_config['amiName']
@@ -90,21 +91,22 @@ class StartCommand(AbstractConfigCommand):
 
         if status == 'CREATE_COMPLETE':
             ip_address = get_instance_ip_address(ec2, stack.name)
-            availability_zone = [row['OutputValue'] for row in info['Outputs']
-                                 if row['OutputKey'] == 'AvailabilityZone'][0]
-
-            # get the current spot price
-            current_price = get_current_spot_price(ec2, instance_type, availability_zone)
-
             output.write('\n'
                          '--------------------\n'
                          'Instance is running.\n'
                          '\n'
-                         'IP address: %s\n'
-                         'Current Spot price: $%.04f\n'
-                         '\n'
+                         'IP address: %s' % ip_address)
+
+            if not on_demand:
+                # get the current spot price
+                availability_zone = [row['OutputValue'] for row in info['Outputs']
+                                     if row['OutputKey'] == 'AvailabilityZone'][0]
+                current_price = get_current_spot_price(ec2, instance_type, availability_zone)
+                output.write('Current Spot price: $%.04f' % current_price)
+
+            output.write('\n'
                          'Use "spotty ssh" command to connect to the Docker container.\n'
-                         '--------------------' % (ip_address, current_price))
+                         '--------------------')
         else:
             raise ValueError('Stack "%s" was not created.\n'
                              'Please, see CloudFormation and CloudWatch logs for the details.' % stack.name)

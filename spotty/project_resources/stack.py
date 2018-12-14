@@ -32,7 +32,7 @@ class StackResource(object):
         return res['Stacks'][0]
 
     def prepare_template(self, ec2, availability_zone: str, subnet_id: str, instance_type: str, volumes: list,
-                         ports: list, max_price, docker_commands):
+                         ports: list, max_price, on_demand, docker_commands):
         """Prepares CloudFormation template to run a Spot Instance."""
 
         # read and update CF template
@@ -118,7 +118,11 @@ class StackResource(object):
                     'ToPort': port,
                 }]
 
-        if max_price:
+        # run on-demand instance
+        if on_demand:
+            del template['Resources']['SpotInstanceLaunchTemplate']['Properties']['LaunchTemplateData']['InstanceMarketOptions']
+
+        if max_price and not on_demand:
             # check the maximum price
             current_price = get_current_spot_price(ec2, instance_type, availability_zone)
             if current_price > max_price:
