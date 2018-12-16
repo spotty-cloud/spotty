@@ -31,7 +31,7 @@ Resources:
           if(!amiId){throw new Error('AMI not found')}
           console.log('Found AMI ID='+amiId)
           physicalId=amiId;success()}).catch((err)=>failed(err))};function isBeta(imageName){return imageName.toLowerCase().indexOf("beta")>-1||imageName.toLowerCase().indexOf(".rc")>-1}
-      Runtime: nodejs4.3
+      Runtime: nodejs8.10
       Timeout: 30
   FindBaseAMILambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -293,7 +293,7 @@ Resources:
           console.log('"describeImages" response:\n',data);physicalId=data.Images[0].ImageId;success()}).catch((err)=>failed(err))}else{var imageId=physicalId;console.log('Searching AMI with ID='+imageId);ec2.describeImages({ImageIds:[imageId]}).promise().then((data)=>{if(!data.Images.length){throw new Error('No images found')}
           console.log('"describeImages" response:\n',data);return ec2.deregisterImage({ImageId:imageId}).promise()}).then((data)=>{console.log('Image deregistered:\n',data);return ec2.describeSnapshots({Filters:[{Name:'description',Values:['*'+imageId+'*']}]}).promise()}).then((data)=>{console.log('"describeSnapshots" response:\n',data);if(!data.Snapshots.length){throw new Error('No snapshots found')}
           return ec2.deleteSnapshot({SnapshotId:data.Snapshots[0].SnapshotId}).promise()}).then((data)=>{console.log('Snapshot deleted:\n',data);success()}).catch((err)=>failed(err))}}
-      Runtime: nodejs4.3
+      Runtime: nodejs8.10
       Timeout: 60
   DeleteAMILambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -337,7 +337,7 @@ Resources:
     Properties:
       Handler: index.handler
       Role: !GetAtt SetLogsRetentionLambdaExecutionRole.Arn
-      Runtime: nodejs4.3
+      Runtime: nodejs8.10
       Timeout: 30
       Code:
         ZipFile: |
