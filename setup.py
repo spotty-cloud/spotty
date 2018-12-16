@@ -25,10 +25,10 @@ setup(name='spotty',
       author_email='apls777@gmail.com',
       license='MIT',
       packages=find_packages(exclude=['tests*']),
-      package_data={'spotty': [
-          'data/create_ami.yaml',
-          'data/run_container.yaml',
-          'data/create_instance_profile.yaml',
+      package_data={'spotty.providers.aws.deployment.cf_templates': [
+          'data/ami.yaml',
+          'data/instance.yaml',
+          'data/instance_profile.yaml',
       ]},
       scripts=['bin/spotty'],
       install_requires=[
