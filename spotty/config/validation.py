@@ -130,7 +130,7 @@ def validate_old_config(data, project_dir):
                                                  ),
             Optional('volumes', default=[]): And(
                 [{
-                    Optional('name', default=''): str,
+                    Optional('name', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
                     'directory': And(str, lambda x: x.startswith('/'), Use(lambda x: x.rstrip('/'))),
                     Optional('size', default=0): And(int, lambda x: x > 0),
                     Optional('deletionPolicy',
@@ -217,6 +217,7 @@ def convert_old_config(config):
                     'name': volume['name'],
                     'type': 'ebs',
                     'parameters': {
+                        'volumeName': volume['name'],
                         'mountDir': volume['directory'],
                         'size': volume['size'],
                         'deletionPolicy': volume['deletionPolicy'],

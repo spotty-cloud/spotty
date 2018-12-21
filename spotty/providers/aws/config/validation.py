@@ -37,11 +37,11 @@ def validate_aws_instance_parameters(params: dict):
     }
 
     volume_parameters = {
+        Optional('volumeName', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
         Optional('mountDir', default=''): And(str,
                                               And(os.path.isabs, error='Use absolute paths for mount directories'),
                                               Use(lambda x: x.rstrip('/'))
                                               ),
-        Optional('snapshotName', default=''): str,
         Optional('size', default=0): And(int, lambda x: x > 0),
         Optional('deletionPolicy',
                  default=EbsVolume.DP_CREATE_SNAPSHOT): And(str, lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,

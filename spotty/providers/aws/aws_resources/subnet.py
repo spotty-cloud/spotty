@@ -29,3 +29,7 @@ class Subnet(object):
     @property
     def availability_zone(self) -> str:
         return self._subnet_info['AvailabilityZone']
+
+    @property
+    def vpc_id(self) -> str:
+        return self._subnet_info['VpcId']

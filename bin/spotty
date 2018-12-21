@@ -3,6 +3,7 @@
 import sys
 import argparse
 import logging
+import spotty
 from spotty.commands.aws import AwsCommand
 from spotty.commands.run import RunCommand
 from spotty.commands.ssh import SshCommand
@@ -15,6 +16,7 @@ from spotty.commands.writers.output_writrer import OutputWriter
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('-V', '--version', action='store_true', help='Display the version of the Spotty')
 
 commands = [
     StartCommand,
@@ -31,6 +33,13 @@ add_subparsers(parser, commands)
 
 # parse arguments
 args = parser.parse_args()
+output = OutputWriter()
+
+# display the version
+display_version = args.version
+if display_version:
+    output.write(spotty.__version__)
+    sys.exit(0)
 
 # logging
 logging_level = logging.DEBUG if 'debug' in args and args.debug else logging.WARNING
@@ -39,8 +48,6 @@ logging.basicConfig(level=logging_level, format='[%(levelname)s] %(message)s')
 if 'command' not in args:
     parser.print_help()
     sys.exit(1)
-
-output = OutputWriter()
 
 # run a command
 try:

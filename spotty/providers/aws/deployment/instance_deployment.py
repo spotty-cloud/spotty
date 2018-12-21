@@ -9,6 +9,7 @@ from spotty.providers.aws.deployment.cf_templates.ami_template import prepare_am
 from spotty.providers.aws.deployment.ebs_volume import EbsVolume
 from spotty.providers.aws.deployment.cf_templates.instance_template import prepare_instance_template
 from spotty.providers.aws.deployment.project_resources.ami_stack import AmiStackResource
+from spotty.providers.aws.errors.ami_not_found import AmiNotFoundError
 from spotty.providers.aws.helpers.spot_prices import get_current_spot_price
 from spotty.providers.aws.helpers.sync import sync_project_with_s3
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
@@ -53,7 +54,7 @@ class InstanceDeployment(object):
 
     def get_vpc_id(self) -> str:
         if self.instance_config.subnet_id:
-            vpc_id = Subnet.get_by_id(self._ec2, self.instance_config.subnet_id)['VpcId']
+            vpc_id = Subnet.get_by_id(self._ec2, self.instance_config.subnet_id).vpc_id
         else:
             default_vpc = Vpc.get_default_vpc(self._ec2)
             if not default_vpc:
@@ -93,6 +94,8 @@ class InstanceDeployment(object):
         # create or update instance profile
         if not dry_run:
             instance_profile_arn = create_or_update_instance_profile(self.instance_config.region, output)
+        else:
+            instance_profile_arn = None
 
         output.write('Preparing CloudFormation template...')
 
@@ -243,9 +246,7 @@ class InstanceDeployment(object):
         # get image info
         ami = self.get_ami()
         if not ami:
-            raise ValueError('AMI with name "%s" not found.\n'
-                             'Use the "spotty aws create-ami" command to create an AMI with NVIDIA Docker.'
-                             % self.instance_config.ami_name)
+            raise AmiNotFoundError(self.instance_config.ami_name)
 
         # check root volume size
         root_volume_size = self.instance_config.root_volume_size
@@ -313,11 +314,16 @@ class InstanceDeployment(object):
             # get EC2 volume
             try:
                 ec2_volume = volume.get_ec2_volume()
-                if not ec2_volume:
-                    output.write('- volume "%s" not found' % volume.ec2_volume_name)
-                    continue
             except Exception as e:
                 output.write('- volume "%s" not found. Error: %s' % (volume.ec2_volume_name, str(e)))
+                continue
+
+            if not ec2_volume:
+                output.write('- volume "%s" not found' % volume.ec2_volume_name)
+                continue
+
+            if not ec2_volume.is_available():
+                output.write('- volume "%s" is not available' % volume.ec2_volume_name)
                 continue
 
             # apply deletion policies
@@ -333,7 +339,7 @@ class InstanceDeployment(object):
                     or volume.deletion_policy == EbsVolume.DP_UPDATE_SNAPSHOT:
                 try:
                     # rename or delete previous snapshot
-                    prev_snapshot = volume.get_snapshot(from_volume_name=True)
+                    prev_snapshot = volume.get_snapshot()
                     if prev_snapshot:
                         # rename previous snapshot
                         if volume.deletion_policy == EbsVolume.DP_CREATE_SNAPSHOT:

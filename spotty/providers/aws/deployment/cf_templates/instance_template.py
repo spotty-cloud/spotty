@@ -121,17 +121,12 @@ def _get_volume_resource(volume: EbsVolume, output: AbstractOutputWriter):
         # set snapshot ID
         volume_resource['Properties']['SnapshotId'] = snapshot.snapshot_id
 
-        output.write('- volume "%s" will be restored from the snapshot "%s"'
-                     % (volume.ec2_volume_name, snapshot.name))
+        output.write('- volume "%s" will be restored from the snapshot' % volume.ec2_volume_name)
 
     else:
         # empty volume will be created, check that the size is specified
         if not volume.size:
             raise ValueError('Size for the new volume is required.')
-
-        # if the snapshot was explicitly specified and it doesn't exist, raise an error
-        if volume.snapshot_name:
-            raise ValueError('Snapshot "%s" doesn\'t exist' % volume.snapshot_name)
 
         output.write('- volume "%s" will be created' % volume.ec2_volume_name)
 

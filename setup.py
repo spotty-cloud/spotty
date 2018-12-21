@@ -19,7 +19,7 @@ def get_version():
 
 setup(name='spotty',
       version=get_version(),
-      description='Train deep learning models on AWS EC2 Spot Instances',
+      description='Train deep learning models on AWS EC2 Spot Instances and GCP Preemptible VMs',
       url='http://github.com/apls777/spotty',
       author='Oleg Polosin',
       author_email='apls777@gmail.com',

@@ -22,10 +22,6 @@ class EbsVolume(AbstractInstanceVolume):
         return self._name
 
     @property
-    def snapshot_name(self) -> str:
-        return self._params['snapshotName']
-
-    @property
     def size(self) -> int:
         return self._params['size']
 
@@ -36,7 +32,11 @@ class EbsVolume(AbstractInstanceVolume):
     @property
     def ec2_volume_name(self) -> str:
         """Returns EBS volume name."""
-        return '%s-%s-%s' % (self._project_name.lower(), self._instance_name.lower(), self.name.lower())
+        volume_name = self._params['volumeName']
+        if not volume_name:
+            volume_name = '%s-%s-%s' % (self._project_name.lower(), self._instance_name.lower(), self.name.lower())
+
+        return volume_name
 
     @property
     def mount_dir(self) -> str:
@@ -50,10 +50,5 @@ class EbsVolume(AbstractInstanceVolume):
     def get_ec2_volume(self) -> Volume:
         return Volume.get_by_name(self._ec2, self.ec2_volume_name)
 
-    def get_snapshot(self, from_volume_name=False) -> Snapshot:
-        if self.snapshot_name and not from_volume_name:
-            snapshot_name = self.snapshot_name
-        else:
-            snapshot_name = self.ec2_volume_name
-
-        return Snapshot.get_by_name(self._ec2, snapshot_name)
+    def get_snapshot(self) -> Snapshot:
+        return Snapshot.get_by_name(self._ec2, self.ec2_volume_name)
