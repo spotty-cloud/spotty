@@ -197,18 +197,38 @@ class InstanceDeployment(object):
                                      'Use "subnetId" and "availabilityZone" parameters or create missing default '
                                      'subnets.' % ', '.join(zones_wo_subnet))
 
-    def _check_max_price(self, availability_zone=''):
+    def _check_max_price(self, availability_zone: str = ''):
+        """Checks that the specified maximum Spot price is less than the
+        current Spot price.
+
+        Args:
+            availability_zone: Availability zone to check. If it's an empty string,
+                checks the cheapest AZ.
+
+        Raises:
+            ValueError: Current price for the instance is higher than the
+                maximum price in the configuration file.
+        """
         if not self.instance_config.on_demand and self.instance_config.max_price:
             current_price = get_current_spot_price(self._ec2, self.instance_config.instance_type, availability_zone)
             if current_price > self.instance_config.max_price:
                 raise ValueError('Current price for the instance (%.04f) is higher than the maximum price in the '
                                  'configuration file (%.04f).' % (current_price, self.instance_config.max_price))
 
-    def _get_availability_zone(self, volumes):
-        """Checks that existing volumes located in the same AZ and
-           the AZ from the config file matches volumes AZ.
-           Returns the final AZ where the instance should be run or empty string
-           if the instance can be run in any AZ.
+    def _get_availability_zone(self, volumes: List[AbstractInstanceVolume]):
+        """Checks that existing volumes located in the same AZ and the AZ from the
+        config file matches volumes AZ.
+
+        Args:
+            volumes: List of volume objects.
+
+        Returns:
+            The final AZ where the instance should be run or an empty string if
+            the instance can be run in any AZ.
+
+        Raises:
+            ValueError: AZ in the config file doesn't match the AZs of the volumes or
+                AZs of the volumes are different.
         """
         availability_zone = self.instance_config.availability_zone
         for volume in volumes:

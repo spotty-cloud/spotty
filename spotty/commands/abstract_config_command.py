@@ -12,6 +12,7 @@ from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 
 
 class AbstractConfigCommand(AbstractCommand):
+    """Abstract class for a Spotty sub-command that needs to use a project's configuration."""
 
     @abstractmethod
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):

@@ -1,8 +1,8 @@
 ---
 layout: default
 title: Commands
-permalink: /commands/
 nav_order: 3
+permalink: /docs/commands/
 ---
 
 # Commands
