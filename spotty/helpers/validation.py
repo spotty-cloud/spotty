@@ -92,6 +92,7 @@ def validate_instance_config(data):
                                                           Use(lambda x: x.rstrip('/')),
                                                           ),
                     Optional('commands', default=''): str,
+                    Optional('runtimeParameters', default=[]): [str],
                 },
                 And(lambda x: x['image'] or x['file'], error='Either "image" or "file" should be specified.'),
                 And(lambda x: not (x['image'] and x['file']), error='"image" and "file" cannot be specified together.'),
