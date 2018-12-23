@@ -58,7 +58,7 @@ class ContainerDeployment(object):
         for container_volume in self.config.volume_mounts:
             volume_name = container_volume['name']
             if volume_name not in mount_dirs:
-                raise ValueError('The instance volume "%s" was not specified.' % volume_name)
+                raise ValueError('Volume "%s" was not specified.' % volume_name)
 
             volume_mounts.append(VolumeMount(
                 name=container_volume['name'],

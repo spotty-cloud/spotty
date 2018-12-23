@@ -53,9 +53,10 @@ def validate_basic_config(data, project_dir):
                             Use(lambda x: x.rstrip('/')),
                         ),
                     }],
-                    And(lambda x: is_unique_value(x, 'name'), error='Each container volume must have a unique name.'),
-                    And(lambda x: not has_prefix([(volume['path'] + '/') for volume in x]),
-                        error='Volume paths cannot be prefixes for each other.'),
+                    And(lambda x: is_unique_value(x, 'name'),
+                        error='Each volume mount must have a unique name.'),
+                    And(lambda x: not has_prefix([(volume['mountPath'] + '/') for volume in x]),
+                        error='Volume mount paths cannot be prefixes for each other.'),
                 )),
                 Optional('workingDir', default=''): And(str,
                                                         And(os.path.isabs,
@@ -73,9 +74,9 @@ def validate_basic_config(data, project_dir):
             [{
                 'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
                 'provider': str,
-                'parameters': get_instance_schema({
+                'parameters': {
                     And(str, Regex(r'^[\w]+$')): object,
-                })
+                }
             }],
             And(lambda x: is_unique_value(x, 'name'), error='Each instance must have a unique name.'),
         ),
@@ -85,6 +86,53 @@ def validate_basic_config(data, project_dir):
     })
 
     return validate_config(schema, data)
+
+
+def get_instance_parameters_schema(instance_parameters: dict, instance_checks: list = None,
+                                   volumes_checks: list = None):
+    if not instance_checks:
+        instance_checks = []
+
+    if not volumes_checks:
+        volumes_checks = []
+
+    schema = Schema(And(
+        {
+            **instance_parameters,
+            Optional('dockerDataRoot', default=''): And(
+                str,
+                And(os.path.isabs, error='Use an absolute path when specifying a Docker data root directory'),
+                Use(lambda x: x.rstrip('/')),
+            ),
+            Optional('volumes', default=[]): And(
+                [{
+                    'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
+                    Optional('type', default=''): str,
+                    Optional('parameters', default={}): {
+                        Optional('mountDir', default=''): And(
+                            str,
+                            And(os.path.isabs, error='Use absolute paths for mount directories'),
+                            Use(lambda x: x.rstrip('/'))
+                        ),
+                        And(str, Regex(r'^[\w]+$')): object,
+                    },
+                }],
+                And(lambda x: is_unique_value(x, 'name'), error='Each instance volume must have a unique name.'),
+                And(lambda x: not has_prefix([(volume['parameters']['mountDir'] + '/') for volume in x
+                                              if volume['parameters']['mountDir']]),
+                    error='Mount directories cannot be prefixes for each other.'),
+                *volumes_checks,
+            ),
+            Optional('localSshPort', default=None): Or(None, And(int, lambda x: 0 <= x <= 65535)),
+        },
+        And(lambda x: not x['dockerDataRoot'] or
+                      [True for v in x['volumes'] if v['parameters']['mountDir'] and
+                       (x['dockerDataRoot'] + '/').startswith(v['parameters']['mountDir'] + '/')],
+            error='The "mountDir" of one of the volumes must be a prefix for the "dockerDataRoot" path.'),
+        *instance_checks
+    ))
+
+    return schema
 
 
 def validate_old_config(data, project_dir):
@@ -181,6 +229,8 @@ def validate_old_config(data, project_dir):
 
 
 def convert_old_config(config):
+    from spotty.providers.aws.config.instance_config import VOLUME_TYPE_EBS
+
     new_config = {
         'project': {
             'name': config['project']['name'],
@@ -213,7 +263,7 @@ def convert_old_config(config):
                 'localSshPort': config['instance']['localSshPort'],
                 'volumes': [{
                     'name': volume['name'],
-                    'type': 'ebs',
+                    'type': VOLUME_TYPE_EBS,
                     'parameters': {
                         'volumeName': volume['name'],
                         'mountDir': volume['directory'],
@@ -237,35 +287,6 @@ def convert_old_config(config):
     new_config = clear_empty_values(new_config)
 
     return new_config
-
-
-def get_instance_schema(instance_parameters: dict, instance_checks: list = None, volumes_checks: list = None):
-    if not instance_checks:
-        instance_checks = []
-
-    if not volumes_checks:
-        volumes_checks = []
-
-    schema = And(
-        {
-            Optional('volumes', default=[]): And(
-                [{
-                    'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
-                    Optional('type', default=''): str,
-                    Optional('parameters', default={}): {
-                        And(str, Regex(r'^[\w]+$')): object,
-                    },
-                }],
-                And(lambda x: is_unique_value(x, 'name'), error='Each instance volume must have a unique name.'),
-                *volumes_checks,
-            ),
-            Optional('localSshPort', default=None): Or(None, And(int, lambda x: 0 <= x <= 65535)),
-            **instance_parameters,
-        },
-        *instance_checks
-    )
-
-    return schema
 
 
 def is_unique_value(x: List[dict], key):

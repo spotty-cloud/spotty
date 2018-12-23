@@ -1,7 +1,5 @@
-import os
 from schema import Schema, Optional, And, Regex, Or, Use
-from spotty.config.validation import get_instance_schema, validate_config, has_prefix
-from spotty.providers.aws.deployment.ebs_volume import EbsVolume
+from spotty.config.validation import validate_config, get_instance_parameters_schema
 
 AMI_NAME_REGEX = r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$'
 DEFAULT_AMI_NAME = 'SpottyAMI'
@@ -22,12 +20,6 @@ def validate_instance_parameters(params: dict):
                                                        error='"rootVolumeSize" should be greater than 0 or should '
                                                              'not be specified.'),
                                                    ),
-        Optional('dockerDataRoot', default=''): And(str,
-                                                    And(os.path.isabs,
-                                                        error='Use an absolute path when specifying a Docker '
-                                                              'data root directory'),
-                                                    Use(lambda x: x.rstrip('/')),
-                                                    ),
         Optional('maxPrice', default=0): And(Or(float, int, str), Use(str),
                                              Regex(r'^\d+(\.\d{1,6})?$', error='Incorrect value for "maxPrice".'),
                                              Use(float),
@@ -38,43 +30,33 @@ def validate_instance_parameters(params: dict):
 
     volumes_checks = [
         And(lambda x: len(x) < 12, error='Maximum 11 volumes are supported at the moment.'),
-        And(lambda x: not has_prefix([(volume['parameters']['mountDir'] + '/') for volume in x
-                                      if volume['parameters']['mountDir']]),
-            error='Mount directories cannot be prefixes for each other.'),
     ]
 
     instance_checks = [
         And(lambda x: not x['onDemandInstance'] or not x['maxPrice'],
             error='"maxPrice" cannot be specified for on-demand instances'),
-        And(lambda x: not x['dockerDataRoot'] or
-                      [True for v in x['volumes'] if v['parameters']['mountDir'] and
-                       (x['dockerDataRoot'] + '/').startswith(v['parameters']['mountDir'] + '/')],
-            error='The "mountDir" of one of the volumes must be a prefix for the "dockerDataRoot" path.'),
     ]
 
-    schema = Schema(get_instance_schema(instance_parameters, instance_checks, volumes_checks))
+    schema = get_instance_parameters_schema(instance_parameters, instance_checks, volumes_checks)
 
     return validate_config(schema, params)
 
 
 def validate_ebs_volume_parameters(params: dict):
-    ebs_volume_parameters = {
-        Optional('volumeName', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
-        Optional('mountDir', default=''): And(str,
-                                              And(os.path.isabs, error='Use absolute paths for mount directories'),
-                                              Use(lambda x: x.rstrip('/'))
-                                              ),
-        Optional('size', default=0): And(int, lambda x: x > 0),
-        Optional('deletionPolicy',
-                 default=EbsVolume.DP_CREATE_SNAPSHOT): And(str, lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,
-                                                                                 EbsVolume.DP_UPDATE_SNAPSHOT,
-                                                                                 EbsVolume.DP_RETAIN,
-                                                                                 EbsVolume.DP_DELETE],
-                                                            error='Incorrect value for "deletionPolicy".'
-                                                            ),
-    }
+    from spotty.providers.aws.deployment.ebs_volume import EbsVolume
 
-    schema = Schema(ebs_volume_parameters)
+    schema = Schema({
+        Optional('volumeName', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
+        Optional('mountDir', default=''): str,  # all the checks happened in the base configuration
+        Optional('size', default=0): And(int, lambda x: x > 0),
+        Optional('deletionPolicy', default=EbsVolume.DP_CREATE_SNAPSHOT): And(
+            str,
+            lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,
+                            EbsVolume.DP_UPDATE_SNAPSHOT,
+                            EbsVolume.DP_RETAIN,
+                            EbsVolume.DP_DELETE], error='Incorrect value for "deletionPolicy".'
+        ),
+    })
 
     return validate_config(schema, params)
 
