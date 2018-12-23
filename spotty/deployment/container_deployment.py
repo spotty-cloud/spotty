@@ -55,17 +55,15 @@ class ContainerDeployment(object):
 
         # get container volumes mapping
         volume_mounts = []
-        for container_volume in self.config.volumes:
+        for container_volume in self.config.volume_mounts:
             volume_name = container_volume['name']
-            if volume_name in mount_dirs:
-                host_dir = mount_dirs[volume_name]
-            else:
-                host_dir = '/tmp/spotty/volumes/%s-%s' % (volume_name, random_string(8))
+            if volume_name not in mount_dirs:
+                raise ValueError('The instance volume "%s" was not specified.' % volume_name)
 
             volume_mounts.append(VolumeMount(
                 name=container_volume['name'],
-                host_dir=host_dir,
-                container_dir=container_volume['path'],
+                host_dir=mount_dirs[volume_name],
+                container_dir=container_volume['mountPath'],
             ))
 
         # get project directory
@@ -78,7 +76,7 @@ class ContainerDeployment(object):
 
         if not host_project_dir:
             # use temporary directory for the project
-            host_project_dir = '/tmp/spotty/volumes/project-%s' % random_string(8)
+            host_project_dir = '/tmp/spotty/project-%s' % random_string(8)
             volume_mounts.append(VolumeMount(
                 name=None,
                 host_dir=host_project_dir,

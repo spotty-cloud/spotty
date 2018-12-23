@@ -23,9 +23,9 @@ container:
   projectDir: /workspace/project
   image: tensorflow/tensorflow:latest-gpu-py3
   ports: [6006, 8888]
-  volumes:
+  volumeMounts:
     - name: workspace
-      path: /workspace
+      mountPath: /workspace
 
 instances:
   - name: i1
@@ -36,7 +36,6 @@ instances:
       volumes:
         - name: workspace
           parameters:
-            directory: /workspace
             size: 10
 ```
 
@@ -48,6 +47,7 @@ Configuration file consists of 4 sections: `project`, `container`, `instances` a
 
 - __`name`__ - the name of your project. It will be used to create S3 bucket and CloudFormation stack to run 
 an instance.
+
 - __`syncFilters`__ _(optional)_ - filters to skip some directories or files during synchronization. By default, all 
 project files will be synced with the instance. Example:
     ```yaml
@@ -59,33 +59,35 @@ project files will be synced with the instance. Example:
       - include:
           - data/test/*
       - exclude:
-          - data/test/config
+          - data/test/dump.json
     ```
     
-    It will skip ".idea/", ".git/" and "data/" directories except "data/test/" directory. All files from "data/test/" 
-    directory will be synced with the instance except "data/test/config" file.
+    It will skip ".idea/", ".git/" and "data/" directories except the "data/test/" directory. All files from 
+    the "data/test/" directory will be synced with the instance except the "data/test/dump.json" file.
     
     You can read more about filters 
-    here: [Use of Exclude and Include Filter](https://docs.aws.amazon.com/cli/latest/reference/s3/index.html#use-of-exclude-and-include-filters). 
+    here: [Use of Exclude and Include Filter](https://docs.aws.amazon.com/cli/latest/reference/s3/index.html#use-of-exclude-and-include-filters){:target="_blank"}. 
 
 ### __`container`__ section:
 
 - __`projectDir`__ - a directory inside the container where the local project will be copied. If
 it's a subdirectory of a container volume, the project will be located on that volume,
 otherwise the data will be lost once the instance is terminated.
+
 - __`image`__ _(optional)_ - the name of the Docker image that contains environment for your project. For example, 
-you could use [TensorFlow image for GPU](https://hub.docker.com/r/tensorflow/tensorflow/) 
+you could use [TensorFlow image for GPU](https://hub.docker.com/r/tensorflow/tensorflow/){:target="_blank"} 
 (`tensorflow/tensorflow:latest-gpu-py3`). It already contains NumPy, SciPy, scikit-learn, pandas, Jupyter Notebook and 
 TensorFlow itself. If you need to use your own image, you can specify the path to your Dockerfile in the 
-__`file`__ parameter (see below), or push your image to the [Docker Hub](https://hub.docker.com/).
+__`file`__ parameter (see below), or push your image to the [Docker Hub](https://hub.docker.com/){:target="_blank"}.
+
 - __`file`__ _(optional)_ - relative path to your custom Dockerfile.
     
     __Note:__ make sure that the build context for the Dockerfile doesn't contain gigabytes of training data or 
     some other heavy data (keep the Dockerfile in a separate directory or use the `.dockerignore` file). Otherwise, you would get an out-of-space error, because Docker copies the entire build
-    context to the Docker daemon during the build. Read more here: ["docker build" command](https://docs.docker.com/engine/reference/commandline/build/).
+    context to the Docker daemon during the build. Read more here: ["docker build" command](https://docs.docker.com/engine/reference/commandline/build/){:target="_blank"}.
 
     __Example:__ if you use TensorFlow and need to download your dataset from S3, you could install 
-    [AWS CLI](https://github.com/aws/aws-cli) on top of the original TensorFlow image. Just create the 
+    [AWS CLI](https://github.com/aws/aws-cli){:target="_blank"} on top of the original TensorFlow image. Just create the 
     `Dockerfile` file in the `docker/` directory of your project:
     ```dockerfile
     FROM tensorflow/tensorflow:latest-gpu-py3
@@ -95,7 +97,13 @@ __`file`__ parameter (see below), or push your image to the [Docker Hub](https:/
 
     Then set the `file` parameter to the `docker/Dockerfile` value.
 
+- __`volumeMounts`__ _(optional)_ - where to mount instance volumes into the container's filesystem. Each element 
+of a list has the following parameters:
+    - __`name`__ - this must match the name of an instance volume.
+    - __`mountPath`__ - a path within the container at which the volume should be mounted.
+
 - __`workingDir`__ _(optional)_ - working directory for your custom scripts (see "scripts" section below),
+
 - __`commands`__ _(optional)_ - commands which should be performed once your container is started. For example, you 
 could download your datasets from S3 bucket to the project directory (see "project" section):
     ```yaml
@@ -115,8 +123,10 @@ This section contains a list of instances. Each instance is described with the f
 
 - __`name`__ - name of the instance. Use this name to manage the instance with the commands like 
 "spotty start" or "spotty stop". Also Spotty uses this name in the names of AWS and GCP resources.
+
 - __`provider`__ - a provider for the instance. At the moment Spotty supports "__aws__" (Amazon Web Services) 
 and "__gcp__" (Google Cloud Platform).
+
 - __`parameters`__ - parameters of the instance. These parameters are different for different providers:
     - [AWS instance parameters](/docs/aws/instance-parameters/)
     - [GCP instance parameters](/docs/gcp/instance-parameters/)

@@ -9,9 +9,10 @@ permalink: /
 # An open-source system for training<br />deep learning models in the cloud
 {: .fs-9 }
 
-Spotty makes training of deep learning models on <a href="https://aws.amazon.com/ec2/spot/">AWS Spot Instances</a> and 
-on <a href="https://cloud.google.com/preemptible-vms/">GCP Preemtible VMs</a> (including TPUs) as simple as a training 
-on your local machine.
+Spotty makes training of deep learning models on 
+[AWS Spot Instances](https://aws.amazon.com/ec2/spot/){:target="_blank"} and on 
+[GCP Preemtible VMs](https://cloud.google.com/preemptible-vms/){:target="_blank"} (including TPUs) 
+as simple as a training on your local machine.
 {: .fs-6 .fw-300 }
 
 [Get started now](#getting-started){: .btn .btn-purple .fs-5 .mb-4 .mb-md-0 .mr-2 } [View it on GitHub](https://github.com/apls777/spotty){: .btn .fs-5 }
@@ -25,9 +26,9 @@ on your local machine.
 
 Requirements:
   * Python 3
-  * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html))
+  * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html)){:target="_blank"}
 
-Use [pip](http://www.pip-installer.org/en/latest/) to install or upgrade Spotty:
+Use [pip](http://www.pip-installer.org/en/latest/){:target="_blank"} to install or upgrade Spotty:
 
 ```bash
 $ pip install -U spotty
@@ -38,7 +39,7 @@ $ pip install -U spotty
 Prepare the `spotty.yaml` file for your project.
 
    - See the file specification [here](/docs/configuration/).
-   - Read [this](https://medium.com/@apls/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365) 
+   - Read [this](https://medium.com/@apls/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365){:target="_blank"} 
    article for a real-world example.
 
 ### Create an AMI
@@ -71,7 +72,7 @@ To connect to the running container via SSH, use the following command:
 $ spotty ssh
 ```
 
-It runs a [tmux](https://github.com/tmux/tmux/wiki) session, so you can always detach this session using
+It runs a [tmux](https://github.com/tmux/tmux/wiki){:target="_blank"} session, so you can always detach this session using
 __`Crtl + b`__, then __`d`__ combination of keys. To be attached to that session later, just use the
 `spotty ssh` command again.
 

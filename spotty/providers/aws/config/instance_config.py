@@ -1,5 +1,5 @@
 from spotty.config.abstract_instance_config import AbstractInstanceConfig
-from spotty.providers.aws.config.validation import validate_aws_instance_parameters
+from spotty.providers.aws.config.validation import validate_instance_parameters
 
 VOLUME_TYPE_EBS = 'ebs'
 
@@ -9,7 +9,7 @@ class InstanceConfig(AbstractInstanceConfig):
     def __init__(self, config: dict):
         super().__init__(config)
 
-        self._params = validate_aws_instance_parameters(self._params)
+        self._params = validate_instance_parameters(self._params)
 
         # set the default volume type value
         for volume in self._params['volumes']:

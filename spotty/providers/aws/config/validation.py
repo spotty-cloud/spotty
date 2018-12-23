@@ -7,7 +7,7 @@ AMI_NAME_REGEX = r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$'
 DEFAULT_AMI_NAME = 'SpottyAMI'
 
 
-def validate_aws_instance_parameters(params: dict):
+def validate_instance_parameters(params: dict):
     instance_parameters = {
         'region': And(str, Regex(r'^[a-z0-9-]+$')),
         Optional('availabilityZone', default=''): And(str, Regex(r'^[a-z0-9-]+$')),
@@ -36,22 +36,6 @@ def validate_aws_instance_parameters(params: dict):
                                              ),
     }
 
-    volume_parameters = {
-        Optional('volumeName', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
-        Optional('mountDir', default=''): And(str,
-                                              And(os.path.isabs, error='Use absolute paths for mount directories'),
-                                              Use(lambda x: x.rstrip('/'))
-                                              ),
-        Optional('size', default=0): And(int, lambda x: x > 0),
-        Optional('deletionPolicy',
-                 default=EbsVolume.DP_CREATE_SNAPSHOT): And(str, lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,
-                                                                                 EbsVolume.DP_UPDATE_SNAPSHOT,
-                                                                                 EbsVolume.DP_RETAIN,
-                                                                                 EbsVolume.DP_DELETE],
-                                                            error='Incorrect value for "deletionPolicy".'
-                                                            ),
-    }
-
     volumes_checks = [
         And(lambda x: len(x) < 12, error='Maximum 11 volumes are supported at the moment.'),
         And(lambda x: not has_prefix([(volume['parameters']['mountDir'] + '/') for volume in x
@@ -68,7 +52,29 @@ def validate_aws_instance_parameters(params: dict):
             error='The "mountDir" of one of the volumes must be a prefix for the "dockerDataRoot" path.'),
     ]
 
-    schema = Schema(get_instance_schema(instance_parameters, volume_parameters, instance_checks, volumes_checks))
+    schema = Schema(get_instance_schema(instance_parameters, instance_checks, volumes_checks))
+
+    return validate_config(schema, params)
+
+
+def validate_ebs_volume_parameters(params: dict):
+    ebs_volume_parameters = {
+        Optional('volumeName', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
+        Optional('mountDir', default=''): And(str,
+                                              And(os.path.isabs, error='Use absolute paths for mount directories'),
+                                              Use(lambda x: x.rstrip('/'))
+                                              ),
+        Optional('size', default=0): And(int, lambda x: x > 0),
+        Optional('deletionPolicy',
+                 default=EbsVolume.DP_CREATE_SNAPSHOT): And(str, lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,
+                                                                                 EbsVolume.DP_UPDATE_SNAPSHOT,
+                                                                                 EbsVolume.DP_RETAIN,
+                                                                                 EbsVolume.DP_DELETE],
+                                                            error='Incorrect value for "deletionPolicy".'
+                                                            ),
+    }
+
+    schema = Schema(ebs_volume_parameters)
 
     return validate_config(schema, params)
 

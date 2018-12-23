@@ -16,8 +16,8 @@ class ContainerConfig(object):
         return self._config['file']
 
     @property
-    def volumes(self):
-        return self._config['volumes']
+    def volume_mounts(self):
+        return self._config['volumeMounts']
 
     @property
     def ports(self):

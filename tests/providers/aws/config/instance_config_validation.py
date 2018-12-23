@@ -1,5 +1,5 @@
 import unittest
-from spotty.providers.aws.config.validation import validate_aws_instance_parameters
+from spotty.providers.aws.config.validation import validate_instance_parameters
 
 
 class TestBucketResource(unittest.TestCase):
@@ -23,23 +23,23 @@ class TestBucketResource(unittest.TestCase):
             'volumes': [],
         }
 
-        self.assertEqual(expected_params, validate_aws_instance_parameters(required_params))
+        self.assertEqual(expected_params, validate_instance_parameters(required_params))
 
     def test_failed_validation(self):
         # no params
         with self.assertRaises(ValueError):
-            validate_aws_instance_parameters({})
+            validate_instance_parameters({})
 
         # wrong case for the region
         with self.assertRaises(ValueError):
-            validate_aws_instance_parameters({
+            validate_instance_parameters({
                 'region': 'EU-WEST-1',
                 'instanceType': 'p2.xlarge',
             })
 
         # unknown parameter
         with self.assertRaises(ValueError):
-            validate_aws_instance_parameters({
+            validate_instance_parameters({
                 'region': 'eu-west-1',
                 'instanceType': 'p2.xlarge',
                 'unknownParameter': 'test',

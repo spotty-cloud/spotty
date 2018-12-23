@@ -1,6 +1,7 @@
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.aws.aws_resources.snapshot import Snapshot
 from spotty.providers.aws.aws_resources.volume import Volume
+from spotty.providers.aws.config.validation import validate_ebs_volume_parameters
 
 
 class EbsVolume(AbstractInstanceVolume):
@@ -13,7 +14,8 @@ class EbsVolume(AbstractInstanceVolume):
     def __init__(self, ec2, volume_config: dict, project_name: str, instance_name: str):
         self._ec2 = ec2
         self._name = volume_config['name']
-        self._params = volume_config['parameters']
+        self._params = validate_ebs_volume_parameters(volume_config['parameters'])
+
         self._project_name = project_name
         self._instance_name = instance_name
 

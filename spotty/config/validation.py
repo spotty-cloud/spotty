@@ -44,14 +44,14 @@ def validate_basic_config(data, project_dir):
                                                   And(lambda x: os.path.isfile(os.path.join(project_dir, x)),
                                                       error='Dockerfile not found.'),
                                                   ),
-                Optional('volumes'): (And(
+                Optional('volumeMounts'): (And(
                     [{
                         'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
-                        'path': And(str,
-                                    And(os.path.isabs,
-                                        error='Use an absolute path when specifying a mount directory'),
-                                    Use(lambda x: x.rstrip('/'))
-                                    ),
+                        'mountPath': And(
+                            str,
+                            And(os.path.isabs, error='Use an absolute path when specifying a mount directory'),
+                            Use(lambda x: x.rstrip('/')),
+                        ),
                     }],
                     And(lambda x: is_unique_value(x, 'name'), error='Each container volume must have a unique name.'),
                     And(lambda x: not has_prefix([(volume['path'] + '/') for volume in x]),
@@ -74,8 +74,6 @@ def validate_basic_config(data, project_dir):
                 'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
                 'provider': str,
                 'parameters': get_instance_schema({
-                    And(str, Regex(r'^[\w]+$')): object,
-                }, {
                     And(str, Regex(r'^[\w]+$')): object,
                 })
             }],
@@ -192,9 +190,9 @@ def convert_old_config(config):
             'projectDir': config['project']['remoteDir'],
             'image': config['instance']['docker']['image'],
             'file': config['instance']['docker']['file'],
-            'volumes': [{
+            'volumeMounts': [{
                 'name': volume['name'],
-                'path': volume['directory'],
+                'mountPath': volume['directory'],
             } for volume in config['instance']['volumes']],
             'workingDir': config['instance']['docker']['workingDir'],
             'commands': config['instance']['docker']['commands'],
@@ -241,8 +239,7 @@ def convert_old_config(config):
     return new_config
 
 
-def get_instance_schema(instance_parameters: dict, volume_parameters: dict, instance_checks: list = None,
-                        volumes_checks: list = None):
+def get_instance_schema(instance_parameters: dict, instance_checks: list = None, volumes_checks: list = None):
     if not instance_checks:
         instance_checks = []
 
@@ -255,7 +252,9 @@ def get_instance_schema(instance_parameters: dict, volume_parameters: dict, inst
                 [{
                     'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
                     Optional('type', default=''): str,
-                    'parameters': volume_parameters,
+                    Optional('parameters', default={}): {
+                        And(str, Regex(r'^[\w]+$')): object,
+                    },
                 }],
                 And(lambda x: is_unique_value(x, 'name'), error='Each instance volume must have a unique name.'),
                 *volumes_checks,
@@ -270,16 +269,12 @@ def get_instance_schema(instance_parameters: dict, volume_parameters: dict, inst
 
 
 def is_unique_value(x: List[dict], key):
-    """
-    Returns "True" if all values of the key in the list of dictionaries are unique.
-    """
+    """Returns "True" if all values of the key in the list of dictionaries are unique."""
     return len(x) == len(set([v[key] for v in x]))
 
 
 def has_prefix(x: list):
-    """
-    Returns "True" if some value in the list is a prefix for another value in this list.
-    """
+    """Returns "True" if some value in the list is a prefix for another value in this list."""
     for val in x:
         if len(list(filter(val.startswith, x))) > 1:
             return True
