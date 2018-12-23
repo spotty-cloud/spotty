@@ -43,6 +43,10 @@ Parameters:
     Type: String
     Default: 'true'
     AllowedValues: ['true', 'false']
+  DockerRuntimeParameters:
+    Description: Additional parameters for the container runtime
+    Type: String
+    Default: ''
   DockerWorkingDirectory:
     Description: Working directory inside Docker container
     Type: String
@@ -288,7 +292,7 @@ Resources:
 
                   # run docker container
                   CONTAINER_NAME=spotty
-                  docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAMS \
+                  docker run $NVIDIA_RUNTIME ${DockerRuntimeParameters} --net=host -td $VOLUME_PARAMS \
                     -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker -v ${ProjectDirectory}:${ProjectDirectory} \
                     --name $CONTAINER_NAME $DOCKER_IMAGE /bin/sh
 

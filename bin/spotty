@@ -3,6 +3,7 @@
 import sys
 import argparse
 import logging
+import spotty
 from spotty.commands.clean_logs import CleanLogsCommand
 from spotty.commands.create_ami import CreateAmiCommand
 from spotty.commands.delete_ami import DeleteAmiCommand
@@ -16,6 +17,7 @@ from spotty.commands.writers.output_writrer import OutputWriter
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('-V', '--version', action='store_true', help='Display the version of the Spotty')
 parser.add_argument('-d', '--debug', action='store_true', help='Show debug messages')
 
 commands = [
@@ -39,6 +41,13 @@ for command_class in commands:
 
 # parse arguments
 args = parser.parse_args()
+output = OutputWriter()
+
+# display the version
+display_version = args.version
+if display_version:
+    output.write(spotty.__version__)
+    sys.exit(0)
 
 # logging
 logging_level = logging.DEBUG if args.debug else logging.WARNING
@@ -47,8 +56,6 @@ logging.basicConfig(level=logging_level, format='%(levelname)s %(message)s')
 if not hasattr(args, 'command_class'):
     parser.print_usage()
     sys.exit(1)
-
-output = OutputWriter()
 
 # run a command
 try:

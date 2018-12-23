@@ -1,5 +1,6 @@
 import os
 import yaml
+from subprocess import list2cmdline
 from botocore.exceptions import EndpointConnectionError
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
 from spotty.helpers.resources import get_snapshot, is_gpu_instance, stack_exists, get_volume, get_ami
@@ -186,6 +187,9 @@ class StackResource(object):
             dockerfile_path = remote_project_dir + '/' + dockerfile_path
             docker_context_path = os.path.dirname(dockerfile_path)
 
+        # additional Docker runtime parameters
+        docker_runtime_parameters = list2cmdline(docker_config['runtimeParameters'])
+
         # create stack
         params = {
             'VpcId': vpc_id,
@@ -200,6 +204,7 @@ class StackResource(object):
             'DockerfilePath': dockerfile_path,
             'DockerBuildContextPath': docker_context_path,
             'DockerNvidiaRuntime': 'true' if is_gpu_instance(instance_type) else 'false',
+            'DockerRuntimeParameters': docker_runtime_parameters,
             'DockerWorkingDirectory': working_dir,
             'InstanceNameTag': project_name,
             'ProjectS3Bucket': bucket_name,
