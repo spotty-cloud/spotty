@@ -11,11 +11,6 @@ class InstanceConfig(AbstractInstanceConfig):
 
         self._params = validate_instance_parameters(self._params)
 
-        # set the default volume type value
-        for volume in self._params['volumes']:
-            if not volume['type']:
-                volume['type'] = VOLUME_TYPE_EBS
-
     @property
     def region(self) -> str:
         return self._params['region']

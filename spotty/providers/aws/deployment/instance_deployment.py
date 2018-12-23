@@ -279,15 +279,11 @@ class InstanceDeployment(object):
         # create key pair
         key_name = self.key_pair.get_or_create_key(dry_run)
 
-        # split container volumes mapping to two different lists
-        docker_host_dirs = []
-        docker_container_dirs = []
-        for volume_mount in container.volume_mounts:
-            docker_host_dirs.append(volume_mount.host_dir)
-            docker_container_dirs.append(volume_mount.container_dir)
-
         # get mount directories for the volumes
         mount_dirs = [volume.mount_dir for volume in volumes]
+
+        # get Docker runtime parameters
+        runtime_parameters = container.get_runtime_parameters(is_gpu_instance(self.instance_config.instance_type))
 
         # create stack
         parameters = {
@@ -302,11 +298,8 @@ class InstanceDeployment(object):
             'DockerImage': container.config.image,
             'DockerfilePath': container.dockerfile_path,
             'DockerBuildContextPath': container.docker_context_path,
-            'DockerNvidiaRuntime': 'true' if is_gpu_instance(self.instance_config.instance_type) else 'false',
+            'DockerRuntimeParameters': runtime_parameters,
             'DockerWorkingDirectory': container.config.working_dir,
-            'DockerVolumesHostDirs': ('"%s"' % '" "'.join(docker_host_dirs)) if docker_host_dirs else '',
-            'DockerVolumesContainerDirs': (
-                        '"%s"' % '" "'.join(docker_container_dirs)) if docker_container_dirs else '',
             'InstanceNameTag': self.ec2_instance_name,
             'ProjectS3Bucket': bucket_name,
             'HostProjectDirectory': container.host_project_dir,

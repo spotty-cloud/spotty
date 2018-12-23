@@ -38,21 +38,12 @@ Parameters:
     Description: Docker build's context path for the Dockerfile
     Type: String
     Default: ''
-  DockerNvidiaRuntime:
-    Description: Run Docker container with NVIDIA runtime
+  DockerRuntimeParameters:
+    Description: Parameters for the "docker run" command
     Type: String
-    Default: 'true'
-    AllowedValues: ['true', 'false']
+    Default: ''
   DockerWorkingDirectory:
     Description: Working directory inside Docker container
-    Type: String
-    Default: ''
-  DockerVolumesHostDirs:
-    Description: Host directories tht should be mounted inside the container (bash array)
-    Type: String
-    Default: ''
-  DockerVolumesContainerDirs:
-    Description: Container directories that should be mounted to the corresponding host directories (bash array)
     Type: String
     Default: ''
   InstanceNameTag:
@@ -227,28 +218,13 @@ Resources:
                 fi
 
                 if [ -n "$DOCKER_IMAGE" ]; then
-                  HOST_DIRS=(${DockerVolumesHostDirs})
-                  CONTAINER_DIRS=(${DockerVolumesContainerDirs})
-                  VOLUME_PARAMS=""
-                  for i in ${!!HOST_DIRS[*]}
-                  do
-                    HOST_DIR=${!HOST_DIRS[$i]}
-                    CONTAINER_DIR=${!CONTAINER_DIRS[$i]}
-                    VOLUME_PARAMS="$VOLUME_PARAMS -v $HOST_DIR:$CONTAINER_DIR"
-                  done
-
-                  NVIDIA_RUNTIME=""
-                  if [ "${DockerNvidiaRuntime}" == "true" ]; then
-                    NVIDIA_RUNTIME="--runtime=nvidia"
-                  fi
-
                   # create directory for Docker scripts
                   mkdir -p /tmp/docker
                   chmod 777 /tmp/docker
 
                   # run docker container
                   CONTAINER_NAME=spotty
-                  docker run $NVIDIA_RUNTIME --net=host -td $VOLUME_PARAMS \
+                  docker run ${DockerRuntimeParameters} \
                     -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker \
                     --name $CONTAINER_NAME $DOCKER_IMAGE /bin/sh
 

@@ -1,5 +1,6 @@
 from collections import namedtuple, OrderedDict
 import os
+from subprocess import list2cmdline
 from typing import List
 from spotty.config.container_config import ContainerConfig
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
@@ -47,6 +48,17 @@ class ContainerDeployment(object):
     @property
     def volume_mounts(self) -> List[VolumeMount]:
         return self._volume_mounts
+
+    def get_runtime_parameters(self, is_nvidia_runtime: bool):
+        """Returns parameters for the ""docker run" command."""
+        parameters = self._config.runtime_parameters + ['-td', '--net=host']
+        if is_nvidia_runtime:
+            parameters += ['--runtime=nvidia']
+
+        for volume_mount in self.volume_mounts:
+            parameters += ['-v', '%s:%s' % (volume_mount.host_dir, volume_mount.container_dir)]
+
+        return list2cmdline(parameters)
 
     def _get_volume_mounts(self, volumes: List[AbstractInstanceVolume]):
         """Get container volume mounts."""

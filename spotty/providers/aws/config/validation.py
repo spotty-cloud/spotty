@@ -6,6 +6,8 @@ DEFAULT_AMI_NAME = 'SpottyAMI'
 
 
 def validate_instance_parameters(params: dict):
+    from spotty.providers.aws.config.instance_config import VOLUME_TYPE_EBS
+
     instance_parameters = {
         'region': And(str, Regex(r'^[a-z0-9-]+$')),
         Optional('availabilityZone', default=''): And(str, Regex(r'^[a-z0-9-]+$')),
@@ -37,7 +39,7 @@ def validate_instance_parameters(params: dict):
             error='"maxPrice" cannot be specified for on-demand instances'),
     ]
 
-    schema = get_instance_parameters_schema(instance_parameters, instance_checks, volumes_checks)
+    schema = get_instance_parameters_schema(instance_parameters, VOLUME_TYPE_EBS, instance_checks, volumes_checks)
 
     return validate_config(schema, params)
 

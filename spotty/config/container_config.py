@@ -35,3 +35,7 @@ class ContainerConfig(object):
             working_dir = self._config['projectDir']
 
         return working_dir
+
+    @property
+    def runtime_parameters(self):
+        return self._config['runtimeParameters']

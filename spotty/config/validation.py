@@ -66,6 +66,7 @@ def validate_basic_config(data, project_dir):
                                                         ),
                 Optional('commands', default=''): str,
                 Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
+                Optional('runtimeParameters', default=[]): [str],
             },
             And(lambda x: x['image'] or x['file'], error='Either "image" or "file" should be specified.'),
             And(lambda x: not (x['image'] and x['file']), error='"image" and "file" cannot be specified together.'),
@@ -88,8 +89,8 @@ def validate_basic_config(data, project_dir):
     return validate_config(schema, data)
 
 
-def get_instance_parameters_schema(instance_parameters: dict, instance_checks: list = None,
-                                   volumes_checks: list = None):
+def get_instance_parameters_schema(instance_parameters: dict, default_volume_type: str,
+                                   instance_checks: list = None, volumes_checks: list = None):
     if not instance_checks:
         instance_checks = []
 
@@ -107,7 +108,7 @@ def get_instance_parameters_schema(instance_parameters: dict, instance_checks: l
             Optional('volumes', default=[]): And(
                 [{
                     'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
-                    Optional('type', default=''): str,
+                    Optional('type', default=default_volume_type): str,
                     Optional('parameters', default={}): {
                         Optional('mountDir', default=''): And(
                             str,
@@ -213,6 +214,7 @@ def validate_old_config(data, project_dir):
                                                           Use(lambda x: x.rstrip('/')),
                                                           ),
                     Optional('commands', default=''): str,
+                    Optional('runtimeParameters', default=[]): [str],
                 },
                 And(lambda x: x['image'] or x['file'], error='Either "image" or "file" should be specified.'),
                 And(lambda x: not (x['image'] and x['file']), error='"image" and "file" cannot be specified together.'),
@@ -247,6 +249,7 @@ def convert_old_config(config):
             'workingDir': config['instance']['docker']['workingDir'],
             'commands': config['instance']['docker']['commands'],
             'ports': config['instance']['ports'],
+            'runtimeParameters': config['instance']['docker']['runtimeParameters'],
         },
         'instances': [{
             'name': 'instance',
