@@ -571,7 +571,7 @@ Resources:
     DependsOn: SpotInstance
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT10M
+        Timeout: PT30M
 
 Outputs:
   InstanceId:
