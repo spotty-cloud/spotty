@@ -167,14 +167,15 @@ Resources:
           files:
             /tmp/scripts/init.sh:
               content: !Sub |
-                # install Docker
+                # install Docker CE
                 apt-get update
                 apt-get install -y \
-                    apt-transport-https \
-                    ca-certificates \
-                    curl \
-                    software-properties-common
-                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+                  apt-transport-https \
+                  ca-certificates \
+                  curl \
+                  gnupg-agent \
+                  software-properties-common
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
                 add-apt-repository \
                    "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
                    $(lsb_release -cs) \
@@ -182,20 +183,26 @@ Resources:
                 apt-get update
                 apt-get install -y docker-ce
 
-                # add the package repositories
+                # install NVIDIA driver
+                apt-key adv --fetch-keys  http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
+                bash -c 'echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64 /" > /etc/apt/sources.list.d/cuda.list'
+                mkdir /usr/lib/nvidia  # a fix to install the driver, see: https://devtalk.nvidia.com/default/topic/1032456/linux/nvidia-387-26-for-ubuntu-16-04-package-broken-/
+                apt-get update
+                apt-get install -y nvidia-410
+
+                # install nvidia-docker2
                 curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add -
                 distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
                 curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
                   tee /etc/apt/sources.list.d/nvidia-docker.list
                 apt-get update
-
-                # install nvidia-docker2 and reload the Docker daemon configuration
-                apt-get install -y nvidia-384
                 apt-get install -y nvidia-docker2
+
+                # reload the Docker daemon configuration
                 pkill -SIGHUP dockerd
 
-                # test nvidia-docker
-                docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
+                # test NVIDIA Docker runtime
+                docker run --runtime=nvidia --rm nvidia/cuda:10.0-base-ubuntu16.04 nvidia-smi
                 docker rmi $(docker images -q)
               mode: '000755'
               owner: root
