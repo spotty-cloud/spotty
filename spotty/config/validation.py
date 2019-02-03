@@ -75,9 +75,9 @@ def validate_basic_config(data, project_dir):
             [{
                 'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
                 'provider': str,
-                'parameters': {
+                'parameters': And({
                     And(str, Regex(r'^[\w]+$')): object,
-                }
+                }, error='Instance parameters are not specified')
             }],
             And(lambda x: is_unique_value(x, 'name'), error='Each instance must have a unique name.'),
         ),

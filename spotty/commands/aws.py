@@ -8,7 +8,7 @@ from spotty.providers.aws.commands.spot_prices import SpotPricesCommand
 class AwsCommand(AbstractProviderCommand):
 
     name = 'aws'
-    description = 'AWS helper commands'
+    description = 'AWS commands'
     commands = [
         CreateAmiCommand,
         DeleteAmiCommand,

@@ -18,6 +18,11 @@ class AbstractInstanceConfig(ABC):
         return self._params['volumes']
 
     @property
+    def docker_data_root(self) -> str:
+        """Data root directory for Docker daemon."""
+        return self._params['dockerDataRoot']
+
+    @property
     def local_ssh_port(self) -> int:
         """Local SSH port to connect to the instance (in case of a tunnel)."""
         return self._params['localSshPort']

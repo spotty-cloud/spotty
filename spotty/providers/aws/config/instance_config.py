@@ -40,9 +40,5 @@ class InstanceConfig(AbstractInstanceConfig):
         return self._params['rootVolumeSize']
 
     @property
-    def docker_data_root(self) -> int:
-        return self._params['dockerDataRoot']
-
-    @property
     def max_price(self) -> float:
         return self._params['maxPrice']

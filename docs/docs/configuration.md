@@ -117,6 +117,11 @@ could download your datasets from S3 bucket to the project directory (see "proje
     ```
     It will open ports 6006 for Jupyter Notebook and 8008 for TensorBoard. 
 
+- __`runtimeParameters`__ _(optional)_ - a list of additional parameters for the container runtime. For example:
+    ```yaml
+    runtimeParameters: ['--privileged', '--shm-size', '2G']
+    ```
+
 ### __`instances`__ section:
 
 This section contains a list of instances. Each instance is described with the following parameters:
