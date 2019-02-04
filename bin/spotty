@@ -10,7 +10,7 @@ from spotty.commands.ssh import SshCommand
 from spotty.commands.status import StatusCommand
 from spotty.commands.stop import StopCommand
 from spotty.commands.sync import SyncCommand
-from spotty.helpers.commands import add_subparsers
+from spotty.helpers.commands import add_subparsers, get_custom_commands
 from spotty.commands.start import StartCommand
 from spotty.commands.writers.output_writrer import OutputWriter
 
@@ -26,7 +26,7 @@ commands = [
     RunCommand,
     SyncCommand,
     AwsCommand,
-]
+] + get_custom_commands()
 
 # add commands to the parser
 add_subparsers(parser, commands)

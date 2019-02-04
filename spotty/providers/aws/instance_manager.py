@@ -27,7 +27,7 @@ class InstanceManager(AbstractInstanceManager):
             # check if the instance is already running
             instance = self.deployment.get_instance()
             if instance:
-                print('Are you sure you want to restart the instance with new parameters?')
+                print('Instance is already running. Are you sure you want to restart it?')
                 res = input('Type "y" to confirm: ')
                 if res != 'y':
                     return

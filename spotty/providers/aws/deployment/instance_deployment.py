@@ -88,6 +88,7 @@ class InstanceDeployment(object):
         bucket_name = self.bucket.get_or_create_bucket(output, dry_run)
 
         # sync the project with the bucket
+        output.write('Syncing the project with S3 bucket...')
         sync_project_with_s3(project_config.project_dir, bucket_name, self.instance_config.region,
                              project_config.sync_filters, dry_run)
 

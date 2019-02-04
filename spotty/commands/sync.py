@@ -16,7 +16,6 @@ class SyncCommand(AbstractConfigCommand):
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
         dry_run = args.dry_run
         with output.prefix('[dry-run] ' if dry_run else ''):
-            output.write('Syncing the project with the instance...')
             instance_manager.sync(output, dry_run)
 
         output.write('Done')
