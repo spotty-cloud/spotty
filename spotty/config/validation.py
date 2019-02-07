@@ -44,7 +44,7 @@ def validate_basic_config(data, project_dir):
                                                   And(lambda x: os.path.isfile(os.path.join(project_dir, x)),
                                                       error='Dockerfile not found.'),
                                                   ),
-                Optional('volumeMounts'): (And(
+                Optional('volumeMounts', default=[]): (And(
                     [{
                         'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
                         'mountPath': And(

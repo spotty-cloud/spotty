@@ -4,7 +4,6 @@ from subprocess import list2cmdline
 from typing import List
 from spotty.config.container_config import ContainerConfig
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
-from spotty.utils import random_string
 
 
 VolumeMount = namedtuple('VolumeMount', ['name', 'host_dir', 'container_dir'])
@@ -69,16 +68,15 @@ class ContainerDeployment(object):
         volume_mounts = []
         for container_volume in self.config.volume_mounts:
             volume_name = container_volume['name']
-            if volume_name not in mount_dirs:
-                raise ValueError('Volume "%s" was not specified.' % volume_name)
+            host_dir = mount_dirs.get(volume_name, '/tmp/spotty/volumes/%s' % volume_name)
 
             volume_mounts.append(VolumeMount(
-                name=container_volume['name'],
-                host_dir=mount_dirs[volume_name],
+                name=volume_name,
+                host_dir=host_dir,
                 container_dir=container_volume['mountPath'],
             ))
 
-        # get project directory
+        # get host project directory
         host_project_dir = None
         for name, host_dir, container_dir in volume_mounts:
             if (self.config.project_dir + '/').startswith(container_dir + '/'):
@@ -88,7 +86,7 @@ class ContainerDeployment(object):
 
         if not host_project_dir:
             # use temporary directory for the project
-            host_project_dir = '/tmp/spotty/project-%s' % random_string(8)
+            host_project_dir = '/tmp/spotty/volumes/.project'
             volume_mounts.append(VolumeMount(
                 name=None,
                 host_dir=host_project_dir,
