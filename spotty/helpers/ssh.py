@@ -25,7 +25,8 @@ def run_script(host, user, key_path, script_name, script_content, tmux_session_n
     script_base64 = base64.b64encode(script_content.encode('utf-8')).decode('utf-8')
 
     # a remote path where the script will be uploaded
-    script_path = '/tmp/docker/%s.sh' % script_name
+    instance_script_path = '/tmp/spotty/container/scripts/run/%s.sh' % script_name
+    container_script_path = '/tmp/scripts/run/%s.sh' % script_name
 
     # command to attach user to existing tmux session
     attach_session_cmd = subprocess.list2cmdline(['tmux', 'attach', '-t', tmux_session_name, '>', '/dev/null',
@@ -36,13 +37,14 @@ def run_script(host, user, key_path, script_name, script_content, tmux_session_n
                                                 '2>&1'])
 
     # command to upload user script to the instance
-    upload_script_cmd = subprocess.list2cmdline(['echo', script_base64, '|', 'base64', '-d', '>', script_path])
+    upload_script_cmd = subprocess.list2cmdline(['echo', script_base64, '|', 'base64', '-d', '>', instance_script_path])
 
     # log the script outputs to the file
-    log_cmd = ['2>&1', '|', 'tee', '/var/log/spotty-run/%s-`date +%%s`.log' % script_name] if logging else []
+    log_cmd = ['2>&1', '|', 'tee', '/var/log/spotty/run/%s-`date +%%s`.log' % script_name] if logging else []
 
     # command to run user script inside the docker container
-    docker_cmd = subprocess.list2cmdline(['sudo', '/scripts/container_bash.sh', '-xe', script_path] + log_cmd)
+    docker_cmd = subprocess.list2cmdline(['sudo', '/tmp/spotty/instance/scripts/container_bash.sh', '-xe',
+                                          container_script_path] + log_cmd)
 
     # command to create new tmux session and run user script
     new_session_cmd = subprocess.list2cmdline(['tmux', 'new', '-s', tmux_session_name, '-n', script_name,

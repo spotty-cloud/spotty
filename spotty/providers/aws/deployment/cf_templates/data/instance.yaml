@@ -129,11 +129,13 @@ Resources:
             - docker_container_config
         prepare_instance_config:
           files:
-            /tmp/scripts/prepare_instance.sh:
-              owner: root
-              group: root
-              mode: '000400'
+            /tmp/spotty/instance/scripts/prepare_instance.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000755'
               content: !Sub |
+                #!/bin/bash -e
+
                 # install AWS CLI
                 apt-get install -y awscli
                 aws configure set default.region ${AWS::Region}
@@ -141,25 +143,33 @@ Resources:
                 # install jq
                 apt-get install -y jq
 
-                # create directory for "spotty run" logs
-                mkdir -p /var/log/spotty-run
-                chmod 777 /var/log/spotty-run
+                # create directory for Docker scripts
+                mkdir -p /tmp/spotty/container/scripts/run
+                chmod -R 755 /tmp/spotty/container/scripts
+                chown -R ubuntu:ubuntu /tmp/spotty/container/scripts
+
+                # create directory for Spotty logs
+                mkdir -p /var/log/spotty/run
+                chmod -R 755 /var/log/spotty
+                chown -R ubuntu:ubuntu /var/log/spotty
             /home/ubuntu/.tmux.conf:
               owner: ubuntu
               group: ubuntu
-              mode: '000664'
+              mode: '000644'
               content: !Sub |
                 bind-key x kill-pane
           commands:
             prepare_instance:
-              command: '/bin/bash -xe /tmp/scripts/prepare_instance.sh'
+              command: '/bin/bash -xe /tmp/spotty/instance/scripts/prepare_instance.sh'
         mount_volumes_config:
           files:
-            /tmp/scripts/mount_volumes.sh:
-              owner: root
-              group: root
-              mode: '000400'
+            /tmp/spotty/instance/scripts/mount_volumes.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000755'
               content: !Sub |
+                #!/bin/bash -e
+
                 DEVICE_LETTERS=(f g h i j k l m n o p)
                 MOUNT_DIRS=(${VolumeMountDirectories})
 
@@ -176,28 +186,32 @@ Resources:
                 done
           commands:
             mount_volumes:
-              command: '/bin/bash -xe /tmp/scripts/mount_volumes.sh'
+              command: '/bin/bash -xe /tmp/spotty/instance/scripts/mount_volumes.sh'
         sync_project_config:
           files:
-            /tmp/scripts/sync_project.sh:
-              owner: root
-              group: root
-              mode: '000400'
+            /tmp/spotty/instance/scripts/sync_project.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000755'
               content: !Sub |
+                #!/bin/bash -e
+
                 if [ -n "${ProjectS3Bucket}" ] && [ -n "${HostProjectDirectory}" ]; then
                   mkdir -p ${HostProjectDirectory}
                   aws s3 sync --exact-timestamps s3://${ProjectS3Bucket}/project ${HostProjectDirectory}
                 fi
           commands:
             sync_project:
-              command: '/bin/bash -xe /tmp/scripts/sync_project.sh'
+              command: '/bin/bash -xe /tmp/spotty/instance/scripts/sync_project.sh'
         docker_container_config:
           files:
-            /tmp/scripts/run_container.sh:
-              owner: root
-              group: root
-              mode: '000400'
+            /tmp/spotty/instance/scripts/run_container.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000755'
               content: !Sub |
+                #!/bin/bash -e
+
                 # change docker data root directory
                 if [ -n "${DockerDataRootDirectory}" ]; then
                   jq '. + { "data-root": "${DockerDataRootDirectory}" }' /etc/docker/daemon.json > /tmp/docker_daemon.json \
@@ -218,14 +232,11 @@ Resources:
                 fi
 
                 if [ -n "$DOCKER_IMAGE" ]; then
-                  # create directory for Docker scripts
-                  mkdir -p /tmp/docker
-                  chmod 777 /tmp/docker
-
                   # run docker container
                   CONTAINER_NAME=spotty
                   docker run ${DockerRuntimeParameters} \
-                    -v /root/.aws:/root/.aws -v /tmp/docker:/tmp/docker \
+                    -v /root/.aws:/root/.aws \
+                    -v /tmp/spotty/container/scripts:/tmp/scripts \
                     --name $CONTAINER_NAME $DOCKER_IMAGE /bin/sh
 
                   WORKING_DIR=""
@@ -237,30 +248,30 @@ Resources:
                   fi
 
                   # create a script to connect to the docker container
-                  mkdir -p /scripts
-                  cat > /scripts/container_bash.sh <<EOL
+                  cat > /tmp/spotty/instance/scripts/container_bash.sh <<EOL
                 #!/bin/bash
                 docker exec -it $WORKING_DIR $CONTAINER_NAME /bin/bash \$@
                 EOL
-                  chmod +x /scripts/container_bash.sh
+                  chmod 755 /tmp/spotty/instance/scripts/container_bash.sh
+                  chown ubuntu:ubuntu /tmp/spotty/instance/scripts/container_bash.sh
 
                   # create an alias to connect to the docker container
                   CONTAINER_BASH_ALIAS=container
-                  echo "alias $CONTAINER_BASH_ALIAS=\"sudo /scripts/container_bash.sh\"" >> /home/ubuntu/.bashrc
-                  echo "alias $CONTAINER_BASH_ALIAS=\"/scripts/container_bash.sh\"" >> /root/.bashrc
+                  echo "alias $CONTAINER_BASH_ALIAS=\"sudo /tmp/spotty/instance/scripts/container_bash.sh\"" >> /home/ubuntu/.bashrc
+                  echo "alias $CONTAINER_BASH_ALIAS=\"/tmp/spotty/instance/scripts/container_bash.sh\"" >> /root/.bashrc
 
                   # run custom user commands
-                  docker exec $WORKING_DIR $CONTAINER_NAME /bin/bash -xe /tmp/docker/docker_commands.sh \
-                    > /var/log/docker-commands.log 2>&1
+                  docker exec $WORKING_DIR $CONTAINER_NAME /bin/bash -xe /tmp/scripts/startup_commands.sh \
+                    > /var/log/spotty/container-startup-commands.log 2>&1
                 fi
-            /tmp/docker/docker_commands.sh:
-              owner: root
-              group: root
-              mode: '000400'
+            /tmp/spotty/container/scripts/startup_commands.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000644'
               content: 'echo "Nothing to do"'
           commands:
             run_container:
-              command: /bin/bash -xe /tmp/scripts/run_container.sh
+              command: '/bin/bash -xe /tmp/spotty/instance/scripts/run_container.sh'
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup

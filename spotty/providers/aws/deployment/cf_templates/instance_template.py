@@ -75,7 +75,7 @@ def prepare_instance_template(instance_config: InstanceConfig, volumes: List[Abs
     # set initial docker commands
     if container.config.commands:
         template['Resources']['InstanceLaunchTemplate']['Metadata']['AWS::CloudFormation::Init'] \
-            ['docker_container_config']['files']['/tmp/docker/docker_commands.sh']['content'] \
+            ['docker_container_config']['files']['/tmp/spotty/container/scripts/startup_commands.sh']['content'] \
             = container.config.commands
 
     return yaml.dump(template, Dumper=CfnYamlDumper)

@@ -165,8 +165,10 @@ Resources:
             - ami_config
         init_config:
           files:
-            /tmp/scripts/init.sh:
+            /tmp/spotty/ami/init.sh:
               content: !Sub |
+                #!/bin/bash -e
+
                 # install Docker CE
                 apt-get update
                 apt-get install -y \
@@ -205,15 +207,17 @@ Resources:
                 docker run --runtime=nvidia --rm nvidia/cuda:10.0-base-ubuntu16.04 nvidia-smi
                 docker rmi $(docker images -q)
               mode: '000755'
-              owner: root
-              group: root
+              owner: ubuntu
+              group: ubuntu
           commands:
             run_init:
-              command: '/bin/bash -xe /tmp/scripts/init.sh'
+              command: '/bin/bash -xe /tmp/spotty/ami/init.sh'
         ami_config:
           files:
-            /tmp/scripts/create_ami.sh:
+            /tmp/spotty/ami/create_ami.sh:
               content: !Sub |
+                #!/bin/bash -e
+
                 # install AWS CLI
                 apt-get install -y awscli
                 aws configure set default.region ${AWS::Region}
@@ -231,11 +235,11 @@ Resources:
                   --tags Key=spotty:stack-id,Value=${AWS::StackId} "Key=Name,Value=NVIDIA Docker"
                 aws ec2 wait image-available --image-ids $IMAGE_ID
               mode: '000755'
-              owner: root
-              group: root
+              owner: ubuntu
+              group: ubuntu
           commands:
             create_ami:
-              command: '/bin/bash -xe /tmp/scripts/create_ami.sh'
+              command: '/bin/bash -xe /tmp/spotty/ami/create_ami.sh'
 
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile

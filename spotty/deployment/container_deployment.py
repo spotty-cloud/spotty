@@ -68,7 +68,7 @@ class ContainerDeployment(object):
         volume_mounts = []
         for container_volume in self.config.volume_mounts:
             volume_name = container_volume['name']
-            host_dir = mount_dirs.get(volume_name, '/tmp/spotty/volumes/%s' % volume_name)
+            host_dir = mount_dirs.get(volume_name, '/tmp/spotty/container/volumes/%s' % volume_name)
 
             volume_mounts.append(VolumeMount(
                 name=volume_name,
@@ -86,7 +86,7 @@ class ContainerDeployment(object):
 
         if not host_project_dir:
             # use temporary directory for the project
-            host_project_dir = '/tmp/spotty/volumes/.project'
+            host_project_dir = '/tmp/spotty/container/volumes/.project'
             volume_mounts.append(VolumeMount(
                 name=None,
                 host_dir=host_project_dir,

@@ -25,7 +25,8 @@ class SshCommand(AbstractConfigCommand):
         else:
             # connect to the container
             session_name = args.session_name if args.session_name else 'spotty-ssh-container'
-            remote_cmd = ['tmux', 'new', '-s', session_name, '-A', 'sudo', '/scripts/container_bash.sh']
+            remote_cmd = ['tmux', 'new', '-s', session_name, '-A', 'sudo',
+                          '/tmp/spotty/instance/scripts/container_bash.sh']
 
         remote_cmd = subprocess.list2cmdline(remote_cmd)
 

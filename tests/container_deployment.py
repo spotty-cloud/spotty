@@ -11,10 +11,10 @@ class TestContainerDeployment(unittest.TestCase):
         container_config = ContainerConfig({
             'file': 'docker/Dockerfile',
             'projectDir': '/workspace/project',
-            'volumes': [{
+            'volumeMounts': [{
                 'name': 'workspace',
-                'path': '/workspace',
-            }]
+                'mountPath': '/workspace',
+            }],
         })
 
         volumes = [
@@ -36,10 +36,10 @@ class TestContainerDeployment(unittest.TestCase):
         container_config = ContainerConfig({
             'file': 'docker/Dockerfile',
             'projectDir': '/workspace/project',
-            'volumes': [{
+            'volumeMounts': [{
                 'name': 'workspace',
-                'path': '/workspace',
-            }]
+                'mountPath': '/workspace',
+            }],
         })
 
         volumes = [
@@ -48,12 +48,34 @@ class TestContainerDeployment(unittest.TestCase):
 
         container = ContainerDeployment(project_name, volumes, container_config)
 
-        self.assertRegex(container.host_project_dir, '/tmp/spotty/volumes/workspace-[\w]{8}/project')
-        self.assertRegex(container.dockerfile_path, '/tmp/spotty/volumes/workspace-[\w]{8}/project/docker/Dockerfile')
-        self.assertRegex(container.docker_context_path, '/tmp/spotty/volumes/workspace-[\w]{8}/project/docker')
+        self.assertRegex(container.host_project_dir, '/tmp/spotty/container/volumes/workspace/project')
+        self.assertRegex(container.dockerfile_path, '/tmp/spotty/container/volumes/workspace/project/docker/Dockerfile')
+        self.assertRegex(container.docker_context_path, '/tmp/spotty/container/volumes/workspace/project/docker')
         self.assertEqual(container.volume_mounts[0].name, 'workspace')
         self.assertEqual(container.volume_mounts[0].container_dir, '/workspace')
-        self.assertRegex(container.volume_mounts[0].host_dir, '/tmp/spotty/volumes/workspace-[\w]{8}')
+        self.assertRegex(container.volume_mounts[0].host_dir, '/tmp/spotty/container/volumes/workspace')
+        self.assertEqual(len(container.volume_mounts), 1)
+
+    def test_tmp_project_volume(self):
+        project_name = 'test-project'
+        container_config = ContainerConfig({
+            'file': 'docker/Dockerfile',
+            'projectDir': '/workspace/project',
+            'volumeMounts': [],
+        })
+
+        volumes = [
+            TestVolume('docker', '/mnt/docker'),
+        ]
+
+        container = ContainerDeployment(project_name, volumes, container_config)
+
+        self.assertRegex(container.host_project_dir, '/tmp/spotty/container/volumes/.project')
+        self.assertRegex(container.dockerfile_path, '/tmp/spotty/container/volumes/.project/docker/Dockerfile')
+        self.assertRegex(container.docker_context_path, '/tmp/spotty/container/volumes/.project/docker')
+        self.assertEqual(container.volume_mounts[0].name, None)
+        self.assertEqual(container.volume_mounts[0].container_dir, '/workspace/project')
+        self.assertRegex(container.volume_mounts[0].host_dir, '/tmp/spotty/container/volumes/.project')
         self.assertEqual(len(container.volume_mounts), 1)
 
 
