@@ -5,12 +5,10 @@ from spotty.config.project_config import ProjectConfig
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.aws.config.instance_config import InstanceConfig, VOLUME_TYPE_EBS
 from spotty.deployment.container_deployment import ContainerDeployment
-from spotty.providers.aws.deployment.cf_templates.ami_template import prepare_ami_template
+from spotty.providers.aws.deployment.checks import check_az_and_subnet, check_max_price
 from spotty.providers.aws.deployment.ebs_volume import EbsVolume
 from spotty.providers.aws.deployment.cf_templates.instance_template import prepare_instance_template
-from spotty.providers.aws.deployment.project_resources.ami_stack import AmiStackResource
 from spotty.providers.aws.errors.ami_not_found import AmiNotFoundError
-from spotty.providers.aws.helpers.spot_prices import get_current_spot_price
 from spotty.providers.aws.helpers.sync import sync_project_with_s3
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
 from spotty.providers.aws.deployment.project_resources.instance_profile_stack import create_or_update_instance_profile
@@ -73,7 +71,8 @@ class InstanceDeployment(object):
             raise ValueError('Currently Nitro-based instances are not supported.')
 
         # check availability zone and subnet configuration
-        self._check_az_and_subnet()
+        check_az_and_subnet(self._ec2, self.instance_config.region, self.instance_config.availability_zone,
+                            self.instance_config.subnet_id)
 
         # get volumes
         volumes = self._get_volumes()
@@ -82,7 +81,8 @@ class InstanceDeployment(object):
         availability_zone = self._get_availability_zone(volumes)
 
         # check the maximum price for a spot instance
-        self._check_max_price(availability_zone)
+        check_max_price(self._ec2, self.instance_config.instance_type, self.instance_config.on_demand,
+                        self.instance_config.max_price, availability_zone)
 
         # create or get existing bucket for the project
         bucket_name = self.bucket.get_or_create_bucket(output, dry_run)
@@ -107,8 +107,7 @@ class InstanceDeployment(object):
                                                  output)
 
         # get parameters for the template
-        parameters = self._get_instance_template_parameters(instance_profile_arn, bucket_name, volumes, container,
-                                                            dry_run)
+        parameters = self._get_template_parameters(instance_profile_arn, bucket_name, volumes, container, dry_run)
 
         # print container volumes
         output.write('\nContainer volumes:')
@@ -128,93 +127,6 @@ class InstanceDeployment(object):
         # create stack
         if not dry_run:
             self.instance_stack.create_or_update_stack(template, parameters, output)
-
-    def create_ami(self, key_name, keep_instance: bool, output: AbstractOutputWriter):
-        # check that it's a GPU instance type
-        instance_type = self.instance_config.instance_type
-        if not is_gpu_instance(instance_type):
-            raise ValueError('"%s" is not a GPU instance' % instance_type)
-
-        if keep_instance and not key_name:
-            output.write('Key Pair name is not specified, you will not be able to connect to the instance.')
-
-        # check that an image with this name doesn't exist yet
-        ami = self.get_ami()
-        if ami:
-            raise ValueError('AMI with the name "%s" already exists.' % ami.name)
-
-        # check availability zone and subnet
-        self._check_az_and_subnet()
-
-        # check the maximum price for a spot instance
-        availability_zone = self.instance_config.availability_zone
-        self._check_max_price(availability_zone)
-
-        # prepare CF template
-        subnet_id = self.instance_config.subnet_id
-        on_demand = self.instance_config.on_demand
-        template = prepare_ami_template(availability_zone, subnet_id, key_name, on_demand)
-
-        # create stack
-        ami_stack = AmiStackResource(self.instance_config.region)
-        ami_name = self.instance_config.ami_name
-        ami_stack.create_stack(template, instance_type, ami_name, key_name, keep_instance, output)
-
-    def _check_az_and_subnet(self):
-        # get all availability zones for the region
-        zones = self._ec2.describe_availability_zones()
-        zone_names = [zone['ZoneName'] for zone in zones['AvailabilityZones']]
-
-        # check availability zone
-        if self.instance_config.availability_zone and self.instance_config.availability_zone not in zone_names:
-            raise ValueError('Availability zone "%s" doesn\'t exist in the "%s" region.'
-                             % (self.instance_config.availability_zone, self.instance_config.region))
-
-        if self.instance_config.availability_zone:
-            if self.instance_config.subnet_id:
-                subnet = Subnet.get_by_id(self._ec2, self.instance_config.subnet_id)
-                if not subnet:
-                    raise ValueError('Subnet "%s" not found.' % self.instance_config.subnet_id)
-
-                if subnet.availability_zone != self.instance_config.availability_zone:
-                    raise ValueError('Availability zone of the subnet doesn\'t match the specified availability zone')
-            else:
-                default_subnets = Subnet.get_default_subnets(self._ec2)
-                default_subnet = [subnet for subnet in default_subnets
-                                  if subnet.availability_zone == self.instance_config.availability_zone]
-                if not default_subnet:
-                    raise ValueError('Default subnet for the "%s" availability zone not found.\n'
-                                     'Use the "subnetId" parameter to specify a subnet for this availability zone.'
-                                     % self.instance_config.availability_zone)
-        else:
-            if self.instance_config.subnet_id:
-                raise ValueError('An availability zone should be specified if a custom subnet is used.')
-            else:
-                default_subnets = Subnet.get_default_subnets(self._ec2)
-                default_azs = {subnet.availability_zone for subnet in default_subnets}
-                zones_wo_subnet = [zone_name for zone_name in zone_names if zone_name not in default_azs]
-                if zones_wo_subnet:
-                    raise ValueError('Default subnets for the following availability zones were not found: %s.\n'
-                                     'Use "subnetId" and "availabilityZone" parameters or create missing default '
-                                     'subnets.' % ', '.join(zones_wo_subnet))
-
-    def _check_max_price(self, availability_zone: str = ''):
-        """Checks that the specified maximum Spot price is less than the
-        current Spot price.
-
-        Args:
-            availability_zone: Availability zone to check. If it's an empty string,
-                checks the cheapest AZ.
-
-        Raises:
-            ValueError: Current price for the instance is higher than the
-                maximum price in the configuration file.
-        """
-        if not self.instance_config.on_demand and self.instance_config.max_price:
-            current_price = get_current_spot_price(self._ec2, self.instance_config.instance_type, availability_zone)
-            if current_price > self.instance_config.max_price:
-                raise ValueError('Current price for the instance (%.04f) is higher than the maximum price in the '
-                                 'configuration file (%.04f).' % (current_price, self.instance_config.max_price))
 
     def _get_availability_zone(self, volumes: List[AbstractInstanceVolume]):
         """Checks that existing volumes located in the same AZ and the AZ from the
@@ -258,9 +170,8 @@ class InstanceDeployment(object):
 
         return volumes
 
-    def _get_instance_template_parameters(self, instance_profile_arn: str, bucket_name: str,
-                                          volumes: List[AbstractInstanceVolume], container: ContainerDeployment,
-                                          dry_run=False):
+    def _get_template_parameters(self, instance_profile_arn: str, bucket_name: str,
+                                 volumes: List[AbstractInstanceVolume], container: ContainerDeployment, dry_run=False):
         # get VPC ID
         vpc_id = self.get_vpc_id()
 

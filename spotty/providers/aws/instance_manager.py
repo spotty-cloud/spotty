@@ -2,6 +2,7 @@ from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.project_config import ProjectConfig
 from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.providers.aws.config.instance_config import InstanceConfig
+from spotty.providers.aws.deployment.ami_deployment import AmiDeployment
 from spotty.providers.aws.deployment.instance_deployment import InstanceDeployment
 from spotty.providers.aws.errors.ami_not_found import AmiNotFoundError
 from spotty.providers.aws.helpers.sync import sync_project_with_s3, sync_instance_with_s3
@@ -43,7 +44,8 @@ class InstanceManager(AbstractInstanceManager):
                 print('The AMI "%s" doesn\'t exist. Do you want to create it?' % self.deployment.instance_config.ami_name)
                 res = input('Type "y" to confirm: ')
                 if res == 'y':
-                    self.deployment.create_ami(None, False, output)
+                    deployment = AmiDeployment(self.instance_config)
+                    deployment.deploy(None, False, output)
                     output.write()
                 else:
                     raise AmiNotFoundError(self.deployment.instance_config.ami_name)

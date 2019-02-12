@@ -3,15 +3,15 @@ import yaml
 from cfn_tools import CfnYamlDumper, CfnYamlLoader
 
 
-def prepare_ami_template(availability_zone: str, subnet_id: str, key_name: str, on_demand=False):
+def prepare_ami_template(availability_zone: str, subnet_id: str, debug_mode: bool = False, on_demand: bool = False):
     """Prepares CloudFormation template to run a Spot Instance."""
 
     # read and update CF template
     with open(os.path.join(os.path.dirname(__file__), 'data', 'ami.yaml')) as f:
         template = yaml.load(f, Loader=CfnYamlLoader)
 
-    # remove key parameter if key is not provided
-    if not key_name:
+    # remove the key parameter if it's not a debug mode
+    if not debug_mode:
         del template['Parameters']['KeyName']
         del template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData']['KeyName']
 

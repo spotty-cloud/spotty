@@ -11,6 +11,15 @@ Parameters:
   KeyName:
     Description: EC2 Key Pair name
     Type: AWS::EC2::KeyPair::KeyName
+  InstanceNameTag:
+    Description: Name for the instance
+    Type: String
+    Default: ''
+  DebugMode:
+    Description: Debug mode
+    Type: String
+    Default: false
+    AllowedValues: [true, false]
 Resources:
   FindBaseAMI:
     Type: Custom::AMI
@@ -84,6 +93,11 @@ Resources:
         ImageId: !Ref FindBaseAMI
         KeyName: !Ref KeyName
         EbsOptimized: 'false'
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Ref InstanceNameTag
         IamInstanceProfile:
           Arn: !GetAtt InstanceProfile.Arn
         InstanceInitiatedShutdownBehavior: terminate
@@ -134,14 +148,18 @@ Resources:
             fi
 
             # create the AMI
-            /usr/local/bin/cfn-init \
-              --stack ${AWS::StackName} \
-              --resource InstanceLaunchTemplate \
-              --region ${AWS::Region} \
-              -c ami \
-              -v
+            if [ "${DebugMode}" = "false" ]; then
+              /usr/local/bin/cfn-init \
+                --stack ${AWS::StackName} \
+                --resource InstanceLaunchTemplate \
+                --region ${AWS::Region} \
+                -c ami \
+                -v
 
-            AMI_EXIT_CODE=$?
+              AMI_EXIT_CODE=$?
+            else
+              AMI_EXIT_CODE=1
+            fi
 
             # send signal that the AMI is created
             /usr/local/bin/cfn-signal \
