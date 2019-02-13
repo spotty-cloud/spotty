@@ -16,5 +16,5 @@ class DeleteAmiCommand(AbstractConfigCommand):
         if not isinstance(instance_manager, InstanceManager):
             raise ValueError('Instance "%s" is not an AWS instance.' % instance_manager.instance_config.instance_name)
 
-        deployment = AmiDeployment(instance_manager.instance_config)
+        deployment = AmiDeployment(instance_manager.project_config.project_name, instance_manager.instance_config)
         deployment.delete(output)

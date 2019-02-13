@@ -44,8 +44,8 @@ class InstanceManager(AbstractInstanceManager):
                 print('The AMI "%s" doesn\'t exist. Do you want to create it?' % self.deployment.instance_config.ami_name)
                 res = input('Type "y" to confirm: ')
                 if res == 'y':
-                    deployment = AmiDeployment(self.instance_config)
-                    deployment.deploy(None, False, output)
+                    deployment = AmiDeployment(self.project_config.project_name, self.instance_config)
+                    deployment.deploy(False, output)
                     output.write()
                 else:
                     raise AmiNotFoundError(self.deployment.instance_config.ami_name)
