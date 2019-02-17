@@ -50,12 +50,20 @@ Parameters:
     Description: Name for the instance
     Type: String
     Default: ''
-  ProjectS3Bucket:
-    Description: S3 bucket with the project
-    Type: String
-    Default: ''
   HostProjectDirectory:
     Description: Destination directory for the project
+    Type: String
+    Default: ''
+  ProjectS3Path:
+    Description: An S3 path where the project files are located
+    Type: String
+    Default: ''
+  SyncCommandArgs:
+    Description: Arguments for the "aws s3 sync" command to synchronize instance with the S3 bucket
+    Type: String
+    Default: ''
+  UploadS3Path:
+    Description: An S3 path where to upload files for downloads
     Type: String
     Default: ''
 Resources:
@@ -152,6 +160,19 @@ Resources:
                 mkdir -p /var/log/spotty/run
                 chmod -R 755 /var/log/spotty
                 chown -R ubuntu:ubuntu /var/log/spotty
+
+                # create a project directory
+                if [ -n "${HostProjectDirectory}" ]; then
+                  mkdir -p ${HostProjectDirectory}
+                fi
+            /tmp/spotty/instance/scripts/upload_files.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000755'
+              content: !Sub |
+                #!/bin/bash -e
+
+                aws s3 sync ${HostProjectDirectory} ${UploadS3Path} $@
             /home/ubuntu/.tmux.conf:
               owner: ubuntu
               group: ubuntu
@@ -196,13 +217,10 @@ Resources:
               content: !Sub |
                 #!/bin/bash -e
 
-                if [ -n "${ProjectS3Bucket}" ] && [ -n "${HostProjectDirectory}" ]; then
-                  mkdir -p ${HostProjectDirectory}
-                  aws s3 sync --exact-timestamps s3://${ProjectS3Bucket}/project ${HostProjectDirectory}
-                fi
+                aws s3 sync ${ProjectS3Path} ${HostProjectDirectory} $@
           commands:
             sync_project:
-              command: '/bin/bash -xe /tmp/spotty/instance/scripts/sync_project.sh'
+              command: !Sub '/bin/bash -xe /tmp/spotty/instance/scripts/sync_project.sh ${SyncCommandArgs}'
         docker_container_config:
           files:
             /tmp/spotty/instance/scripts/run_container.sh:

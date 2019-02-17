@@ -1,3 +1,4 @@
+from subprocess import list2cmdline
 from typing import List
 import boto3
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
@@ -9,7 +10,8 @@ from spotty.providers.aws.deployment.checks import check_az_and_subnet, check_ma
 from spotty.providers.aws.deployment.ebs_volume import EbsVolume
 from spotty.providers.aws.deployment.cf_templates.instance_template import prepare_instance_template
 from spotty.providers.aws.errors.ami_not_found import AmiNotFoundError
-from spotty.providers.aws.helpers.sync import sync_project_with_s3
+from spotty.providers.aws.helpers.download import get_tmp_instance_s3_path
+from spotty.providers.aws.helpers.sync import sync_project_with_s3, get_project_s3_path, get_instance_sync_arguments
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
 from spotty.providers.aws.deployment.project_resources.instance_profile_stack import create_or_update_instance_profile
 from spotty.providers.aws.deployment.project_resources.instance_stack import InstanceStackResource
@@ -107,7 +109,8 @@ class InstanceDeployment(object):
                                                  output)
 
         # get parameters for the template
-        parameters = self._get_template_parameters(instance_profile_arn, bucket_name, volumes, container, dry_run)
+        parameters = self._get_template_parameters(instance_profile_arn, self.instance_config.name, bucket_name,
+                                                   project_config.sync_filters, volumes, container, dry_run=dry_run)
 
         # print container volumes
         output.write('\nContainer volumes:')
@@ -170,8 +173,9 @@ class InstanceDeployment(object):
 
         return volumes
 
-    def _get_template_parameters(self, instance_profile_arn: str, bucket_name: str,
-                                 volumes: List[AbstractInstanceVolume], container: ContainerDeployment, dry_run=False):
+    def _get_template_parameters(self, instance_profile_arn: str, instance_name: str, bucket_name: str,
+                                 sync_filters: list, volumes: List[AbstractInstanceVolume],
+                                 container: ContainerDeployment, dry_run=False):
         # get VPC ID
         vpc_id = self.get_vpc_id()
 
@@ -213,8 +217,10 @@ class InstanceDeployment(object):
             'DockerRuntimeParameters': runtime_parameters,
             'DockerWorkingDirectory': container.config.working_dir,
             'InstanceNameTag': self.ec2_instance_name,
-            'ProjectS3Bucket': bucket_name,
+            'ProjectS3Path': get_project_s3_path(bucket_name),
             'HostProjectDirectory': container.host_project_dir,
+            'SyncCommandArgs': list2cmdline(get_instance_sync_arguments(sync_filters)),
+            'UploadS3Path': get_tmp_instance_s3_path(bucket_name, instance_name),
         }
 
         return parameters

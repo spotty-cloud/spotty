@@ -5,6 +5,7 @@ from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.deployment.ami_deployment import AmiDeployment
 from spotty.providers.aws.deployment.instance_deployment import InstanceDeployment
 from spotty.providers.aws.errors.ami_not_found import AmiNotFoundError
+from spotty.providers.aws.helpers.download import download_from_s3_to_local, upload_from_instance_to_s3
 from spotty.providers.aws.helpers.sync import sync_project_with_s3, sync_instance_with_s3
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 from spotty.utils import render_table
@@ -81,12 +82,27 @@ class InstanceManager(AbstractInstanceManager):
         # sync the project with S3 bucket
         output.write('Syncing the project with S3 bucket...')
         sync_project_with_s3(self.project_config.project_dir, bucket_name, self.instance_config.region,
-                             self.project_config.sync_filters, dry_run)
+                             self.project_config.sync_filters, dry_run=dry_run)
 
-        # sync S3 with the instance
-        output.write('Syncing S3 bucket with the instance...')
         if not dry_run:
-            sync_instance_with_s3(self.ip_address, self.ssh_user, self.ssh_key_path, self.instance_config.local_ssh_port)
+            # sync S3 with the instance
+            output.write('Syncing S3 bucket with the instance...')
+            sync_instance_with_s3(self.project_config.sync_filters, self.ip_address, self.ssh_user, self.ssh_key_path,
+                                  local_ssh_port=self.instance_config.local_ssh_port)
+
+    def download(self, download_filters: list, output: AbstractOutputWriter, dry_run=False):
+        # create or get existing bucket for the project
+        bucket_name = self.deployment.bucket.get_or_create_bucket(output, dry_run)
+
+        # sync files from the instance to a temporary S3 directory
+        output.write('Uploading files from the instance to S3 bucket...')
+        upload_from_instance_to_s3(download_filters, self.ip_address, self.ssh_user, self.ssh_key_path,
+                                   local_ssh_port=self.instance_config.local_ssh_port, dry_run=dry_run)
+
+        # sync the project with the S3 bucket
+        output.write('Downloading files from S3 bucket to local...')
+        download_from_s3_to_local(bucket_name, self.instance_config.name, self.project_config.project_dir,
+                                  self.instance_config.region, download_filters, dry_run=dry_run)
 
     @property
     def status_text(self):

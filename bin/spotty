@@ -5,6 +5,7 @@ import argparse
 import logging
 import spotty
 from spotty.commands.aws import AwsCommand
+from spotty.commands.download import DownloadCommand
 from spotty.commands.run import RunCommand
 from spotty.commands.ssh import SshCommand
 from spotty.commands.status import StatusCommand
@@ -25,6 +26,7 @@ commands = [
     SshCommand,
     RunCommand,
     SyncCommand,
+    DownloadCommand,
     AwsCommand,
 ] + get_custom_commands()
 

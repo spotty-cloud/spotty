@@ -14,15 +14,17 @@ class AwsCli(object):
         self._profile = profile
         self._region = region
 
-    def s3_sync(self, from_path: str, to_path: str, delete=False, filters=None, capture_output=True,
-                dry_run=False) -> str:
+    def s3_sync(self, from_path: str, to_path: str, filters: list = None, exact_timestamp: bool = False,
+                delete: bool = False, capture_output: bool = True, dry_run: bool = False) -> str:
         args = ['s3', 'sync', from_path, to_path]
+        args += self.get_s3_sync_arguments(filters, exact_timestamp=exact_timestamp, delete=delete, dry_run=dry_run)
 
-        if dry_run:
-            args.append('--dryrun')
+        return self._run(args, False, capture_output=capture_output)
 
-        if delete:
-            args.append('--delete')
+    @staticmethod
+    def get_s3_sync_arguments(filters: list = None, exact_timestamp: bool = False, delete: bool = False,
+                              dry_run: bool = False):
+        args = []
 
         if filters:
             for sync_filter in filters:
@@ -38,7 +40,16 @@ class AwsCli(object):
                     for path in sync_filter['include']:
                         args += ['--include', path]
 
-        return self._run(args, False, capture_output=capture_output)
+        if exact_timestamp:
+            args.append('--exact-timestamp')
+
+        if delete:
+            args.append('--delete')
+
+        if dry_run:
+            args.append('--dryrun')
+
+        return args
 
     def _run(self, args: list, json_format=True, capture_output=True):
         aws_cmd = 'aws'

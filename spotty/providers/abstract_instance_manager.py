@@ -40,6 +40,11 @@ class AbstractInstanceManager(ABC):
         """Synchronizes the project code with the instance."""
         raise NotImplementedError
 
+    @abstractmethod
+    def download(self, download_filters: list, output: AbstractOutputWriter, dry_run=False):
+        """Downloads files from the instance."""
+        raise NotImplementedError
+
     @property
     @abstractmethod
     def status_text(self):
