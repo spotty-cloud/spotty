@@ -3,6 +3,7 @@ import os
 from subprocess import list2cmdline
 from typing import List
 from spotty.config.container_config import ContainerConfig
+from spotty.config.validation import is_subdir
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 
 
@@ -79,7 +80,7 @@ class ContainerDeployment(object):
         # get host project directory
         host_project_dir = None
         for name, host_dir, container_dir in volume_mounts:
-            if (self.config.project_dir + '/').startswith(container_dir + '/'):
+            if is_subdir(self.config.project_dir, container_dir):
                 project_subdir = os.path.relpath(self.config.project_dir, container_dir)
                 host_project_dir = host_dir + '/' + project_subdir
                 break

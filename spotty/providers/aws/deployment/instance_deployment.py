@@ -3,6 +3,7 @@ from typing import List
 import boto3
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.project_config import ProjectConfig
+from spotty.config.validation import is_subdir
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.aws.config.instance_config import InstanceConfig, VOLUME_TYPE_EBS
 from spotty.deployment.container_deployment import ContainerDeployment
@@ -108,9 +109,10 @@ class InstanceDeployment(object):
             template = prepare_instance_template(self.instance_config, volumes, availability_zone, container,
                                                  output)
 
-        # get parameters for the template
-        parameters = self._get_template_parameters(instance_profile_arn, self.instance_config.name, bucket_name,
-                                                   project_config.sync_filters, volumes, container, dry_run=dry_run)
+            # get parameters for the template
+            parameters = self._get_template_parameters(instance_profile_arn, self.instance_config.name, bucket_name,
+                                                       project_config.sync_filters, volumes, container, output,
+                                                       dry_run=dry_run)
 
         # print container volumes
         output.write('\nContainer volumes:')
@@ -175,7 +177,7 @@ class InstanceDeployment(object):
 
     def _get_template_parameters(self, instance_profile_arn: str, instance_name: str, bucket_name: str,
                                  sync_filters: list, volumes: List[AbstractInstanceVolume],
-                                 container: ContainerDeployment, dry_run=False):
+                                 container: ContainerDeployment, output: AbstractOutputWriter, dry_run=False):
         # get VPC ID
         vpc_id = self.get_vpc_id()
 
@@ -200,6 +202,12 @@ class InstanceDeployment(object):
 
         # get Docker runtime parameters
         runtime_parameters = container.get_runtime_parameters(is_gpu_instance(self.instance_config.instance_type))
+
+        # print info about the Docker data root
+        if self.instance_config.docker_data_root:
+            docker_data_volume_name = [volume.name for volume in volumes
+                                       if is_subdir(self.instance_config.docker_data_root, volume.mount_dir)][0]
+            output.write('- Docker data will be stored on the "%s" volume' % docker_data_volume_name)
 
         # create stack
         parameters = {

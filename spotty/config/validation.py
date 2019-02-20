@@ -128,7 +128,7 @@ def get_instance_parameters_schema(instance_parameters: dict, default_volume_typ
         },
         And(lambda x: not x['dockerDataRoot'] or
                       [True for v in x['volumes'] if v['parameters']['mountDir'] and
-                       (x['dockerDataRoot'] + '/').startswith(v['parameters']['mountDir'] + '/')],
+                       is_subdir(x['dockerDataRoot'], v['parameters']['mountDir'])],
             error='The "mountDir" of one of the volumes must be a prefix for the "dockerDataRoot" path.'),
         *instance_checks
     ))
@@ -304,6 +304,11 @@ def has_prefix(x: list):
             return True
 
     return False
+
+
+def is_subdir(subdir_path, dir_path):
+    """Returns "True" if it's the second path parameter is a subdirectory of the first path parameter."""
+    return (subdir_path.rstrip('/') + '/').startswith(dir_path.rstrip('/') + '/')
 
 
 def validate_config(schema: Schema, config):
