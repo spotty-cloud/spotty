@@ -146,13 +146,15 @@ class StackResource(object):
                      project_name: str, project_dir: str, docker_config: dict, vpc_id: str):
         """Runs CloudFormation template."""
 
+        vpc_query_args = {'VpcIds': [vpc_id]}
         # get default VPC ID if one is not specified
         if not vpc_id:
-            res = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
-            if not len(res['Vpcs']):
-                raise ValueError('Default VPC not found')
+            vpc_query_args= {'Filters': [{'Name': 'isDefault', 'Values': ['true']}]}
+        res = ec2.describe_vpcs(**vpc_query_args)
+        if not len(res['Vpcs']):
+            raise ValueError( 'VPC %s not found' % (vpc_id) if vpc_id else 'Default VPC not found')
 
-            vpc_id = res['Vpcs'][0]['VpcId']
+        vpc_id = res['Vpcs'][0]['VpcId']
 
         # get image info
         ami_info = get_ami(ec2, ami_name)
