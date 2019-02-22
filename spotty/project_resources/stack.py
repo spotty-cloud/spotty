@@ -143,15 +143,16 @@ class StackResource(object):
 
     def create_stack(self, ec2, template: str, instance_profile_arn: str, instance_type: str, ami_name: str,
                      root_volume_size: int, mount_dirs: list, bucket_name: str, remote_project_dir: str,
-                     project_name: str, project_dir: str, docker_config: dict):
+                     project_name: str, project_dir: str, docker_config: dict, vpc_id: str):
         """Runs CloudFormation template."""
 
-        # get default VPC ID
-        res = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
-        if not len(res['Vpcs']):
-            raise ValueError('Default VPC not found')
+        # get default VPC ID if one is not specified
+        if not vpc_id:
+            res = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
+            if not len(res['Vpcs']):
+                raise ValueError('Default VPC not found')
 
-        vpc_id = res['Vpcs'][0]['VpcId']
+            vpc_id = res['Vpcs'][0]['VpcId']
 
         # get image info
         ami_info = get_ami(ec2, ami_name)

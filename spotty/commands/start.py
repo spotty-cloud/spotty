@@ -30,6 +30,7 @@ class StartCommand(AbstractConfigCommand):
         region = instance_config['region']
         availability_zone = instance_config['availabilityZone']
         subnet_id = instance_config['subnetId']
+        vpc_id = instance_config.get('vpcId', '')
 
         cf = boto3.client('cloudformation', region_name=region)
         ec2 = boto3.client('ec2', region_name=region)
@@ -75,7 +76,7 @@ class StartCommand(AbstractConfigCommand):
 
         res = stack.create_stack(ec2, template, instance_profile_arn, instance_type, ami_name, root_volume_size,
                                  mount_dirs, bucket_name, remote_project_dir, project_name, self._project_dir,
-                                 docker_config)
+                                 docker_config, vpc_id)
 
         output.write('Waiting for the stack to be created...')
 
