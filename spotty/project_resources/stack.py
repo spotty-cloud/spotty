@@ -150,9 +150,10 @@ class StackResource(object):
         # get default VPC ID if one is not specified
         if not vpc_id:
             vpc_query_args= {'Filters': [{'Name': 'isDefault', 'Values': ['true']}]}
+        # botocore.exceptions.ClientError (InvalidVpcID.NotFound) will be raised if incorrect VPC ID is specified.
         res = ec2.describe_vpcs(**vpc_query_args)
         if not len(res['Vpcs']):
-            raise ValueError( 'VPC %s not found' % (vpc_id) if vpc_id else 'Default VPC not found')
+            raise ValueError('Default VPC not found')
 
         vpc_id = res['Vpcs'][0]['VpcId']
 
