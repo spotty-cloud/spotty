@@ -37,6 +37,7 @@ def validate_instance_config(data):
         'instance': {
             'region': And(str, len),
             Optional('availabilityZone', default=''): str,
+            Optional('vpcId', default=''): str,
             Optional('subnetId', default=''): str,
             'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
             Optional('onDemandInstance', default=False): bool,
