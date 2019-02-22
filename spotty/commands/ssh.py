@@ -29,6 +29,7 @@ class SshCommand(AbstractConfigCommand):
         parser.add_argument('--host-os', '-o', action='store_true', help='Connect to the host OS instead of the Docker '
                                                                          'container')
         parser.add_argument('--session-name', '-s', type=str, default=None, help='tmux session name')
+        parser.add_argument('--list-sessions', '-l', action='store_true', help='list running tmux sessions')
 
     def run(self, output: AbstractOutputWriter):
         project_config = self._config['project']
@@ -47,6 +48,8 @@ class SshCommand(AbstractConfigCommand):
             # connect to the host OS
             session_name = self._args.session_name if self._args.session_name else 'spotty-ssh-host-os'
             remote_cmd = ['tmux', 'new', '-s', session_name, '-A']
+        elif self._args.list_sessions:
+            remote_cmd = ['tmux', 'ls']
         else:
             # connect to the container
             session_name = self._args.session_name if self._args.session_name else 'spotty-ssh-container'
