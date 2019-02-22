@@ -36,15 +36,15 @@ def filter_list(list_of_dicts, key_name, value):
     return [row for row in list_of_dicts if row[key_name] == value]
 
 
-def render_table(table: list):
-    max_title_length = max([len(title) for title, _ in table])
-    max_value_length = max([len(value) for _, value in table if value])
-    row_delimiter_line = '+-%s-+-%s-+' % ('-' * max_title_length, '-' * max_value_length)
+def render_table(table: list, separate_title=False):
+    column_lengths = [max([len(str(row[i])) for row in table]) for i in range(len(table[0]))]
+    row_separator = '+-%s-+' % '-+-'.join(['-' * col_length for col_length in column_lengths])
+    title_separator = '+=%s=+' % '=+='.join(['=' * col_length for col_length in column_lengths])
 
-    lines = [row_delimiter_line]
-    for title, value in table:
-        if value:
-            lines.append('| %s | %s |' % (title.ljust(max_title_length), value.ljust(max_value_length)))
-            lines.append(row_delimiter_line)
+    lines = [row_separator]
+    for i, row in enumerate(table):
+        line = '| %s |' % ' | '.join([val.ljust(col_length) for val, col_length in zip(row, column_lengths)])
+        lines.append(line)
+        lines.append(title_separator if separate_title and not i else row_separator)
 
     return '\n'.join(lines)

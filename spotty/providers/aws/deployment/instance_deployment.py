@@ -6,7 +6,7 @@ from spotty.config.project_config import ProjectConfig
 from spotty.config.validation import is_subdir
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.aws.config.instance_config import InstanceConfig, VOLUME_TYPE_EBS
-from spotty.deployment.container_deployment import ContainerDeployment
+from spotty.deployment.container_deployment import ContainerDeployment, VolumeMount
 from spotty.providers.aws.deployment.checks import check_az_and_subnet, check_max_price
 from spotty.providers.aws.deployment.ebs_volume import EbsVolume
 from spotty.providers.aws.deployment.cf_templates.instance_template import prepare_instance_template
@@ -21,6 +21,7 @@ from spotty.providers.aws.aws_resources.image import Image
 from spotty.providers.aws.aws_resources.subnet import Subnet
 from spotty.providers.aws.aws_resources.vpc import Vpc
 from spotty.providers.aws.config.validation import is_nitro_instance, is_gpu_instance
+from spotty.utils import render_table
 
 
 class InstanceDeployment(object):
@@ -114,20 +115,8 @@ class InstanceDeployment(object):
                                                        project_config.sync_filters, volumes, container, output,
                                                        dry_run=dry_run)
 
-        # print container volumes
-        output.write('\nContainer volumes:')
-        with output.prefix('  '):
-            volumes_dict = {volume.name: volume for volume in volumes}
-            for volume_mount in container.volume_mounts:
-                if volume_mount.name in volumes_dict:
-                    volume = volumes_dict[volume_mount.name]
-                    if isinstance(volume, EbsVolume):
-                        output.write('%s -> EBS volume (%s)' % (volume_mount.container_dir, volume.ec2_volume_name))
-                    else:
-                        raise ValueError('Unknown volume type')
-                else:
-                    output.write('%s -> temporary directory' % volume_mount.container_dir)
-        output.write()
+        # print information about the volumes
+        output.write('\nVolumes:\n%s\n' % self._render_volumes_info_table(container.volume_mounts, volumes))
 
         # create stack
         if not dry_run:
@@ -326,3 +315,25 @@ class InstanceDeployment(object):
                 output.write('- volume "%s" was deleted' % ec2_volume.name)
             except Exception as e:
                 output.write('- volume "%s" was not deleted. Error: %s' % (ec2_volume.name, str(e)))
+
+    @staticmethod
+    def _render_volumes_info_table(volume_mounts: List[VolumeMount], volumes: List[AbstractInstanceVolume]):
+        table = [('Name', 'Type', 'Container Dir')]
+
+        # add volume mounts to the info table
+        volumes_dict = {volume.name: volume for volume in volumes}
+        for volume_mount in volume_mounts:
+            if volume_mount.name in volumes_dict:
+                volume = volumes_dict[volume_mount.name]
+                table.append((volume_mount.name, volume.title, volume_mount.container_dir))
+            else:
+                vol_mount_name = '-' if volume_mount.name is None else volume_mount.name
+                table.append((vol_mount_name, 'temporary directory', volume_mount.container_dir))
+
+        # add volumes that were not mounted to the container to the info table
+        volume_mounts_dict = {volume_mount.name for volume_mount in volume_mounts}
+        for volume in volumes:
+            if volume.name not in volume_mounts_dict:
+                table.append((volume.name, volume.title, '-'))
+
+        return render_table(table, separate_title=True)

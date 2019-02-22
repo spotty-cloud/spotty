@@ -20,6 +20,10 @@ class EbsVolume(AbstractInstanceVolume):
         self._instance_name = instance_name
 
     @property
+    def title(self):
+        return 'EBS volume'
+
+    @property
     def name(self):
         return self._name
 

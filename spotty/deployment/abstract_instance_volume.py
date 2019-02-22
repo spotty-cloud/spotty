@@ -10,3 +10,7 @@ class AbstractInstanceVolume(ABC):
     @property
     def mount_dir(self) -> str:
         raise NotImplementedError
+
+    @property
+    def title(self) -> str:
+        raise NotImplementedError
