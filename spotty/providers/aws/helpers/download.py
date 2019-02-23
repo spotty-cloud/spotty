@@ -16,7 +16,7 @@ def upload_from_instance_to_s3(download_filters: list, host: str, user: str, key
     changed files with local, not all of them every download).
     """
     args = ['sudo', '/tmp/spotty/instance/scripts/upload_files.sh']
-    args += AwsCli.get_s3_sync_arguments(filters=download_filters, delete=True, dry_run=dry_run)
+    args += AwsCli.get_s3_sync_arguments(filters=download_filters, delete=True, quote=True, dry_run=dry_run)
 
     if not dry_run:
         args += ['>', '/dev/null']

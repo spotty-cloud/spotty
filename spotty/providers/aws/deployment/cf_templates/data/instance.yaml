@@ -172,7 +172,7 @@ Resources:
               content: !Sub |
                 #!/bin/bash -e
 
-                aws s3 sync ${HostProjectDirectory} ${UploadS3Path} $@
+                aws s3 sync ${HostProjectDirectory} ${UploadS3Path} "$@"
             /home/ubuntu/.tmux.conf:
               owner: ubuntu
               group: ubuntu
@@ -217,7 +217,7 @@ Resources:
               content: !Sub |
                 #!/bin/bash -e
 
-                aws s3 sync ${ProjectS3Path} ${HostProjectDirectory} $@
+                aws s3 sync ${ProjectS3Path} ${HostProjectDirectory} "$@"
           commands:
             sync_project:
               command: !Sub '/bin/bash -xe /tmp/spotty/instance/scripts/sync_project.sh ${SyncCommandArgs}'
@@ -268,7 +268,7 @@ Resources:
                   # create a script to connect to the docker container
                   cat > /tmp/spotty/instance/scripts/container_bash.sh <<EOL
                 #!/bin/bash
-                docker exec -it $WORKING_DIR $CONTAINER_NAME /bin/bash \$@
+                docker exec -it $WORKING_DIR $CONTAINER_NAME /bin/bash "\$@"
                 EOL
                   chmod 755 /tmp/spotty/instance/scripts/container_bash.sh
                   chown ubuntu:ubuntu /tmp/spotty/instance/scripts/container_bash.sh

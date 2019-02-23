@@ -1,5 +1,6 @@
 import json
 import logging
+import shlex
 import subprocess
 from shutil import which
 
@@ -23,7 +24,7 @@ class AwsCli(object):
 
     @staticmethod
     def get_s3_sync_arguments(filters: list = None, exact_timestamp: bool = False, delete: bool = False,
-                              dry_run: bool = False):
+                              quote=False, dry_run: bool = False):
         args = []
 
         if filters:
@@ -34,11 +35,11 @@ class AwsCli(object):
 
                 if 'exclude' in sync_filter:
                     for path in sync_filter['exclude']:
-                        args += ['--exclude', path]
+                        args += ['--exclude', shlex.quote(path) if quote else path]
 
                 if 'include' in sync_filter:
                     for path in sync_filter['include']:
-                        args += ['--include', path]
+                        args += ['--include', shlex.quote(path) if quote else path]
 
         if exact_timestamp:
             args.append('--exact-timestamp')
