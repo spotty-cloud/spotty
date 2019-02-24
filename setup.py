@@ -33,9 +33,9 @@ setup(name='spotty',
       scripts=['bin/spotty'],
       install_requires=[
           'boto3>=1.9.0',
-          'cfn_flip',
+          'cfn_flip',  # to work with CloudFormation templates
           'schema',
-          'pystache',
+          'chevron',
       ],
       tests_require=['moto'],
       test_suite='tests',
