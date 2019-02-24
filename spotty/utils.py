@@ -43,7 +43,7 @@ def render_table(table: list, separate_title=False):
 
     lines = [row_separator]
     for i, row in enumerate(table):
-        line = '| %s |' % ' | '.join([val.ljust(col_length) for val, col_length in zip(row, column_lengths)])
+        line = '| %s |' % ' | '.join([str(val).ljust(col_length) for val, col_length in zip(row, column_lengths)])
         lines.append(line)
         lines.append(title_separator if separate_title and not i else row_separator)
 

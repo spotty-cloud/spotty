@@ -29,6 +29,9 @@ class AmiDeployment(object):
         return KeyPairResource(self._project_name, self.instance_config.region)
 
     def get_ami(self) -> Image:
+        if self.instance_config.ami_id:
+            raise ValueError('The "amiId" parameter cannot be used for creating or deleting an AMI.')
+
         return Image.get_by_name(self._ec2, self.instance_config.ami_name)
 
     def deploy(self, debug_mode: bool, output: AbstractOutputWriter):

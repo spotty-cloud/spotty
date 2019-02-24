@@ -2,15 +2,8 @@ import base64
 import subprocess
 
 
-def get_ssh_command(host: str, user: str, key_path: str, remote_cmd: str, local_ssh_port: int = None,
-                    quiet: bool = False) -> list:
-    ssh_port = 22
-
-    if local_ssh_port:
-        ssh_port = local_ssh_port
-        host = '127.0.0.1'
-
-    ssh_command = ['ssh', '-p', str(ssh_port), '-i', key_path, '-o', 'StrictHostKeyChecking no', '-t']
+def get_ssh_command(host: str, port: int, user: str, key_path: str, remote_cmd: str, quiet: bool = False) -> list:
+    ssh_command = ['ssh', '-p', str(port), '-i', key_path, '-o', 'StrictHostKeyChecking no', '-t']
     if quiet:
         ssh_command += ['-q']
 
@@ -19,8 +12,8 @@ def get_ssh_command(host: str, user: str, key_path: str, remote_cmd: str, local_
     return ssh_command
 
 
-def run_script(host, user, key_path, script_name, script_content, tmux_session_name, restart=False, logging=False,
-               local_ssh_port: int = None):
+def run_script(host: str, port: int, user: str, key_path: str, script_name: str, script_content: str,
+               tmux_session_name: str, restart: bool = False, logging: bool = False):
     # encode the script content to base64
     script_base64 = base64.b64encode(script_content.encode('utf-8')).decode('utf-8')
 
@@ -61,5 +54,5 @@ def run_script(host, user, key_path, script_name, script_content, tmux_session_n
         remote_cmd = '%s || (%s && %s)' % (attach_session_cmd, upload_script_cmd, new_session_cmd)
 
     # connect to the instance and run the command
-    ssh_command = get_ssh_command(host, user, key_path, remote_cmd, local_ssh_port)
+    ssh_command = get_ssh_command(host, port, user, key_path, remote_cmd)
     subprocess.call(ssh_command)

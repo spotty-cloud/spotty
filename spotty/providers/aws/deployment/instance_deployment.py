@@ -52,7 +52,12 @@ class InstanceDeployment(object):
         return InstanceStackResource(self._project_name, self.instance_config.name, self.instance_config.region)
 
     def get_ami(self) -> Image:
-        return Image.get_by_name(self._ec2, self.instance_config.ami_name)
+        if self.instance_config.ami_id:
+            image = Image.get_by_id(self._ec2, self.instance_config.ami_id)
+        else:
+            image = Image.get_by_name(self._ec2, self.instance_config.ami_name)
+
+        return image
 
     def get_vpc_id(self) -> str:
         if self.instance_config.subnet_id:
@@ -318,22 +323,22 @@ class InstanceDeployment(object):
 
     @staticmethod
     def _render_volumes_info_table(volume_mounts: List[VolumeMount], volumes: List[AbstractInstanceVolume]):
-        table = [('Name', 'Type', 'Container Dir')]
+        table = [('Name', 'Container Dir', 'Type')]
 
         # add volume mounts to the info table
         volumes_dict = {volume.name: volume for volume in volumes}
         for volume_mount in volume_mounts:
             if volume_mount.name in volumes_dict:
                 volume = volumes_dict[volume_mount.name]
-                table.append((volume_mount.name, volume.title, volume_mount.container_dir))
+                table.append((volume_mount.name, volume_mount.container_dir, volume.title))
             else:
                 vol_mount_name = '-' if volume_mount.name is None else volume_mount.name
-                table.append((vol_mount_name, 'temporary directory', volume_mount.container_dir))
+                table.append((vol_mount_name, volume_mount.container_dir, 'temporary directory'))
 
         # add volumes that were not mounted to the container to the info table
         volume_mounts_dict = {volume_mount.name for volume_mount in volume_mounts}
         for volume in volumes:
             if volume.name not in volume_mounts_dict:
-                table.append((volume.name, volume.title, '-'))
+                table.append((volume.name, '-', volume.title))
 
         return render_table(table, separate_title=True)

@@ -42,10 +42,6 @@ class Instance(object):
         return self._instance_info.get('PublicIpAddress', None)
 
     @property
-    def private_ip_address(self) -> str:
-        return self._instance_info.get('PrivateIpAddress', None)
-
-    @property
     def state(self) -> str:
         return self._instance_info['State']['Name']
 

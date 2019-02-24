@@ -7,7 +7,7 @@ def get_tmp_instance_s3_path(bucket_name, instance_name):
     return 's3://%s/download/instance-%s' % (bucket_name, instance_name)
 
 
-def upload_from_instance_to_s3(download_filters: list, host: str, user: str, key_path: str, local_ssh_port: int = None,
+def upload_from_instance_to_s3(download_filters: list, host: str, port: int, user: str, key_path: str,
                                dry_run: bool = False):
     """Uploads files from the running instance to S3 bucket.
 
@@ -24,7 +24,7 @@ def upload_from_instance_to_s3(download_filters: list, host: str, user: str, key
     remote_cmd = subprocess.list2cmdline(args)
 
     # connect to the instance and run the remote command
-    ssh_command = get_ssh_command(host, user, key_path, remote_cmd, local_ssh_port, quiet=not dry_run)
+    ssh_command = get_ssh_command(host, port, user, key_path, remote_cmd, quiet=not dry_run)
     subprocess.call(ssh_command)
 
 

@@ -1,9 +1,6 @@
 from schema import Schema, Optional, And, Regex, Or, Use
 from spotty.config.validation import validate_config, get_instance_parameters_schema
 
-AMI_NAME_REGEX = r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$'
-DEFAULT_AMI_NAME = 'SpottyAMI'
-
 
 def validate_instance_parameters(params: dict):
     from spotty.providers.aws.config.instance_config import VOLUME_TYPE_EBS
@@ -11,10 +8,11 @@ def validate_instance_parameters(params: dict):
     instance_parameters = {
         'region': And(str, Regex(r'^[a-z0-9-]+$')),
         Optional('availabilityZone', default=''): And(str, Regex(r'^[a-z0-9-]+$')),
-        Optional('subnetId', default=''): And(str, Regex(r'^[a-z0-9-]+$')),
+        Optional('subnetId', default=''): And(str, Regex(r'^subnet-[a-z0-9]+$')),
         'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
         Optional('onDemandInstance', default=False): bool,
-        Optional('amiName', default=DEFAULT_AMI_NAME): And(str, len, Regex(AMI_NAME_REGEX)),
+        Optional('amiName', default=None): And(str, len, Regex(r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$')),
+        Optional('amiId', default=None): And(str, len, Regex(r'^ami-[a-z0-9]+$')),
         Optional('rootVolumeSize', default=0): And(Or(int, str), Use(str),
                                                    Regex(r'^\d+$', error='Incorrect value for "rootVolumeSize".'),
                                                    Use(int),
@@ -35,8 +33,10 @@ def validate_instance_parameters(params: dict):
     ]
 
     instance_checks = [
-        And(lambda x: not x['onDemandInstance'] or not x['maxPrice'],
+        And(lambda x: not (x['onDemandInstance'] and x['maxPrice']),
             error='"maxPrice" cannot be specified for on-demand instances'),
+        And(lambda x: not (x['amiName'] and x['amiId']),
+            error='"amiName" and "amiId" parameters cannot be used together'),
     ]
 
     schema = get_instance_parameters_schema(instance_parameters, VOLUME_TYPE_EBS, instance_checks, volumes_checks)

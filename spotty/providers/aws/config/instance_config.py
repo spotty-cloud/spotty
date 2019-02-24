@@ -2,6 +2,7 @@ from spotty.config.abstract_instance_config import AbstractInstanceConfig
 from spotty.providers.aws.config.validation import validate_instance_parameters
 
 VOLUME_TYPE_EBS = 'ebs'
+DEFAULT_AMI_NAME = 'SpottyAMI'
 
 
 class InstanceConfig(AbstractInstanceConfig):
@@ -33,7 +34,11 @@ class InstanceConfig(AbstractInstanceConfig):
 
     @property
     def ami_name(self) -> str:
-        return self._params['amiName']
+        return self._params['amiName'] if self._params['amiName'] else DEFAULT_AMI_NAME
+
+    @property
+    def ami_id(self) -> str:
+        return self._params['amiId']
 
     @property
     def root_volume_size(self) -> int:

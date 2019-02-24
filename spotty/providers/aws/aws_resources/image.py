@@ -19,6 +19,16 @@ class Image(object):
 
         return Image(ec2, res['Images'][0])
 
+    @staticmethod
+    def get_by_id(ec2, ami_id: str):
+        """Returns a AMI by its ID."""
+        res = ec2.describe_images(Filters=[{'Name': 'image-id', 'Values': [ami_id]}])
+
+        if not len(res['Images']):
+            return None
+
+        return Image(ec2, res['Images'][0])
+
     @property
     def image_id(self) -> str:
         return self._ami_info['ImageId']

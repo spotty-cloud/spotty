@@ -61,6 +61,13 @@ class AbstractInstanceManager(ABC):
         raise NotImplementedError
 
     @property
+    def ssh_port(self):
+        if self._instance_config.local_ssh_port:
+            return self._instance_config.local_ssh_port
+
+        return 22
+
+    @property
     @abstractmethod
     def ssh_user(self):
         raise NotImplementedError

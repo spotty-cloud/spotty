@@ -22,6 +22,11 @@ class StartCommand(AbstractConfigCommand):
             instance_manager.start(output, dry_run)
 
         if not dry_run:
-            output.write('\n' + instance_manager.status_text)
-            output.write('\nUse "spotty ssh %s" command to connect to the Docker container.\n'
-                         % instance_manager.instance_config.name)
+            instance_name = ''
+            if len(instance_manager.project_config.instances) > 1:
+                instance_name = ' ' + instance_manager.instance_config.name
+
+            output.write('\nThe instance was successfully started.\n'
+                         '\n%s\n'
+                         '\nUse the "spotty ssh%s" command to connect to the Docker container.\n'
+                         % (instance_manager.status_text, instance_name))

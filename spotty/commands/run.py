@@ -47,11 +47,11 @@ class RunCommand(AbstractConfigCommand):
 
         # run the script on the instance
         run_script(host=instance_manager.ip_address,
+                   port=instance_manager.ssh_port,
                    user=instance_manager.ssh_user,
                    key_path=instance_manager.ssh_key_path,
                    script_name=script_name,
                    script_content=script_content,
                    tmux_session_name=session_name,
                    restart=args.restart,
-                   logging=args.logging,
-                   local_ssh_port=instance_manager.instance_config.local_ssh_port)
+                   logging=args.logging)

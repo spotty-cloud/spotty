@@ -17,11 +17,11 @@ def sync_project_with_s3(project_dir, bucket_name, region, sync_filters, dry_run
                                   capture_output=False, dry_run=dry_run)
 
 
-def sync_instance_with_s3(sync_filters: list, host: str, user: str, key_path: str, local_ssh_port: int = None):
+def sync_instance_with_s3(sync_filters: list, host: str, port: int, user: str, key_path: str):
     # command to sync S3 with the instance
     remote_cmd = subprocess.list2cmdline(['sudo', '/tmp/spotty/instance/scripts/sync_project.sh',
                                           *get_instance_sync_arguments(sync_filters), '>', '/dev/null'])
 
     # connect to the instance and run remote command
-    ssh_command = get_ssh_command(host, user, key_path, remote_cmd, local_ssh_port, quiet=True)
+    ssh_command = get_ssh_command(host, port, user, key_path, remote_cmd, quiet=True)
     subprocess.call(ssh_command)

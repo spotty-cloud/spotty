@@ -87,8 +87,8 @@ class InstanceManager(AbstractInstanceManager):
         if not dry_run:
             # sync S3 with the instance
             output.write('Syncing S3 bucket with the instance...')
-            sync_instance_with_s3(self.project_config.sync_filters, self.ip_address, self.ssh_user, self.ssh_key_path,
-                                  local_ssh_port=self.instance_config.local_ssh_port)
+            sync_instance_with_s3(self.project_config.sync_filters, self.ip_address, self.ssh_port, self.ssh_user,
+                                  self.ssh_key_path)
 
     def download(self, download_filters: list, output: AbstractOutputWriter, dry_run=False):
         # create or get existing bucket for the project
@@ -96,8 +96,8 @@ class InstanceManager(AbstractInstanceManager):
 
         # sync files from the instance to a temporary S3 directory
         output.write('Uploading files from the instance to S3 bucket...')
-        upload_from_instance_to_s3(download_filters, self.ip_address, self.ssh_user, self.ssh_key_path,
-                                   local_ssh_port=self.instance_config.local_ssh_port, dry_run=dry_run)
+        upload_from_instance_to_s3(download_filters, self.ip_address, self.ssh_port, self.ssh_user, self.ssh_key_path,
+                                   dry_run=dry_run)
 
         # sync the project with the S3 bucket
         output.write('Downloading files from S3 bucket to local...')
@@ -114,10 +114,12 @@ class InstanceManager(AbstractInstanceManager):
             ('Instance State', instance.state),
             ('Instance Type', instance.instance_type),
             ('Availability Zone', instance.availability_zone),
-            ('Public IP Address', instance.public_ip_address),
-            ('Private IP Address', instance.private_ip_address),
-            ('Launch Time', instance.launch_time.strftime('%Y-%m-%d %H:%M:%S')),
         ]
+
+        if instance.public_ip_address:
+            table.append(('Public IP Address', instance.public_ip_address))
+
+        table.append(('Launch Time', instance.launch_time.strftime('%Y-%m-%d %H:%M:%S')))
 
         if instance.lifecycle == 'spot':
             spot_price = instance.get_spot_price()
@@ -130,13 +132,14 @@ class InstanceManager(AbstractInstanceManager):
 
     @property
     def ip_address(self):
+        if self._instance_config.local_ssh_port:
+            return '127.0.0.1'
+
         instance = self.deployment.get_instance()
         if not instance:
             raise InstanceNotRunningError(self.instance_config.name)
 
-        ip_address = instance.public_ip_address if instance.public_ip_address else instance.private_ip_address
-
-        return ip_address
+        return instance.public_ip_address
 
     @property
     def ssh_user(self):

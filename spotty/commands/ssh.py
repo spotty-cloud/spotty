@@ -16,22 +16,26 @@ class SshCommand(AbstractConfigCommand):
         parser.add_argument('-H', '--host-os', action='store_true', help='Connect to the host OS instead of the Docker '
                                                                          'container')
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')
+        parser.add_argument('-l', '--list-sessions', action='store_true', help='List all tmux sessions managed by the '
+                                                                               'instance')
 
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
-        if args.host_os:
-            # connect to the host OS
-            session_name = args.session_name if args.session_name else 'spotty-ssh-host-os'
-            remote_cmd = ['tmux', 'new', '-s', session_name, '-A']
+        if args.list_sessions:
+            remote_cmd = ['tmux', 'ls', ';', 'echo', '']
         else:
-            # connect to the container
-            session_name = args.session_name if args.session_name else 'spotty-ssh-container'
-            remote_cmd = ['tmux', 'new', '-s', session_name, '-A', 'sudo',
-                          '/tmp/spotty/instance/scripts/container_bash.sh']
+            # tmux session name
+            session_name = args.session_name
+            if not session_name:
+                session_name = 'spotty-ssh-host-os' if args.host_os else 'spotty-ssh-container'
+
+            # a command to connect to the host OS or to the container
+            remote_cmd = ['tmux', 'new', '-s', session_name, '-A']
+            if not args.host_os:
+                remote_cmd += ['sudo', '/tmp/spotty/instance/scripts/container_bash.sh']
 
         remote_cmd = subprocess.list2cmdline(remote_cmd)
 
         # connect to the instance
-        ssh_command = get_ssh_command(instance_manager.ip_address, instance_manager.ssh_user,
-                                      instance_manager.ssh_key_path, remote_cmd,
-                                      instance_manager.instance_config.local_ssh_port)
+        ssh_command = get_ssh_command(instance_manager.ip_address, instance_manager.ssh_port,
+                                      instance_manager.ssh_user, instance_manager.ssh_key_path, remote_cmd)
         subprocess.call(ssh_command)
