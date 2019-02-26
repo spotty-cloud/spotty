@@ -18,8 +18,11 @@ def sync_project_with_s3(project_dir, bucket_name, region, sync_filters, dry_run
 
 
 def sync_instance_with_s3(sync_filters: list, host: str, port: int, user: str, key_path: str):
-    # command to sync S3 with the instance
-    remote_cmd = subprocess.list2cmdline(['sudo', '/tmp/spotty/instance/scripts/sync_project.sh',
+    """Syncs the project from the S3 bucket to the instance."""
+
+    # "sudo" should be called with the "-i" flag to use the root environment, so aws-cli will read
+    # the config file from the root home directory
+    remote_cmd = subprocess.list2cmdline(['sudo', '-i', '/tmp/spotty/instance/scripts/sync_project.sh',
                                           *get_instance_sync_arguments(sync_filters), '>', '/dev/null'])
 
     # connect to the instance and run remote command

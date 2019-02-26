@@ -9,13 +9,16 @@ def get_tmp_instance_s3_path(bucket_name, instance_name):
 
 def upload_from_instance_to_s3(download_filters: list, host: str, port: int, user: str, key_path: str,
                                dry_run: bool = False):
-    """Uploads files from the running instance to S3 bucket.
+    """Uploads files from the running instance to the S3 bucket.
 
     It uses a temporary S3 directory that is unique for the instance. This
     directory keeps downloaded from the instance files in order to sync only
     changed files with local, not all of them every download).
     """
-    args = ['sudo', '/tmp/spotty/instance/scripts/upload_files.sh']
+
+    # "sudo" should be called with the "-i" flag to use the root environment, so aws-cli will read
+    # the config file from the root home directory
+    args = ['sudo', '-i', '/tmp/spotty/instance/scripts/upload_files.sh']
     args += AwsCli.get_s3_sync_arguments(filters=download_filters, delete=True, quote=True, dry_run=dry_run)
 
     if not dry_run:
