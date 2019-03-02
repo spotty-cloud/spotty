@@ -1,6 +1,6 @@
 Description: Spotty NVIDIA Docker AMI
 Metadata:
-  Version: 1.0.2
+  Version: 1.0.3
 Parameters:
   InstanceType:
     Description: Instance type to launch EC2 Spot instance
@@ -190,7 +190,10 @@ Resources:
                    $(lsb_release -cs) \
                    stable"
                 apt-get update
-                apt-get install -y docker-ce
+                apt-get install -y \
+                  docker-ce=5:18.09.2~3-0~ubuntu-xenial \
+                  docker-ce-cli=5:18.09.2~3-0~ubuntu-xenial \
+                  containerd.io
 
                 # install NVIDIA driver
                 apt-key adv --fetch-keys  http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
@@ -205,7 +208,7 @@ Resources:
                 curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
                   tee /etc/apt/sources.list.d/nvidia-docker.list
                 apt-get update
-                apt-get install -y nvidia-docker2
+                apt-get install -y nvidia-docker2=2.0.3+docker18.09.2-1
 
                 # reload the Docker daemon configuration
                 pkill -SIGHUP dockerd
