@@ -1,7 +1,10 @@
 Description: Spotty NVIDIA Docker AMI
 Metadata:
-  Version: 1.0.2
+  Version: 1.0.4
 Parameters:
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
   InstanceType:
     Description: Instance type
     Type: String
@@ -48,28 +51,28 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: 'Allow'
-          Principal:
-            Service:
-            - 'lambda.amazonaws.com'
-          Action:
-          - 'sts:AssumeRole'
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'lambda.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
       Path: '/'
       Policies:
-      - PolicyName: FindBaseAMIPolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: 'Allow'
-            Action:
-            - 'logs:CreateLogGroup'
-            - 'logs:CreateLogStream'
-            - 'logs:PutLogEvents'
-            Resource: 'arn:aws:logs:*:*:*'
-          - Effect: 'Allow'
-            Action:
-            - 'ec2:DescribeImages'
-            Resource: '*'
+        - PolicyName: FindBaseAMIPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+              - Effect: 'Allow'
+                Action:
+                  - 'ec2:DescribeImages'
+                Resource: '*'
   DeleteAMIFunctionRetention:
     Type: Custom::LogsRetention
     DependsOn: FindBaseAMI
@@ -100,6 +103,8 @@ Resources:
                 Value: !Ref InstanceNameTag
         IamInstanceProfile:
           Arn: !GetAtt InstanceProfile.Arn
+        SecurityGroupIds:
+          - !Ref InstanceSecurityGroup
         InstanceInitiatedShutdownBehavior: terminate
         InstanceMarketOptions:
           MarketType: spot
@@ -107,10 +112,10 @@ Resources:
             SpotInstanceType: one-time
             InstanceInterruptionBehavior: terminate
         BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            VolumeType: gp2
-            DeleteOnTermination: true
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeType: gp2
+              DeleteOnTermination: true
         UserData:
           'Fn::Base64': !Sub |
             #!/bin/bash -x
@@ -147,19 +152,25 @@ Resources:
               exit $INIT_EXIT_CODE
             fi
 
-            # create the AMI
-            if [ "${DebugMode}" = "false" ]; then
-              /usr/local/bin/cfn-init \
+            # don't create an AMI in the debug mode
+            if [ "${DebugMode}" = "true" ]; then
+              /usr/local/bin/cfn-signal \
+                -e 1 \
                 --stack ${AWS::StackName} \
-                --resource InstanceLaunchTemplate \
                 --region ${AWS::Region} \
-                -c ami \
-                -v
-
-              AMI_EXIT_CODE=$?
-            else
-              AMI_EXIT_CODE=1
+                --resource AMICreatedWaitCondition
+              exit 1
             fi
+
+            # create the AMI
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource InstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c ami \
+              -v
+
+            AMI_EXIT_CODE=$?
 
             # send signal that the AMI is created
             /usr/local/bin/cfn-signal \
@@ -174,6 +185,7 @@ Resources:
 
             # shutdown the instance
             shutdown -h now
+
     Metadata:
       'AWS::CloudFormation::Init':
         configSets:
@@ -201,7 +213,10 @@ Resources:
                    $(lsb_release -cs) \
                    stable"
                 apt-get update
-                apt-get install -y docker-ce
+                apt-get install -y \
+                  docker-ce=5:18.09.2~3-0~ubuntu-xenial \
+                  docker-ce-cli=5:18.09.2~3-0~ubuntu-xenial \
+                  containerd.io
 
                 # install NVIDIA driver
                 apt-key adv --fetch-keys  http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
@@ -216,7 +231,7 @@ Resources:
                 curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
                   tee /etc/apt/sources.list.d/nvidia-docker.list
                 apt-get update
-                apt-get install -y nvidia-docker2
+                apt-get install -y nvidia-docker2=2.0.3+docker18.09.2-1
 
                 # reload the Docker daemon configuration
                 pkill -SIGHUP dockerd
@@ -264,31 +279,55 @@ Resources:
     Properties:
       Path: '/'
       Roles:
-      - Ref: InstanceRole
+        - Ref: InstanceRole
   InstanceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - ec2.amazonaws.com
-          Action:
-          - sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
       Path: '/'
       Policies:
-      - PolicyName: AMICreationPolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - 'ec2:DescribeImages'
-            - 'ec2:CreateImage'
-            - 'ec2:CreateTags'
-            Resource: ['*']
+        - PolicyName: AMICreationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - 'ec2:DescribeImages'
+              - 'ec2:CreateImage'
+              - 'ec2:CreateTags'
+              Resource: ['*']
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcId
+      GroupDescription: Spotty AMI Security Group
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+        - CidrIpv6: ::/0
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+        - CidrIpv6: ::/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
 
   InstanceReadyWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
@@ -330,28 +369,28 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-              - lambda.amazonaws.com
-          Action:
-            - 'sts:AssumeRole'
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
       Path: /
       ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
       Policies:
-      - PolicyName: EC2Policy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-              - 'ec2:DescribeImages'
-              - 'ec2:DescribeSnapshots'
-              - 'ec2:DeregisterImage'
-              - 'ec2:DeleteSnapshot'
-              Resource: ['*']
+        - PolicyName: EC2Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:DescribeImages'
+                  - 'ec2:DescribeSnapshots'
+                  - 'ec2:DeregisterImage'
+                  - 'ec2:DeleteSnapshot'
+                Resource: ['*']
   DeleteAMIFunctionRetention:
     Type: Custom::LogsRetention
     DependsOn: DeleteAMI
@@ -383,26 +422,26 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-              - lambda.amazonaws.com
-          Action:
-            - 'sts:AssumeRole'
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
       Path: /
       ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
       Policies:
-      - PolicyName: CloudWatchLogsPolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-              - logs:PutRetentionPolicy
-              Resource:
-              - arn:aws:logs:*:*:*
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:PutRetentionPolicy
+                Resource:
+                  - arn:aws:logs:*:*:*
   SetLogsRetentionFunctionRetention:
     Type: Custom::LogsRetention
     Properties:

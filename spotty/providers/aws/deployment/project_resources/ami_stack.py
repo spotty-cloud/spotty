@@ -1,24 +1,27 @@
 import boto3
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.aws.aws_resources.stack import Stack
-from spotty.utils import random_string
 
 
 class AmiStackResource(object):
 
-    def __init__(self, region):
+    def __init__(self, ami_name: str, region: str):
         self._cf = boto3.client('cloudformation', region_name=region)
+        self._stack_name = 'spotty-ami-%s' % ami_name.lower()
 
-    def create_stack(self, template: str, parameters: dict, debug_instance: bool, output: AbstractOutputWriter):
+    @property
+    def name(self):
+        return self._stack_name
+
+    def create_stack(self, template: str, parameters: dict, debug_mode: bool, output: AbstractOutputWriter):
         """Runs CloudFormation template."""
-        stack_name = 'spotty-nvidia-docker-ami-%s' % random_string(8)
         stack = Stack.create_stack(
             cf=self._cf,
-            StackName=stack_name,
+            StackName=self._stack_name,
             TemplateBody=template,
             Parameters=[{'ParameterKey': key, 'ParameterValue': value} for key, value in parameters.items()],
             Capabilities=['CAPABILITY_IAM'],
-            OnFailure='DO_NOTHING' if debug_instance else 'DELETE',
+            OnFailure='DO_NOTHING' if debug_mode else 'DELETE',
         )
 
         output.write('Waiting for the AMI to be created...')
@@ -38,16 +41,18 @@ class AmiStackResource(object):
 
         if stack.status != 'CREATE_COMPLETE':
             raise ValueError('Stack "%s" was not created.\n'
-                             'Please, see CloudFormation logs for the details.' % stack_name)
+                             'Please, see CloudFormation logs for the details.' % self._stack_name)
 
-        ami_id = [row['OutputValue'] for row in stack.outputs if row['OutputKey'] == 'NewAMI'][0]
-
-        output.write('\n'
-                     '--------------------------------------------------\n'
-                     'AMI "%s" (ID=%s) was successfully created.\n'
-                     'Use the "spotty start" command to run an instance.\n'
-                     '--------------------------------------------------'
-                     % (parameters['ImageName'], ami_id))
+        if debug_mode:
+            output.write('Stack "%s" was created in debug mode.' % self._stack_name)
+        else:
+            ami_id = [row['OutputValue'] for row in stack.outputs if row['OutputKey'] == 'NewAMI'][0]
+            output.write('\n'
+                         '--------------------------------------------------\n'
+                         'AMI "%s" (ID=%s) was successfully created.\n'
+                         'Use the "spotty start" command to run an instance.\n'
+                         '--------------------------------------------------'
+                         % (parameters['ImageName'], ami_id))
 
     def delete_stack(self, stack_id, output: AbstractOutputWriter):
         # delete the image
