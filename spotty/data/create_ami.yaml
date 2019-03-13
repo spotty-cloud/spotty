@@ -191,8 +191,8 @@ Resources:
                    stable"
                 apt-get update
                 apt-get install -y \
-                  docker-ce=5:18.09.2~3-0~ubuntu-xenial \
-                  docker-ce-cli=5:18.09.2~3-0~ubuntu-xenial \
+                  docker-ce=5:18.09.3~3-0~ubuntu-xenial \
+                  docker-ce-cli=5:18.09.3~3-0~ubuntu-xenial \
                   containerd.io
 
                 # install NVIDIA driver
@@ -208,7 +208,9 @@ Resources:
                 curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
                   tee /etc/apt/sources.list.d/nvidia-docker.list
                 apt-get update
-                apt-get install -y nvidia-docker2=2.0.3+docker18.09.2-1
+                apt-get install -y \
+                  nvidia-container-runtime=2.0.0+docker18.09.3-1 \
+                  nvidia-docker2=2.0.3+docker18.09.3-1
 
                 # reload the Docker daemon configuration
                 pkill -SIGHUP dockerd
