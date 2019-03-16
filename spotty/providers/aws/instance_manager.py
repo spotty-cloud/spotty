@@ -1,5 +1,4 @@
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.config.project_config import ProjectConfig
 from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.deployment.ami_deployment import AmiDeployment
@@ -13,21 +12,35 @@ from spotty.utils import render_table
 
 class InstanceManager(AbstractInstanceManager):
 
-    def __init__(self, project_config: ProjectConfig, instance_config: dict):
-        super().__init__(project_config, instance_config)
+    @property
+    def instance_deployment(self) -> InstanceDeployment:
+        """Returns an instance deployment manager."""
+        return InstanceDeployment(self.project_config.project_name, self.instance_config)
 
-        self._deployment = InstanceDeployment(project_config.project_name, self.instance_config)
+    @property
+    def ami_deployment(self) -> AmiDeployment:
+        """Returns an AMI deployment manager."""
+        return AmiDeployment(self.project_config.project_name, self.instance_config)
 
     def _get_instance_config(self, config: dict) -> InstanceConfig:
+        """Validates the instance config and returns an InstanceConfig object."""
         return InstanceConfig(config)
 
+    @property
+    def instance_config(self) -> InstanceConfig:
+        """This property is redefined just for a correct type hinting."""
+        return self._instance_config
+
     def is_running(self):
-        return bool(self.deployment.get_instance())
+        """Checks if the instance is running."""
+        return bool(self.instance_deployment.get_instance())
 
     def start(self, output: AbstractOutputWriter, dry_run=False):
+        deployment = self.instance_deployment
+
         if not dry_run:
             # check if the instance is already running
-            instance = self.deployment.get_instance()
+            instance = deployment.get_instance()
             if instance:
                 print('Instance is already running. Are you sure you want to restart it?')
                 res = input('Type "y" to confirm: ')
@@ -40,22 +53,23 @@ class InstanceManager(AbstractInstanceManager):
                 instance.wait_instance_terminated()
 
             # check that the AMI exists
-            ami = self.deployment.get_ami()
-            if not ami:
-                print('The AMI "%s" doesn\'t exist. Do you want to create it?' % self.deployment.instance_config.ami_name)
+            if not deployment.get_ami():
+                print('The AMI "%s" doesn\'t exist. Do you want to create it?'
+                      % self.instance_config.ami_name)
                 res = input('Type "y" to confirm: ')
                 if res == 'y':
-                    deployment = AmiDeployment(self.project_config.project_name, self.instance_config)
-                    deployment.deploy(False, output)
+                    # create an AMI
+                    self.ami_deployment.deploy(False, output)
                     output.write()
                 else:
-                    raise AmiNotFoundError(self.deployment.instance_config.ami_name)
+                    raise AmiNotFoundError(self.instance_config.ami_name)
 
-        self.deployment.deploy(self.project_config, output, dry_run=dry_run)
+        # deploy the instance
+        deployment.deploy(self.project_config, output, dry_run=dry_run)
 
     def stop(self, output: AbstractOutputWriter):
         # terminate the instance
-        instance = self.deployment.get_instance()
+        instance = self.instance_deployment.get_instance()
         if instance:
             output.write('Terminating the instance...')
             instance.terminate()
@@ -64,20 +78,20 @@ class InstanceManager(AbstractInstanceManager):
             output.write('The instance is already terminated.')
 
         # delete the stack
-        self.deployment.instance_stack.delete_stack(output, no_wait=True)
+        self.instance_deployment.stack.delete_stack(output, no_wait=True)
 
         output.write('Applying deletion policies for the volumes...')
 
         # apply deletion policies for the volumes
         with output.prefix('  '):
-            self.deployment.apply_deletion_policies(output)
+            self.instance_deployment.apply_deletion_policies(output)
 
     def clean(self, output: AbstractOutputWriter):
         pass
 
     def sync(self, output: AbstractOutputWriter, dry_run=False):
         # create or get existing bucket for the project
-        bucket_name = self.deployment.bucket.get_or_create_bucket(output, dry_run)
+        bucket_name = self.instance_deployment.bucket.get_or_create_bucket(output, dry_run)
 
         # sync the project with S3 bucket
         output.write('Syncing the project with S3 bucket...')
@@ -92,7 +106,7 @@ class InstanceManager(AbstractInstanceManager):
 
     def download(self, download_filters: list, output: AbstractOutputWriter, dry_run=False):
         # create or get existing bucket for the project
-        bucket_name = self.deployment.bucket.get_or_create_bucket(output, dry_run)
+        bucket_name = self.instance_deployment.bucket.get_or_create_bucket(output, dry_run)
 
         # sync files from the instance to a temporary S3 directory
         output.write('Uploading files from the instance to S3 bucket...')
@@ -106,7 +120,7 @@ class InstanceManager(AbstractInstanceManager):
 
     @property
     def status_text(self):
-        instance = self.deployment.get_instance()
+        instance = self.instance_deployment.get_instance()
         if not instance:
             raise InstanceNotRunningError(self.instance_config.name)
 
@@ -132,10 +146,11 @@ class InstanceManager(AbstractInstanceManager):
 
     @property
     def ip_address(self):
+        """Returns public IP address of the running instance."""
         if self._instance_config.local_ssh_port:
             return '127.0.0.1'
 
-        instance = self.deployment.get_instance()
+        instance = self.instance_deployment.get_instance()
         if not instance:
             raise InstanceNotRunningError(self.instance_config.name)
 
@@ -147,8 +162,4 @@ class InstanceManager(AbstractInstanceManager):
 
     @property
     def ssh_key_path(self):
-        return self.deployment.key_pair.key_path
-
-    @property
-    def deployment(self) -> InstanceDeployment:
-        return self._deployment
+        return self.instance_deployment.key_pair.key_path

@@ -1,14 +1,14 @@
 from subprocess import list2cmdline
 from typing import List
-import boto3
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.project_config import ProjectConfig
 from spotty.config.validation import is_subdir
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
-from spotty.providers.aws.config.instance_config import InstanceConfig, VOLUME_TYPE_EBS
+from spotty.providers.aws.config.instance_config import VOLUME_TYPE_EBS
 from spotty.deployment.container_deployment import ContainerDeployment, VolumeMount
+from spotty.providers.aws.deployment.abstract_aws_deployment import AbstractAwsDeployment
 from spotty.providers.aws.deployment.checks import check_az_and_subnet, check_max_price
-from spotty.providers.aws.deployment.ebs_volume import EbsVolume
+from spotty.providers.aws.deployment.project_resources.ebs_volume import EbsVolume
 from spotty.providers.aws.deployment.cf_templates.instance_template import prepare_instance_template
 from spotty.providers.aws.errors.ami_not_found import AmiNotFoundError
 from spotty.providers.aws.helpers.download import get_tmp_instance_s3_path
@@ -16,24 +16,11 @@ from spotty.providers.aws.helpers.sync import sync_project_with_s3, get_project_
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
 from spotty.providers.aws.deployment.project_resources.instance_profile_stack import create_or_update_instance_profile
 from spotty.providers.aws.deployment.project_resources.instance_stack import InstanceStackResource
-from spotty.providers.aws.deployment.project_resources.key_pair import KeyPairResource
-from spotty.providers.aws.aws_resources.image import Image
-from spotty.providers.aws.aws_resources.subnet import Subnet
-from spotty.providers.aws.aws_resources.vpc import Vpc
 from spotty.providers.aws.config.validation import is_nitro_instance, is_gpu_instance
 from spotty.utils import render_table
 
 
-class InstanceDeployment(object):
-
-    def __init__(self, project_name: str, instance_config: InstanceConfig):
-        self._project_name = project_name
-        self._instance_config = instance_config
-        self._ec2 = boto3.client('ec2', region_name=instance_config.region)
-
-    @property
-    def instance_config(self):
-        return self._instance_config
+class InstanceDeployment(AbstractAwsDeployment):
 
     @property
     def ec2_instance_name(self) -> str:
@@ -44,35 +31,11 @@ class InstanceDeployment(object):
         return BucketResource(self._project_name, self.instance_config.region)
 
     @property
-    def key_pair(self) -> KeyPairResource:
-        return KeyPairResource(self._project_name, self.instance_config.region)
-
-    @property
-    def instance_stack(self) -> InstanceStackResource:
+    def stack(self) -> InstanceStackResource:
         return InstanceStackResource(self._project_name, self.instance_config.name, self.instance_config.region)
 
-    def get_ami(self) -> Image:
-        if self.instance_config.ami_id:
-            image = Image.get_by_id(self._ec2, self.instance_config.ami_id)
-        else:
-            image = Image.get_by_name(self._ec2, self.instance_config.ami_name)
-
-        return image
-
-    def get_vpc_id(self) -> str:
-        if self.instance_config.subnet_id:
-            vpc_id = Subnet.get_by_id(self._ec2, self.instance_config.subnet_id).vpc_id
-        else:
-            default_vpc = Vpc.get_default_vpc(self._ec2)
-            if not default_vpc:
-                raise ValueError('Default VPC not found')
-
-            vpc_id = default_vpc.vpc_id
-
-        return vpc_id
-
     def get_instance(self):
-        return self.instance_stack.get_instance()
+        return self.stack.get_instance()
 
     def deploy(self, project_config: ProjectConfig, output: AbstractOutputWriter, dry_run=False):
         # check that it's not a Nitro-based instance
@@ -125,7 +88,7 @@ class InstanceDeployment(object):
 
         # create stack
         if not dry_run:
-            self.instance_stack.create_or_update_stack(template, parameters, output)
+            self.stack.create_or_update_stack(template, parameters, output)
 
     def _get_availability_zone(self, volumes: List[AbstractInstanceVolume]):
         """Checks that existing volumes located in the same AZ and the AZ from the

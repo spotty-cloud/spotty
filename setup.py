@@ -17,13 +17,23 @@ def get_version():
     return version_match.group(1)
 
 
+def get_description():
+    readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'README.md'))
+    with open(readme_path, encoding='utf-8') as f:
+        description = f.read()
+
+    return description
+
+
 setup(name='spotty',
       version=get_version(),
-      description='Train deep learning models on AWS EC2 Spot Instances and GCP Preemptible VMs',
+      description='Train deep learning models on AWS EC2 Spot Instances',
       url='http://github.com/apls777/spotty',
       author='Oleg Polosin',
       author_email='apls777@gmail.com',
       license='MIT',
+      long_description=get_description(),
+      long_description_content_type='text/markdown',
       packages=find_packages(exclude=['tests*']),
       package_data={'spotty.providers.aws.deployment.cf_templates': [
           'data/ami.yaml',
@@ -48,8 +58,6 @@ setup(name='spotty',
           'License :: OSI Approved :: MIT License',
           'Programming Language :: Python',
           'Programming Language :: Python :: 3',
-          'Programming Language :: Python :: 3.3',
-          'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',

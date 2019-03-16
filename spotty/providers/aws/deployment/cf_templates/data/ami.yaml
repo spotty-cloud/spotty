@@ -1,7 +1,8 @@
 Description: Spotty NVIDIA Docker AMI
-Metadata:
-  Version: 1.0.4
 Parameters:
+  ImageVersion:
+    Description: Version of the AMI
+    Type: String
   VpcId:
     Description: VPC ID
     Type: AWS::EC2::VPC::Id
@@ -265,7 +266,7 @@ Resources:
 
                 # create AMI
                 INSTANCE_ID=`curl http://169.254.169.254/latest/meta-data/instance-id`
-                IMAGE_ID=`aws ec2 create-image --instance-id $INSTANCE_ID --name "${ImageName}" --no-reboot | jq -r '.ImageId'`
+                IMAGE_ID=`aws ec2 create-image --instance-id $INSTANCE_ID --name "${ImageName}" --description "Spotty AMI v${ImageVersion}" --no-reboot | jq -r '.ImageId'`
                 aws ec2 create-tags --resources $IMAGE_ID \
                   --tags Key=spotty:stack-id,Value=${AWS::StackId} "Key=Name,Value=NVIDIA Docker"
                 aws ec2 wait image-available --image-ids $IMAGE_ID

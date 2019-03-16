@@ -13,8 +13,19 @@ class AmiStackResource(object):
     def name(self):
         return self._stack_name
 
+    def get_stack(self) -> Stack:
+        return Stack.get_by_name(self._cf, self._stack_name)
+
     def create_stack(self, template: str, parameters: dict, debug_mode: bool, output: AbstractOutputWriter):
-        """Runs CloudFormation template."""
+        """Creates an AMI stack and waits for the AMI to be created.
+
+        Args:
+            template: CloudFormation template
+            parameters: parameters for the template
+            debug_mode: if "True", NVIDIA Docker will be installed, but an AMI will not be created and the instance
+                        will not be terminated, so the user can connect to the instance for debugging.
+            output: output writer
+        """
         stack = Stack.create_stack(
             cf=self._cf,
             StackName=self._stack_name,
@@ -54,9 +65,15 @@ class AmiStackResource(object):
                          '--------------------------------------------------'
                          % (parameters['ImageName'], ami_id))
 
-    def delete_stack(self, stack_id, output: AbstractOutputWriter):
+    def delete_stack(self, output: AbstractOutputWriter, stack_id=None):
+        """Deletes an AMI stack.
+
+        Args:
+            output: output writer
+            stack_id: ID of the stack to delete (for older versions of Spotty)
+        """
         # delete the image
-        stack = Stack.get_by_name(self._cf, stack_id)
+        stack = Stack.get_by_name(self._cf, stack_id) if stack_id else self.get_stack()
         stack.delete()
 
         output.write('Waiting for the AMI to be deleted...')

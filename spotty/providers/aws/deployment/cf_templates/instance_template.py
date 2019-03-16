@@ -6,7 +6,7 @@ from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.providers.aws.config.instance_config import InstanceConfig
-from spotty.providers.aws.deployment.ebs_volume import EbsVolume
+from spotty.providers.aws.deployment.project_resources.ebs_volume import EbsVolume
 
 
 def prepare_instance_template(instance_config: InstanceConfig, volumes: List[AbstractInstanceVolume],

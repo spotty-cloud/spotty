@@ -45,7 +45,7 @@ def validate_instance_parameters(params: dict):
 
 
 def validate_ebs_volume_parameters(params: dict):
-    from spotty.providers.aws.deployment.ebs_volume import EbsVolume
+    from spotty.providers.aws.deployment.project_resources.ebs_volume import EbsVolume
 
     schema = Schema({
         Optional('volumeName', default=''): And(str, Regex(r'^[\w-]{1,255}$')),

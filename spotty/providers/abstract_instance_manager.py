@@ -12,7 +12,7 @@ class AbstractInstanceManager(ABC):
 
     @abstractmethod
     def _get_instance_config(self, config: dict) -> AbstractInstanceConfig:
-        """Factory method to create a provider instance config."""
+        """A factory method to create a provider's instance config."""
         raise NotImplementedError
 
     @abstractmethod
@@ -47,7 +47,7 @@ class AbstractInstanceManager(ABC):
 
     @property
     @abstractmethod
-    def status_text(self):
+    def status_text(self) -> str:
         """Information about the running instance that will be
         shown to the user once the instance is started or the "status"
         command is called.
@@ -56,12 +56,12 @@ class AbstractInstanceManager(ABC):
 
     @property
     @abstractmethod
-    def ip_address(self):
+    def ip_address(self) -> str:
         """Returns an IP address of the running instance."""
         raise NotImplementedError
 
     @property
-    def ssh_port(self):
+    def ssh_port(self) -> int:
         if self._instance_config.local_ssh_port:
             return self._instance_config.local_ssh_port
 
@@ -69,12 +69,12 @@ class AbstractInstanceManager(ABC):
 
     @property
     @abstractmethod
-    def ssh_user(self):
+    def ssh_user(self) -> str:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def ssh_key_path(self):
+    def ssh_key_path(self) -> str:
         raise NotImplementedError
 
     @property
@@ -82,5 +82,5 @@ class AbstractInstanceManager(ABC):
         return self._project_config
 
     @property
-    def instance_config(self):
+    def instance_config(self) -> AbstractInstanceConfig:
         return self._instance_config

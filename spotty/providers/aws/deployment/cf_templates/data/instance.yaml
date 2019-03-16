@@ -98,10 +98,10 @@ Resources:
             SpotInstanceType: one-time
             InstanceInterruptionBehavior: terminate
         BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            VolumeSize: !Ref RootVolumeSize
-            DeleteOnTermination: true
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: !Ref RootVolumeSize
+              DeleteOnTermination: true
         UserData:
           'Fn::Base64': !Sub |
             #!/bin/bash -x
@@ -297,23 +297,23 @@ Resources:
       VpcId: !Ref VpcId
       GroupDescription: Spotty security group
       SecurityGroupEgress:
-      - CidrIp: 0.0.0.0/0
-        IpProtocol: -1
-        FromPort: 0
-        ToPort: 65535
-      - CidrIpv6: ::/0
-        IpProtocol: -1
-        FromPort: 0
-        ToPort: 65535
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+        - CidrIpv6: ::/0
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
       SecurityGroupIngress:
-      - CidrIp: 0.0.0.0/0
-        IpProtocol: tcp
-        FromPort: 22
-        ToPort: 22
-      - CidrIpv6: ::/0
-        IpProtocol: tcp
-        FromPort: 22
-        ToPort: 22
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+        - CidrIpv6: ::/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
 
   DockerReadyWaitCondition:
     Type: AWS::CloudFormation::WaitCondition
