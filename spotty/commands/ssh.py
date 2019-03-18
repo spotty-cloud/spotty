@@ -31,7 +31,12 @@ class SshCommand(AbstractConfigCommand):
             # a command to connect to the host OS or to the container
             remote_cmd = ['tmux', 'new', '-s', session_name, '-A']
             if not args.host_os:
-                remote_cmd += ['sudo', '/tmp/spotty/instance/scripts/container_bash.sh']
+                # connect to the container or keep the tmux window in case of a failure
+                container_cmd = subprocess.list2cmdline(['sudo', '/tmp/spotty/instance/scripts/container_bash.sh'])
+                # print one empty line in the beginning, because the "Pain is dead" message will hide the first line
+                # of an error message
+                tmux_cmd = 'echo ""; %s || tmux set remain-on-exit on' % container_cmd
+                remote_cmd += [tmux_cmd]
 
         remote_cmd = subprocess.list2cmdline(remote_cmd)
 

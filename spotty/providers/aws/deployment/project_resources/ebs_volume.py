@@ -36,6 +36,15 @@ class EbsVolume(AbstractInstanceVolume):
         return self._params['deletionPolicy']
 
     @property
+    def deletion_policy_title(self) -> str:
+        return {
+            EbsVolume.DP_CREATE_SNAPSHOT: 'Create Snapshot',
+            EbsVolume.DP_UPDATE_SNAPSHOT: 'Update Snapshot',
+            EbsVolume.DP_RETAIN: 'Retain Volume',
+            EbsVolume.DP_DELETE: 'Delete Volume',
+        }[self.deletion_policy]
+
+    @property
     def ec2_volume_name(self) -> str:
         """Returns EBS volume name."""
         volume_name = self._params['volumeName']

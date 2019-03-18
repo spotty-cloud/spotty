@@ -87,7 +87,7 @@ class AmiDeployment(AbstractAwsDeployment):
 
         # ask user to confirm the deletion
         confirm = input('AMI "%s" will be deleted.\n'
-                        'Type "y" to confirm: ')
+                        'Type "y" to confirm: ' % self.instance_config.ami_name)
         if confirm != 'y':
             output.write('You didn\'t confirm the operation.')
             return

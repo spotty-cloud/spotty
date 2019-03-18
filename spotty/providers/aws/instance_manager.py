@@ -45,7 +45,7 @@ class InstanceManager(AbstractInstanceManager):
                 print('Instance is already running. Are you sure you want to restart it?')
                 res = input('Type "y" to confirm: ')
                 if res != 'y':
-                    return
+                    raise ValueError('The operation was cancelled.')
 
                 # terminating the instance to make EBS volumes available
                 output.write('Terminating the instance...')

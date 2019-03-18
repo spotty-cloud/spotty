@@ -145,7 +145,9 @@ Resources:
                 #!/bin/bash -e
 
                 # install AWS CLI
-                apt-get install -y awscli
+                update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+                apt-get update && apt-get install -y python3-pip
+                pip3 install -U awscli
                 aws configure set default.region ${AWS::Region}
 
                 # install jq
