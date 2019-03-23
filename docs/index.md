@@ -6,27 +6,28 @@ permalink: /
 ---
 
 
-# An open-source system for training<br />deep learning models in the cloud
+# An Open-source Tool for Training<br />Deep Learning Models in the Cloud
 {: .fs-9 }
 
 Spotty makes training of deep learning models on 
-[AWS Spot Instances](https://aws.amazon.com/ec2/spot/){:target="_blank"} and on 
-[GCP Preemtible VMs](https://cloud.google.com/preemptible-vms/){:target="_blank"} (including TPUs) 
-as simple as a training on your local machine.
+[AWS Spot Instances](https://aws.amazon.com/ec2/spot/){:target="_blank"}
+<!--and on [GCP Preemtible VMs](https://cloud.google.com/preemptible-vms/){:target="_blank"} (including TPUs) -->
+as simple as training on your local machine.
 {: .fs-6 .fw-300 }
 
-[Get started now](#getting-started){: .btn .btn-purple .fs-5 .mb-4 .mb-md-0 .mr-2 } [View it on GitHub](https://github.com/apls777/spotty){: .btn .fs-5 }
+[Get started now](#getting-started){: .btn .btn-purple .fs-5 .mb-4 .mb-md-0 .mr-2 } 
+[View it on GitHub](https://github.com/apls777/spotty){:target="_blank"}{: .btn .fs-5 }
 
 ---
 
 
 ## Getting Started
 
-### Installation
+### __Installation__
 
 Requirements:
-  * Python 3
-  * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html)){:target="_blank"}
+  * Python >=3.5
+  * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html){:target="_blank"})
 
 Use [pip](http://www.pip-installer.org/en/latest/){:target="_blank"} to install or upgrade Spotty:
 
@@ -34,37 +35,37 @@ Use [pip](http://www.pip-installer.org/en/latest/){:target="_blank"} to install 
 $ pip install -U spotty
 ```
 
-### Prepare the configuration file
+### __Prepare a configuration file__
 
-Prepare the `spotty.yaml` file for your project.
+Prepare a `spotty.yaml` file and put it to the root directory of your project:
 
    - See the file specification [here](/docs/configuration/).
    - Read [this](https://medium.com/@apls/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365){:target="_blank"} 
    article for a real-world example.
 
-### Create an AMI
+### __Create an AMI__
 
-Run the following command from the root directory of your project (where the `spotty.yaml` file is located)
-to create an AMI with NVIDIA Docker:
+Run the following command from the root directory of your project:
 
 ```bash
-$ spotty create-ami
+$ spotty aws create-ami
 ```
 
-In several minutes you will have an AMI that can be used for all your projects within the AWS region.
+In several minutes you will have an AMI with NVIDIA Docker that Spotty will use 
+for all your projects within the AWS region.
 
-### Start the instance
+### __Start an instance__
 
-Use the following command to launch the instance with the Docker container:
+Use the following command to launch an instance with the Docker container:
     
 ```bash
 $ spotty start
 ```
 
 It will start a Spot instance, restore snapshots if any, synchronize the project with the running instance 
-and start the Docker container with the environment.
+and start the Docker container with the project environment.
 
-### Train your models or run notebooks
+### __Train your models or run notebooks__
 
 To connect to the running container via SSH, use the following command:
 
@@ -73,9 +74,9 @@ $ spotty ssh
 ```
 
 It runs a [tmux](https://github.com/tmux/tmux/wiki){:target="_blank"} session, so you can always detach this session using
-__`Crtl + b`__, then __`d`__ combination of keys. To be attached to that session later, just use the
+__`Ctrl + b`__, then __`d`__ combination of keys. To be attached to that session later, just use the
 `spotty ssh` command again.
 
-Also you can run custom scripts inside the Docker container using the `spotty run <SCRIPT_NAME>` command. Read more
+Also, you can run custom scripts inside the Docker container using the `spotty run <SCRIPT_NAME>` command. Read more
 about custom scripts in the documentation: 
 [Configuration File: "scripts" section](/docs/configuration/#scripts-section-optional).

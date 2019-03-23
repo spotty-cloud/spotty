@@ -45,7 +45,7 @@ Configuration file consists of 4 sections: `project`, `container`, `instances` a
 
 ### __`project`__ section:
 
-- __`name`__ - the name of your project. It will be used to create S3 bucket and CloudFormation stack to run 
+- __`name`__ - the name of your project. It will be used to create an S3 bucket and a CloudFormation stack to run 
 an instance.
 
 - __`syncFilters`__ _(optional)_ - filters to skip some directories or files during synchronization. By default, all 
@@ -71,10 +71,10 @@ project files will be synced with the instance. Example:
 ### __`container`__ section:
 
 - __`projectDir`__ - a directory inside the container where the local project will be copied. If
-it's a subdirectory of a container volume, the project will be located on that volume,
-otherwise the data will be lost once the instance is terminated.
+it's a subdirectory of a container volume, the project will be located on that volume, 
+otherwise, the data will be lost once the instance is terminated.
 
-- __`image`__ _(optional)_ - the name of the Docker image that contains environment for your project. For example, 
+- __`image`__ _(optional)_ - the name of the Docker image that contains the environment for your project. For example, 
 you could use [TensorFlow image for GPU](https://hub.docker.com/r/tensorflow/tensorflow/){:target="_blank"} 
 (`tensorflow/tensorflow:latest-gpu-py3`). It already contains NumPy, SciPy, scikit-learn, pandas, Jupyter Notebook and 
 TensorFlow itself. If you need to use your own image, you can specify the path to your Dockerfile in the 
@@ -105,7 +105,7 @@ of a list has the following parameters:
 - __`workingDir`__ _(optional)_ - working directory for your custom scripts (see "scripts" section below),
 
 - __`commands`__ _(optional)_ - commands which should be performed once your container is started. For example, you 
-could download your datasets from S3 bucket to the project directory (see "project" section):
+could download your datasets from an S3 bucket to the project directory (see "project" section):
     ```yaml
     commands: |
       aws s3 sync s3://my-bucket/datasets/my-dataset /workspace/project/data
@@ -126,30 +126,42 @@ could download your datasets from S3 bucket to the project directory (see "proje
 
 This section contains a list of instances. Each instance is described with the following parameters:
 
-- __`name`__ - name of the instance. Use this name to manage the instance with the commands like 
-"spotty start" or "spotty stop". Also Spotty uses this name in the names of AWS and GCP resources.
+- __`name`__ - a name of the instance. Use this name to manage the instance with the commands like 
+"spotty start" or "spotty stop". Also Spotty uses this name in the names of AWS<!-- and GCP--> resources.
 
-- __`provider`__ - a provider for the instance. At the moment Spotty supports "__aws__" (Amazon Web Services) 
-and "__gcp__" (Google Cloud Platform).
+- __`provider`__ - a provider for the instance. At the moment Spotty supports only "__aws__" provider 
+(Amazon Web Services).
+<!--and "__gcp__" (Google Cloud Platform)-->
 
 - __`parameters`__ - parameters of the instance. These parameters are different for different providers:
-    - [AWS instance parameters](/docs/aws/instance-parameters/)
-    - [GCP instance parameters](/docs/gcp/instance-parameters/)
+    - [AWS Instance Parameters](/docs/aws-provider/instance-parameters/)
+<!-- - [GCP instance parameters](/docs/gcp/instance-parameters/)-->
 
 ### __`scripts`__ section _(optional)_:
 
-This section contains customs scripts which can be run using `spotty run <SCRIPT_NAME>`
+This section contains customs scripts which can be run using the `spotty run <SCRIPT_NAME>`
 command. The following example defines scripts `train`, `jupyter` and `tensorflow`:
-                
+
+{% raw %}         
 ```yaml
 train: |
   PYTHONPATH=/workspace/project
-  python /workspace/project/model/train.py --num-layers 3
+  python /workspace/project/model/train.py --model-name {{MODEL}}
 jupyter: |
   jupyter notebook --allow-root --notebook-dir=/workspace/project
 tensorboard: |
   tensorboard --logdir /workspace/outputs
 ```
+{% endraw %}
+
+For example, training can be started using the following command:
+
+```bash
+$ spotty run train -p MODEL=my-model
+```
+
+Use the __`Ctrl + b`__, then __`d`__ combination of keys to be detached from the SSH session - 
+the script will keep running. Then use the same command again to be reattached to the running script.
 
 __Note:__ don't forget to use the "|" character for multi-line scripts, otherwise the YAML parser
 will merge multiple lines together.

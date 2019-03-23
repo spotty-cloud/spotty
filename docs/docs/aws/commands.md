@@ -1,23 +1,23 @@
 ---
 layout: default
 title: Commands
-parent: AWS
+parent: AWS Provider
 nav_order: 2
-permalink: /docs/aws/commands/
+permalink: /docs/aws-provider/commands/
 ---
 
 # AWS Commands
 
 Available commands:
 
-  - `$ spotty aws create-ami`
+  - `$  spotty aws create-ami [-h] [-d] [-c CONFIG] [--debug-mode] [INSTANCE_NAME]`
 
     Creates an AMI with NVIDIA Docker. An AMI should be created only once for an AWS region.
 
-  - `$ spotty aws delete-ami [-r AWS_REGION]`
+  - `$ spotty aws delete-ami [-h] [-d] [-c CONFIG] [INSTANCE_NAME]`
 
     Deletes an AMI that was created using the `spotty aws create-ami` command.
 
-  - `$ spotty aws spot-prices -i INSTANCE_TYPE [-r AWS_REGION]`
+  - `$ spotty aws spot-prices [-h] [-d] -i INSTANCE_TYPE [-r REGION]`
 
-    Returns Spot Instance prices for particular instance type across all AWS regions or within a specific region.
+    Returns Spot Instance prices for a particular instance type across all AWS regions or within a specific region.

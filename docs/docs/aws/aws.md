@@ -1,9 +1,9 @@
 ---
 layout: default
-title: AWS
+title: AWS Provider
 has_children: true
 nav_order: 4
-permalink: /docs/aws/
+permalink: /docs/aws-provider/
 ---
 
-# AWS provider
+# AWS Provider
