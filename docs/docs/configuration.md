@@ -21,7 +21,7 @@ project:
 
 container:
   projectDir: /workspace/project
-  image: tensorflow/tensorflow:latest-gpu-py3
+  image: tensorflow/tensorflow:latest-gpu-py3-jupyter
   ports: [6006, 8888]
   volumeMounts:
     - name: workspace
@@ -76,7 +76,7 @@ otherwise, the data will be lost once the instance is terminated.
 
 - __`image`__ _(optional)_ - the name of the Docker image that contains the environment for your project. For example, 
 you could use [TensorFlow image for GPU](https://hub.docker.com/r/tensorflow/tensorflow/){:target="_blank"} 
-(`tensorflow/tensorflow:latest-gpu-py3`). It already contains NumPy, SciPy, scikit-learn, pandas, Jupyter Notebook and 
+(`tensorflow/tensorflow:latest-gpu-py3-jupyter`). It already contains NumPy, SciPy, scikit-learn, pandas, Jupyter Notebook and 
 TensorFlow itself. If you need to use your own image, you can specify the path to your Dockerfile in the 
 __`file`__ parameter (see below), or push your image to the [Docker Hub](https://hub.docker.com/){:target="_blank"}.
 
@@ -90,7 +90,7 @@ __`file`__ parameter (see below), or push your image to the [Docker Hub](https:/
     [AWS CLI](https://github.com/aws/aws-cli){:target="_blank"} on top of the original TensorFlow image. Just create the 
     `Dockerfile` file in the `docker/` directory of your project:
     ```dockerfile
-    FROM tensorflow/tensorflow:latest-gpu-py3
+    FROM tensorflow/tensorflow:latest-gpu-py3-jupyter
     
     RUN pip install --upgrade awscli
     ```
