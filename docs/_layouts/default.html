@@ -3,9 +3,22 @@
 <html lang="en-us">
 {% include head.html %}
 
+  <style>
+    .site-title { line-height: 0; }
+    .site-title img { height: 3rem; }
+
+    @media (min-width: 46.25rem) {
+      .side-bar { padding-top: 5rem; }
+      .site-title { height: 5rem; padding: 1rem 2rem 0 1rem; border: 0; }
+      .site-title img { height: 100%; }
+    }
+  </style>
+
   <div class="page-wrap">
     <div class="side-bar">
-      <a href="{{ site.url }}{{ site.baseurl }}" class="site-title fs-6 text-grey-dk-300 lh-tight">{{ site.title }}</a>
+      <a href="{{ site.url }}{{ site.baseurl }}" class="site-title fs-6 text-grey-dk-300 lh-tight">
+        <img src="assets/images/logo_400x130.png" alt="{{ site.title }}" />
+      </a>
       <span class="fs-3"><button class="js-main-nav-trigger navigation-list-toggle btn btn-outline" type="button" data-text-toggle="Hide">Menu</button></span>
       <div class="navigation main-nav js-main-nav">
         {% include nav.html %}
