@@ -1,8 +1,8 @@
-remote_theme: pmarsceill/just-the-docs
+remote_theme: pmarsceill/just-the-docs@v0.1.6
 
 title: Spotty
 description: ''
-baseurl: ''
+baseurl: '/spotty'
 url: ''
 
 # build settings

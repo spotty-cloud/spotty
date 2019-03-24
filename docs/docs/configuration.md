@@ -134,8 +134,8 @@ This section contains a list of instances. Each instance is described with the f
 <!--and "__gcp__" (Google Cloud Platform)-->
 
 - __`parameters`__ - parameters of the instance. These parameters are different for different providers:
-    - [AWS Instance Parameters](/docs/aws-provider/instance-parameters/)
-<!-- - [GCP instance parameters](/docs/gcp/instance-parameters/)-->
+    - [AWS Instance Parameters](/spotty/docs/aws-provider/instance-parameters/)
+<!-- - [GCP instance parameters](/spotty/docs/gcp/instance-parameters/)-->
 
 ### __`scripts`__ section _(optional)_:
 
