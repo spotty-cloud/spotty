@@ -1,0 +1,331 @@
+Description: Spotty EC2 Instance
+Parameters:
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+  InstanceProfileArn:
+    Description: Instance Profile ARN
+    Type: String
+  InstanceType:
+    Description: Instance type
+    Type: String
+  KeyName:
+    Description: EC2 Key Pair name
+    Type: AWS::EC2::KeyPair::KeyName
+  ImageId:
+    Description: AMI ID
+    Type: AWS::EC2::Image::Id
+  RootVolumeSize:
+    Description: Root volume size
+    Type: String
+  VolumeMountDirectories:
+    Description: Directories where the volumes should be mounted (bash array)
+    Type: String
+    Default: ''
+  DockerDataRootDirectory:
+    Description: Docker data root directory
+    Type: String
+    Default: ''
+  DockerImage:
+    Description: Docker image to run
+    Type: String
+    Default: ''
+  DockerfilePath:
+    Description: Dockerfile to build and to use instead of the image
+    Type: String
+    Default: ''
+  DockerBuildContextPath:
+    Description: Docker build's context path for the Dockerfile
+    Type: String
+    Default: ''
+  DockerRuntimeParameters:
+    Description: Parameters for the "docker run" command
+    Type: String
+    Default: ''
+  DockerWorkingDirectory:
+    Description: Working directory inside Docker container
+    Type: String
+    Default: ''
+  InstanceNameTag:
+    Description: Name for the instance
+    Type: String
+    Default: ''
+  HostProjectDirectory:
+    Description: Destination directory for the project
+    Type: String
+    Default: ''
+  ProjectS3Path:
+    Description: An S3 path where the project files are located
+    Type: String
+    Default: ''
+  SyncCommandArgs:
+    Description: Arguments for the "aws s3 sync" command to synchronize instance with the S3 bucket
+    Type: String
+    Default: ''
+  UploadS3Path:
+    Description: An S3 path where to upload files for downloads
+    Type: String
+    Default: ''
+Resources:
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref InstanceLaunchTemplate
+        Version: !GetAtt InstanceLaunchTemplate.LatestVersionNumber
+
+  InstanceLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Ref ImageId
+        KeyName: !Ref KeyName
+        EbsOptimized: 'false'
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Ref InstanceNameTag
+        IamInstanceProfile:
+          Arn: !Ref InstanceProfileArn
+        SecurityGroupIds:
+          - !Ref InstanceSecurityGroup
+        InstanceInitiatedShutdownBehavior: terminate
+        InstanceMarketOptions:
+          MarketType: spot
+          SpotOptions:
+            SpotInstanceType: one-time
+            InstanceInterruptionBehavior: terminate
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: !Ref RootVolumeSize
+              DeleteOnTermination: true
+        UserData:
+          'Fn::Base64': !Sub |
+            #!/bin/bash -x
+
+            # install CloudFormation tools
+            apt-get update
+            apt-get install -y python-setuptools
+            mkdir -p aws-cfn-bootstrap-latest
+            curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
+            easy_install aws-cfn-bootstrap-latest
+
+            # prepare the instance and run Docker container
+            /usr/local/bin/cfn-init \
+              --stack ${AWS::StackName} \
+              --resource InstanceLaunchTemplate \
+              --region ${AWS::Region} \
+              -c init \
+              -v
+
+            # send signal that the Docker container is ready or failed
+            /usr/local/bin/cfn-signal \
+              -e $? \
+              --stack ${AWS::StackName} \
+              --region ${AWS::Region} \
+              --resource DockerReadyWaitCondition
+    Metadata:
+      'AWS::CloudFormation::Init':
+        configSets:
+          init:
+            - prepare_instance_config
+            - mount_volumes_config
+            - sync_project_config
+            - docker_container_config
+        prepare_instance_config:
+          files:
+            /tmp/spotty/instance/scripts/prepare_instance.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000755'
+              content: !Sub |
+                #!/bin/bash -e
+
+                # install AWS CLI
+                update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+                apt-get update && apt-get install -y python3-pip
+                pip3 install -U awscli
+                aws configure set default.region ${AWS::Region}
+
+                # install jq
+                apt-get install -y jq
+
+                # create directory for Docker scripts
+                mkdir -p /tmp/spotty/container/scripts/run
+                chmod -R 755 /tmp/spotty
+                chown -R ubuntu:ubuntu /tmp/spotty
+
+                # create directory for Spotty logs
+                mkdir -p /var/log/spotty/run
+                chmod -R 755 /var/log/spotty
+                chown -R ubuntu:ubuntu /var/log/spotty
+
+                # create a project directory
+                if [ -n "${HostProjectDirectory}" ]; then
+                  mkdir -p ${HostProjectDirectory}
+                fi
+            /tmp/spotty/instance/scripts/upload_files.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000755'
+              content: !Sub |
+                #!/bin/bash -e
+
+                aws s3 sync ${HostProjectDirectory} ${UploadS3Path} "$@"
+            /home/ubuntu/.tmux.conf:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000644'
+              content: !Sub |
+                bind-key x kill-pane
+          commands:
+            prepare_instance:
+              command: '/bin/bash -xe /tmp/spotty/instance/scripts/prepare_instance.sh'
+        mount_volumes_config:
+          files:
+            /tmp/spotty/instance/scripts/mount_volumes.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000755'
+              content: !Sub |
+                #!/bin/bash -e
+
+                DEVICE_LETTERS=(f g h i j k l m n o p)
+                MOUNT_DIRS=(${VolumeMountDirectories})
+
+                for i in ${!!MOUNT_DIRS[*]}
+                do
+                  DEVICE=/dev/xvd${!DEVICE_LETTERS[$i]}
+                  MOUNT_DIR=${!MOUNT_DIRS[$i]}
+
+                  blkid -o value -s TYPE $DEVICE || mkfs -t ext4 $DEVICE
+                  mkdir -p $MOUNT_DIR
+                  mount $DEVICE $MOUNT_DIR
+                  chown -R ubuntu:ubuntu $MOUNT_DIR
+                  resize2fs $DEVICE
+                done
+          commands:
+            mount_volumes:
+              command: '/bin/bash -xe /tmp/spotty/instance/scripts/mount_volumes.sh'
+        sync_project_config:
+          files:
+            /tmp/spotty/instance/scripts/sync_project.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000755'
+              content: !Sub |
+                #!/bin/bash -e
+
+                aws s3 sync ${ProjectS3Path} ${HostProjectDirectory} "$@"
+          commands:
+            sync_project:
+              command: !Sub '/bin/bash -xe /tmp/spotty/instance/scripts/sync_project.sh ${SyncCommandArgs}'
+        docker_container_config:
+          files:
+            /tmp/spotty/instance/scripts/run_container.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000755'
+              content: !Sub |
+                #!/bin/bash -e
+
+                # change docker data root directory
+                if [ -n "${DockerDataRootDirectory}" ]; then
+                  jq '. + { "data-root": "${DockerDataRootDirectory}" }' /etc/docker/daemon.json > /tmp/docker_daemon.json \
+                    && mv /tmp/docker_daemon.json /etc/docker/daemon.json
+                  service docker restart
+
+                  # remove all containers
+                  if [[ $(docker ps -aq | wc -c) -ne 0 ]]; then
+                    docker rm $(docker ps -aq)
+                  fi
+                fi
+
+                # build docker image
+                DOCKER_IMAGE="${DockerImage}"
+                if [ -n "${DockerfilePath}" ]; then
+                  DOCKER_IMAGE=spotty:`date +%s`
+                  docker build -t $DOCKER_IMAGE -f ${DockerfilePath} ${DockerBuildContextPath}
+                fi
+
+                if [ -n "$DOCKER_IMAGE" ]; then
+                  # run docker container
+                  CONTAINER_NAME=spotty
+                  docker run ${DockerRuntimeParameters} \
+                    -v /root/.aws:/root/.aws \
+                    -v /tmp/spotty/container/scripts:/tmp/scripts \
+                    --name $CONTAINER_NAME $DOCKER_IMAGE /bin/sh
+
+                  WORKING_DIR=""
+                  if [ -n "${DockerWorkingDirectory}" ]; then
+                    WORKING_DIR="-w ${DockerWorkingDirectory}"
+
+                    # create working directory if it doesn't exist
+                    docker exec $CONTAINER_NAME mkdir -p ${DockerWorkingDirectory}
+                  fi
+
+                  # create a script to connect to the docker container
+                  cat > /tmp/spotty/instance/scripts/container_bash.sh <<EOL
+                #!/bin/bash
+                docker exec -it $WORKING_DIR $CONTAINER_NAME /bin/bash "\$@"
+                EOL
+                  chmod 755 /tmp/spotty/instance/scripts/container_bash.sh
+                  chown ubuntu:ubuntu /tmp/spotty/instance/scripts/container_bash.sh
+
+                  # create an alias to connect to the docker container
+                  CONTAINER_BASH_ALIAS=container
+                  echo "alias $CONTAINER_BASH_ALIAS=\"sudo /tmp/spotty/instance/scripts/container_bash.sh\"" >> /home/ubuntu/.bashrc
+                  echo "alias $CONTAINER_BASH_ALIAS=\"/tmp/spotty/instance/scripts/container_bash.sh\"" >> /root/.bashrc
+
+                  # run custom user commands
+                  docker exec $WORKING_DIR $CONTAINER_NAME /bin/bash -xe /tmp/scripts/startup_commands.sh \
+                    > /var/log/spotty/container-startup-commands.log 2>&1
+                fi
+            /tmp/spotty/container/scripts/startup_commands.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000644'
+              content: 'echo "Nothing to do"'
+          commands:
+            run_container:
+              command: '/bin/bash -xe /tmp/spotty/instance/scripts/run_container.sh'
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcId
+      GroupDescription: Spotty security group
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+        - CidrIpv6: ::/0
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+        - CidrIpv6: ::/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+
+  DockerReadyWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT30M
+
+Outputs:
+  InstanceId:
+    Value: !Ref Instance
+  AvailabilityZone:
+    Value: !GetAtt Instance.AvailabilityZone
