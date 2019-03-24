@@ -7,9 +7,9 @@ url: ''
 
 # build settings
 markdown: kramdown
-theme: just-the-docs
 plugins:
   - jekyll-feed
+  - jekyll-remote-theme
 
 # the theme settings
 search_enabled: true
