@@ -39,7 +39,7 @@ $ pip install -U spotty
 
 Prepare a `spotty.yaml` file and put it to the root directory of your project:
 
-   - See the file specification [here](/docs/configuration/).
+   - See the file specification [here](/spotty/docs/configuration/).
    - Read [this](https://medium.com/@apls/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365){:target="_blank"} 
    article for a real-world example.
 
@@ -79,4 +79,4 @@ __`Ctrl + b`__, then __`d`__ combination of keys. To be attached to that session
 
 Also, you can run custom scripts inside the Docker container using the `spotty run <SCRIPT_NAME>` command. Read more
 about custom scripts in the documentation: 
-[Configuration File: "scripts" section](/docs/configuration/#scripts-section-optional).
+[Configuration File: "scripts" section](/spotty/docs/configuration/#scripts-section-optional).
