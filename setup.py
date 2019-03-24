@@ -27,7 +27,7 @@ def get_description():
 
 setup(name='spotty',
       version=get_version(),
-      description='Train deep learning models on AWS EC2 Spot Instances',
+      description='Training deep learning models on AWS EC2 Spot Instances',
       url='http://github.com/apls777/spotty',
       author='Oleg Polosin',
       author_email='apls777@gmail.com',
@@ -35,11 +35,7 @@ setup(name='spotty',
       long_description=get_description(),
       long_description_content_type='text/markdown',
       packages=find_packages(exclude=['tests*']),
-      package_data={'spotty.providers.aws.deployment.cf_templates': [
-          'data/ami.yaml',
-          'data/instance.yaml',
-          'data/instance_profile.yaml',
-      ]},
+      package_data={'spotty.providers.aws.deployment.cf_templates': ['data/*.yaml']},
       scripts=['bin/spotty'],
       install_requires=[
           'boto3>=1.9.0',
