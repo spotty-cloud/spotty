@@ -8,6 +8,10 @@ class TestVolume(AbstractInstanceVolume):
         self._mount_dir = mount_dir
 
     @property
+    def title(self) -> str:
+        return 'test'
+
+    @property
     def name(self) -> str:
         return self._volume_name
 

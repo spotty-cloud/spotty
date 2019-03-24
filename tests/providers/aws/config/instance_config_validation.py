@@ -5,6 +5,7 @@ from spotty.providers.aws.config.validation import validate_instance_parameters
 class TestBucketResource(unittest.TestCase):
 
     def test_default_configuration(self):
+        """Checks the default values for an instance configuration are set correctly."""
         required_params = {
             'region': 'eu-west-1',
             'instanceType': 'p2.xlarge',
@@ -12,7 +13,8 @@ class TestBucketResource(unittest.TestCase):
 
         expected_params = {
             **required_params,
-            'amiName': 'SpottyAMI',
+            'amiName': None,
+            'amiId': None,
             'availabilityZone': '',
             'dockerDataRoot': '',
             'localSshPort': None,

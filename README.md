@@ -10,8 +10,8 @@ Spotty drastically simplifies training of deep learning models on AWS:
 - it makes training on AWS GPU instances as simple as training on your local computer
 - it automatically manages all necessary AWS resources including AMIs, volumes, snapshots and SSH keys
 - it makes your model trainable on AWS by everyone with a couple of commands
-- it detaches remote processes from SSH sessions
-- it saves you up to 70% of the costs by using Spot Instances
+- it uses [tmux](https://en.wikipedia.org/wiki/Tmux) to easily detach remote processes from their terminals
+- it saves you up to 70% of the costs by using [Spot Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html)
 
 ## Documentation
 
