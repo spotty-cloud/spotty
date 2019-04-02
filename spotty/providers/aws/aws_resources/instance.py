@@ -59,7 +59,7 @@ class Instance(object):
 
     @property
     def lifecycle(self) -> str:
-        return self._instance_info['InstanceLifecycle']
+        return self._instance_info.get('InstanceLifecycle')
 
     def get_spot_price(self):
         """Get current Spot Instance price for this instance."""
