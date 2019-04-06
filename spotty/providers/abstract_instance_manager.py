@@ -45,20 +45,30 @@ class AbstractInstanceManager(ABC):
         """Downloads files from the instance."""
         raise NotImplementedError
 
-    @property
     @abstractmethod
-    def status_text(self) -> str:
-        """Information about the running instance that will be
-        shown to the user once the instance is started or the "status"
-        command is called.
+    def get_status_text(self) -> str:
+        """Returns information about the started instance.
+
+        It will be shown to the user once the instance is started and by using the "status" command.
         """
         raise NotImplementedError
 
-    @property
     @abstractmethod
-    def ip_address(self) -> str:
-        """Returns an IP address of the running instance."""
+    def get_public_ip_address(self) -> str:
+        """Returns a public IP address of the running instance."""
         raise NotImplementedError
+
+    def get_ip_address(self):
+        """Returns an IP address that will be used for SSH connections."""
+        if self._instance_config.local_ssh_port:
+            return '127.0.0.1'
+
+        public_ip_address = self.get_public_ip_address()
+        if not public_ip_address:
+            raise ValueError('The running instance doesn\'t have a public IP address.\n'
+                             'Use the "localSshPort" parameter if you want to create a tunnel to the instance.')
+
+        return public_ip_address
 
     @property
     def ssh_port(self) -> int:

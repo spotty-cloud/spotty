@@ -29,4 +29,4 @@ class StartCommand(AbstractConfigCommand):
             output.write('\nThe instance was successfully started.\n'
                          '\n%s\n'
                          '\nUse the "spotty ssh%s" command to connect to the Docker container.\n'
-                         % (instance_manager.status_text, instance_name))
+                         % (instance_manager.get_status_text(), instance_name))
