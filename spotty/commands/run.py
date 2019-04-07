@@ -46,7 +46,7 @@ class RunCommand(AbstractConfigCommand):
         session_name = args.session_name if args.session_name else 'spotty-script-%s' % script_name
 
         # run the script on the instance
-        run_script(host=instance_manager.ip_address,
+        run_script(host=instance_manager.get_ip_address(),
                    port=instance_manager.ssh_port,
                    user=instance_manager.ssh_user,
                    key_path=instance_manager.ssh_key_path,

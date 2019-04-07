@@ -101,7 +101,7 @@ class InstanceManager(AbstractInstanceManager):
         if not dry_run:
             # sync S3 with the instance
             output.write('Syncing S3 bucket with the instance...')
-            sync_instance_with_s3(self.project_config.sync_filters, self.ip_address, self.ssh_port, self.ssh_user,
+            sync_instance_with_s3(self.project_config.sync_filters, self.get_ip_address(), self.ssh_port, self.ssh_user,
                                   self.ssh_key_path)
 
     def download(self, download_filters: list, output: AbstractOutputWriter, dry_run=False):
@@ -110,7 +110,7 @@ class InstanceManager(AbstractInstanceManager):
 
         # sync files from the instance to a temporary S3 directory
         output.write('Uploading files from the instance to S3 bucket...')
-        upload_from_instance_to_s3(download_filters, self.ip_address, self.ssh_port, self.ssh_user, self.ssh_key_path,
+        upload_from_instance_to_s3(download_filters, self.get_ip_address(), self.ssh_port, self.ssh_user, self.ssh_key_path,
                                    dry_run=dry_run)
 
         # sync the project with the S3 bucket
@@ -118,8 +118,7 @@ class InstanceManager(AbstractInstanceManager):
         download_from_s3_to_local(bucket_name, self.instance_config.name, self.project_config.project_dir,
                                   self.instance_config.region, download_filters, dry_run=dry_run)
 
-    @property
-    def status_text(self):
+    def get_status_text(self):
         instance = self.instance_deployment.get_instance()
         if not instance:
             raise InstanceNotRunningError(self.instance_config.name)
@@ -144,12 +143,8 @@ class InstanceManager(AbstractInstanceManager):
 
         return render_table(table)
 
-    @property
-    def ip_address(self):
-        """Returns public IP address of the running instance."""
-        if self._instance_config.local_ssh_port:
-            return '127.0.0.1'
-
+    def get_public_ip_address(self):
+        """Returns a public IP address of the running instance."""
         instance = self.instance_deployment.get_instance()
         if not instance:
             raise InstanceNotRunningError(self.instance_config.name)

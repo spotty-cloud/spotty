@@ -157,7 +157,8 @@ def _get_volume_resources(volumes: List[AbstractInstanceVolume], output: Abstrac
             if ec2_volume:
                 # check if the volume is available
                 if not ec2_volume.is_available():
-                    raise ValueError('EBS volume "%s" is not available.' % volume.ec2_volume_name)
+                    raise ValueError('EBS volume "%s" is not available (state: %s).'
+                                     % (volume.ec2_volume_name, ec2_volume.state))
 
                 # check size of the volume
                 if volume.size and (volume.size != ec2_volume.size):

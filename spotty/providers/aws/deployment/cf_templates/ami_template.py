@@ -27,7 +27,10 @@ def prepare_ami_template(availability_zone: str, subnet_id: str, debug_mode: boo
             {
                 'SubnetId': subnet_id,
                 'DeviceIndex': 0,
+                'Groups': template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData'][
+                    'SecurityGroupIds'],
             }]
+        del template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData']['SecurityGroupIds']
 
     # run on-demand instance
     if on_demand:

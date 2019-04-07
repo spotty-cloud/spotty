@@ -42,8 +42,12 @@ class Volume(object):
     def availability_zone(self) -> str:
         return self._volume_info['AvailabilityZone']
 
+    @property
+    def state(self) -> str:
+        return self._volume_info['State']
+
     def is_available(self):
-        return self._volume_info['State'] == 'available'
+        return self.state == 'available'
 
     def create_snapshot(self) -> Snapshot:
         snapshot_info = self._ec2.create_snapshot(

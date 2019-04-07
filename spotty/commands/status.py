@@ -10,4 +10,4 @@ class StatusCommand(AbstractConfigCommand):
     description = 'Print information about the instance'
 
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
-        output.write(instance_manager.status_text)
+        output.write(instance_manager.get_status_text())
