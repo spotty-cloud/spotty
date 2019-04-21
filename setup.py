@@ -39,6 +39,8 @@ setup(name='spotty',
       scripts=['bin/spotty'],
       install_requires=[
           'boto3>=1.9.0',
+          'google-api-python-client>=1.7.8',
+          'google-cloud-storage>=1.15.0',
           'cfn_flip',  # to work with CloudFormation templates
           'schema',
           'chevron',

@@ -1,0 +1,92 @@
+resources:
+  - name: {{DEPLOYMENT_NAME}}-instance
+    type: compute.v1.instance
+    properties:
+      zone: {{ZONE}}
+      machineType: https://www.googleapis.com/compute/v1/projects/{{GCP_PROJECT_ID}}/zones/{{ZONE}}/machineTypes/{{MACHINE_TYPE}}
+      scheduling:
+        preemptible: {{PREEMPTIBLE}}
+      serviceAccounts:
+        - email: {{SERVICE_ACCOUNT_EMAIL}}
+          scopes: ['https://www.googleapis.com/auth/cloud-platform']
+      disks:
+        - deviceName: boot
+          type: PERSISTENT
+          boot: true
+          autoDelete: true
+          initializeParams:
+            sourceImage: {{SOURCE_IMAGE}}
+      networkInterfaces:
+        - network: https://www.googleapis.com/compute/v1/projects/{{GCP_PROJECT_ID}}/global/networks/default
+          accessConfigs:
+            - name: External NAT
+              type: ONE_TO_ONE_NAT
+      guestAccelerators:
+        - acceleratorType: projects/{{GCP_PROJECT_ID}}/zones/{{ZONE}}/acceleratorTypes/{{GPU_TYPE}}
+          acceleratorCount: {{GPU_COUNT}}
+      metadata:
+        items:
+          - key: 'user-data'
+            value: |
+              {{{STARTUP_SCRIPT}}}
+
+  - name: {{DEPLOYMENT_NAME}}-docker-status
+    type: runtimeconfig.v1beta1.config
+    properties:
+      config: {{DEPLOYMENT_NAME}}-docker-status
+      description: Docker status
+
+  - name: {{DEPLOYMENT_NAME}}-image-status
+    type: runtimeconfig.v1beta1.config
+    properties:
+      config: {{DEPLOYMENT_NAME}}-image-status
+      description: Image status
+
+  - name: {{DEPLOYMENT_NAME}}-docker-waiter
+    type: runtimeconfig.v1beta1.waiter
+    metadata:
+      dependsOn:
+        - {{DEPLOYMENT_NAME}}-instance
+    properties:
+      parent: $(ref.{{DEPLOYMENT_NAME}}-docker-status.name)
+      waiter: {{DEPLOYMENT_NAME}}-docker-waiter
+      timeout: 1800s
+      success:
+        cardinality:
+          path: /success
+          number: 1
+      failure:
+        cardinality:
+          path: /failure
+          number: 1
+
+  - name: {{DEPLOYMENT_NAME}}-image-waiter
+    type: runtimeconfig.v1beta1.waiter
+    metadata:
+      dependsOn:
+        - {{DEPLOYMENT_NAME}}-docker-waiter
+    properties:
+      parent: $(ref.{{DEPLOYMENT_NAME}}-image-status.name)
+      waiter: {{DEPLOYMENT_NAME}}-image-waiter
+      timeout: 1200s
+      success:
+        cardinality:
+          path: /success
+          number: 1
+      failure:
+        cardinality:
+          path: /failure
+          number: 1
+
+  - name: {{DEPLOYMENT_NAME}}-image-status-success
+    type: runtimeconfig.v1beta1.variable
+    metadata:
+      dependsOn:
+        - {{DEPLOYMENT_NAME}}-image-waiter
+    properties:
+      parent: $(ref.{{DEPLOYMENT_NAME}}-image-status.name)
+      variable: /success/1
+
+outputs:
+  - name: imageId
+    value: $(ref.{{DEPLOYMENT_NAME}}-image-status-success.text)
