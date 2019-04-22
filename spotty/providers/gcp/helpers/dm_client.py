@@ -1,5 +1,4 @@
 import json
-from collections import OrderedDict
 import googleapiclient.discovery
 from googleapiclient.errors import HttpError
 
@@ -39,16 +38,15 @@ class DMClient(object):
         res = self._client.deployments().delete(project=self._project_id, deployment=deployment_name).execute()
         return res
 
-    def get_resources_states(self, deployment_name) -> OrderedDict:
-        res = self._client.resources().list(project=self._project_id, deployment=deployment_name).execute()
-        if 'resources' not in res:
-            return OrderedDict()
+    def get_resource(self, deployment_name, resource_name) -> dict:
+        try:
+            res = self._client.resources().get(project=self._project_id,
+                                               deployment=deployment_name,
+                                               resource=resource_name).execute()
+        except HttpError as e:
+            data = json.loads(e.content.decode('utf-8'))
+            if data['error']['code'] != 404:
+                raise e
+            res = None
 
-        for resource in res['resources']:
-            if 'error' in resource.get('update', {}):
-                raise ValueError(resource['update']['error']['errors'][0]['message'])
-
-        states = OrderedDict([(resource['name'], resource.get('update', {}).get('state'))
-                              for resource in res['resources']])
-
-        return states
+        return res

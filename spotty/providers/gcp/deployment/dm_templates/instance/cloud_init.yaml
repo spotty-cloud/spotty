@@ -41,11 +41,12 @@ write_files:
     content: |
       #!/bin/bash -xe
 
-      MOUNT_DIRS=({{VOLUME_MOUNT_DIRS}})
+      DEVICE_NAMES=({{{DISK_DEVICE_NAMES}}})
+      MOUNT_DIRS=({{{DISK_MOUNT_DIRS}}})
 
-      for i in ${!MOUNT_DIRS[*]}
+      for i in ${!DEVICE_NAMES[*]}
       do
-        DEVICE=/dev/disk/by-id/google-disk-$(($i+1))
+        DEVICE=/dev/disk/by-id/google-${DEVICE_NAMES[$i]}
         MOUNT_DIR=${MOUNT_DIRS[$i]}
 
         blkid -o value -s TYPE $DEVICE || mkfs -t ext4 $DEVICE

@@ -28,8 +28,7 @@ class InstanceDeployment(AbstractGcpDeployment):
 
     @property
     def stack(self) -> InstanceStackResource:
-        return InstanceStackResource(self._project_name, self.instance_config.name, self.instance_config.project_id,
-                                     self.instance_config.zone)
+        return InstanceStackResource(self.machine_name, self.instance_config.project_id, self.instance_config.zone)
 
     def get_instance(self):
         return Instance.get_by_name(self._ce, self.machine_name)

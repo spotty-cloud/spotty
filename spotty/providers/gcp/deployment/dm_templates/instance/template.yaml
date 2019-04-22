@@ -17,12 +17,14 @@ resources:
           initializeParams:
             sourceImage: global/images/{{SOURCE_IMAGE}}
 
-        - source: $(ref.{{MACHINE_NAME}}-disk-1.selfLink)
-          deviceName: disk-1
+        {{#DISK_ATTACHMENTS}}
+        - source: $(ref.{{MACHINE_NAME}}-{{VOLUME_NAME}}.selfLink)
+          deviceName: {{DEVICE_NAME}}
           type: PERSISTENT
           mode: READ_WRITE
           boot: false
           autoDelete: false
+        {{/DISK_ATTACHMENTS}}
       networkInterfaces:
         - network: global/networks/default
           accessConfigs:
@@ -44,13 +46,18 @@ resources:
             value: |
               {{{STARTUP_SCRIPT}}}
 
-  - name: {{MACHINE_NAME}}-disk-1
+  {{#DISK_RESOURCES}}
+  - name: {{MACHINE_NAME}}-{{VOLUME_NAME}}
     type: compute.v1.disk
     properties:
       type: zones/{{ZONE}}/diskTypes/pd-standard
       zone: {{ZONE}}
-      sizeGb: 11
+      sizeGb: {{DISK_SIZE}}
       physicalBlockSizeBytes: 4096
+      {{#DISK_SNAPSHOT}}
+      sourceSnapshot: {{DISK_SNAPSHOT}}
+      {{/DISK_SNAPSHOT}}
+  {{/DISK_RESOURCES}}
 
   - name: {{MACHINE_NAME}}-docker-status
     type: runtimeconfig.v1beta1.config

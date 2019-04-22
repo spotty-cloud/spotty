@@ -1,3 +1,6 @@
+import logging
+from time import sleep
+from httplib2 import ServerNotFoundError
 from spotty.providers.gcp.helpers.dm_client import DMClient
 
 
@@ -59,5 +62,20 @@ class Stack(object):
     def name(self) -> str:
         return self._data['name']
 
+    @property
+    def state(self) -> str:
+        return self._data['name']
+
     def delete(self):
         self._dm.delete(self.name)
+
+    def wait_stack_deleted(self, delay=15):
+        stack = True
+        while stack:
+            try:
+                stack = self.get_by_name(self._dm, self.name)
+            except (ConnectionResetError, ServerNotFoundError):
+                logging.warning('Connection problem')
+                continue
+
+            sleep(delay)

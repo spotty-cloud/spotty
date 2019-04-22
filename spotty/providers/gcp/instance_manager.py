@@ -49,11 +49,11 @@ class InstanceManager(AbstractInstanceManager):
 
             # check that the AMI exists
             if not deployment.get_image():
-                print('The AMI "%s" doesn\'t exist. Do you want to create it?'
+                print('The image "%s" doesn\'t exist. Do you want to create it?'
                       % self.instance_config.image_name)
                 res = input('Type "y" to confirm: ')
                 if res == 'y':
-                    # create an AMI
+                    # create an image
                     self.image_deployment.deploy(False, output)
                     output.write()
                 else:

@@ -28,6 +28,24 @@ class CEClient(object):
 
         return res['items']
 
+    def list_disks(self, disk_name=None):
+        filter_str = ('name=%s' % disk_name) if disk_name else None
+        res = self._client.disks().list(project=self._project_id, zone=self._zone, filter=filter_str).execute()
+
+        if not res.get('items'):
+            return []
+
+        return res['items']
+
+    def list_snapshots(self, snapshot_name=None):
+        filter_str = ('name=%s' % snapshot_name) if snapshot_name else None
+        res = self._client.snapshots().list(project=self._project_id, filter=filter_str).execute()
+
+        if not res.get('items'):
+            return []
+
+        return res['items']
+
     def get_accelerator_types(self) -> OrderedDict:
         res = self._client.acceleratorTypes().list(project=self._project_id, zone=self._zone).execute()
 

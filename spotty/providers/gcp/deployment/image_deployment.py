@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.gcp.config.instance_config import InstanceConfig
 from spotty.providers.gcp.gcp_resources.image import Image
@@ -66,11 +68,11 @@ class ImageDeployment(object):
         output.write('Waiting for the image to be created...')
 
         deployment_name = 'spotty-image-%s' % self.instance_config.image_name.lower() # TMP
-        resource_messages = {
-            '%s-instance' % deployment_name: 'launching the instance',
-            '%s-docker-waiter' % deployment_name: 'installing NVIDIA Docker',
-            '%s-image-waiter' % deployment_name: 'creating the image and terminating the instance',
-        }
+        resource_messages = OrderedDict([
+            ('%s-instance' % deployment_name, 'launching the instance'),
+            ('%s-docker-waiter' % deployment_name, 'installing NVIDIA Docker'),
+            ('%s-image-waiter' % deployment_name, 'creating the image and terminating the instance'),
+        ])
 
         # wait for the stack to be created
         with output.prefix('  '):

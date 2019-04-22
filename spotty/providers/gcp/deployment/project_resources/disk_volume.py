@@ -64,7 +64,7 @@ class DiskVolume(AbstractInstanceVolume):
         return mount_dir
 
     def get_disk(self) -> Disk:
-        return Disk.get_by_name(self._compute_client, self.disk_name)
+        return Disk.get_by_name(self._ce, self.disk_name)
 
     def get_snapshot(self) -> Snapshot:
-        return Snapshot.get_by_name(self._compute_client, self.disk_name)
+        return Snapshot.get_by_name(self._ce, self.disk_name)

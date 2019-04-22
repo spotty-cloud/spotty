@@ -1,41 +1,41 @@
+import logging
+from collections import OrderedDict
 from time import sleep
 from httplib2 import ServerNotFoundError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.gcp.helpers.dm_client import DMClient
 
 
-def wait_resources(dm: DMClient, deployment_name: str, resource_messages: dict, output: AbstractOutputWriter, delay=5):
-    cur_states = dm.get_resources_states(deployment_name)
-    prev_states = {}
+def wait_resources(dm: DMClient, deployment_name: str, resource_messages: OrderedDict, output: AbstractOutputWriter,
+                   delay: int = 5):
+    for resource_name, message in resource_messages.items():
+        output.write('- %s...' % message)
+        while True:
+            sleep(delay)
 
-    while True:
-        if cur_states:
-            is_completed = True
-            for resource_name, state in cur_states.items():
-                # print a message once a resource gets the "IN_PROGRESS" status
-                if (not prev_states or (prev_states[resource_name] != state)) \
-                        and (state in ['IN_PROGRESS', 'IN_PREVIEW']) \
-                        and (resource_name in resource_messages):
-                    output.write('- %s...' % resource_messages[resource_name])
+            # get the resource info
+            try:
+                resource = dm.get_resource(deployment_name, resource_name)
+            except (ConnectionResetError, ServerNotFoundError):
+                logging.warning('Connection problem')
+                continue
 
-                # check that the resources are not failed
-                if state not in [None, 'PENDING', 'IN_PROGRESS', 'COMPLETED', 'IN_PREVIEW']:
-                    raise ValueError('Deployment "%s" failed.\n'
-                                     'Please, see Deployment Manager logs for the details.' % deployment_name)
+            # resource doesn't exist yet
+            if not resource:
+                continue
 
-                if state not in ['COMPLETED', 'IN_PREVIEW']:
-                    is_completed = False
-
-            # check if the deployment is completed
-            if is_completed:
+            # resource was successfully created
+            if 'finalProperties' in resource:
                 break
 
-            prev_states = cur_states
+            # an error occurred
+            if 'error' in resource.get('update', {}):
+                raise ValueError('Deployment "%s" failed.\n'
+                                 'Error: %s'
+                                 % (deployment_name, resource['update']['error']['errors'][0]['message']))
 
-        sleep(delay)
-
-        try:
-            cur_states = dm.get_resources_states(deployment_name)
-        except (ConnectionResetError, ServerNotFoundError):
-            output.write('Connection problem')
-            continue
+            # unexpected status
+            if 'state' in resource.get('update', {}) \
+                    and resource['update']['state'] not in ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'IN_PREVIEW']:
+                raise ValueError('Deployment "%s" failed.\n'
+                                 'Please, see Deployment Manager logs for the details.' % deployment_name)

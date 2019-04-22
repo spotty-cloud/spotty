@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.gcp.gcp_resources.stack import Stack
 from spotty.providers.gcp.helpers.ce_client import CEClient
@@ -7,10 +8,11 @@ from spotty.providers.gcp.helpers.dm_client import DMClient
 
 class InstanceStackResource(object):
 
-    def __init__(self, project_name: str, instance_name: str, project_id: str, zone: str):
+    def __init__(self, machine_name: str, project_id: str, zone: str):
         self._dm = DMClient(project_id, zone)
         self._ce = CEClient(project_id, zone)
-        self._stack_name = 'spotty-instance-%s-%s' % (project_name.lower(), instance_name.lower())
+        self._machine_name = machine_name
+        self._stack_name = 'spotty-instance-' + machine_name
 
     @property
     def name(self):
@@ -27,10 +29,10 @@ class InstanceStackResource(object):
 
         output.write('Waiting for the stack to be created...')
 
-        resource_messages = {
-            '%s-instance' % self._stack_name: 'launching the instance',
-            '%s-docker-waiter' % self._stack_name: 'running the Docker container',
-        }
+        resource_messages = OrderedDict([
+            (self._machine_name, 'launching the instance'),
+            (self._machine_name + '-docker-waiter', 'running the Docker container'),
+        ])
 
         # wait for the stack to be created
         with output.prefix('  '):
@@ -47,9 +49,8 @@ class InstanceStackResource(object):
         # delete the stack
         try:
             stack.delete()
-            # TODO: wait until deleted
-            # if not no_wait:
-            #     stack.wait_stack_deleted()
+            if not no_wait:
+                stack.wait_stack_deleted()
         except Exception as e:
             raise ValueError('Stack "%s" was not deleted. Error: %s\n'
                              'See Deployment Manager logs for details.' % (self._stack_name, str(e)))
