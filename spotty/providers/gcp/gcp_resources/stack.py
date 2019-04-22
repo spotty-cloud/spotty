@@ -62,10 +62,6 @@ class Stack(object):
     def name(self) -> str:
         return self._data['name']
 
-    @property
-    def state(self) -> str:
-        return self._data['name']
-
     def delete(self):
         self._dm.delete(self.name)
 

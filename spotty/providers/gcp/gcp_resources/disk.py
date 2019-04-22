@@ -48,7 +48,7 @@ class Disk(object):
 
     @property
     def size(self) -> int:
-        return self._data['sizeGb']
+        return int(self._data['sizeGb'])
 
     @property
     def users(self) -> list:

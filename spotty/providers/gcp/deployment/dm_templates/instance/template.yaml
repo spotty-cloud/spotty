@@ -18,7 +18,7 @@ resources:
             sourceImage: global/images/{{SOURCE_IMAGE}}
 
         {{#DISK_ATTACHMENTS}}
-        - source: $(ref.{{MACHINE_NAME}}-{{VOLUME_NAME}}.selfLink)
+        - source: {{DISK_LINK}}
           deviceName: {{DEVICE_NAME}}
           type: PERSISTENT
           mode: READ_WRITE
@@ -37,27 +37,12 @@ resources:
       {{/GPU_TYPE}}
       metadata:
         items:
-          - key: 'enable-oslogin'
-            value: 'TRUE'
           - key: 'ssh-keys'
             value: |
               ubuntu:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCsA90Cib/jsl30u/QNpymqENKsgO0OJemWeTEW5bAvUt4/w1I+kXa/nSf6ap5lrVBe9WESItdIPzn7+fhXmL+x49mmOBBL2DFRSnw74Gw+8xEVdQ2sL9PPloUqmc3AAdAxaIJ73wsViRwWWbaD5MNnygOyNXKcc4DR2FxMjqp8aNublHnu9SZA7mhLu7rGeFBXMyZA6sMW4AxNwfAY1uhL0KYnVcuxcKabMw5aBen9DLOcoWx3m9xhwMhxxd/bGy6O6jAxijEZCnI4iFHeRd9YN+zHiOPve8p5SQhyrEVmUyK2WOwCAdHTkvGuvf2WcvBT42UkaFrDiLimV6cCSI8x ubuntu
           - key: 'user-data'
             value: |
               {{{STARTUP_SCRIPT}}}
-
-  {{#DISK_RESOURCES}}
-  - name: {{MACHINE_NAME}}-{{VOLUME_NAME}}
-    type: compute.v1.disk
-    properties:
-      type: zones/{{ZONE}}/diskTypes/pd-standard
-      zone: {{ZONE}}
-      sizeGb: {{DISK_SIZE}}
-      physicalBlockSizeBytes: 4096
-      {{#DISK_SNAPSHOT}}
-      sourceSnapshot: {{DISK_SNAPSHOT}}
-      {{/DISK_SNAPSHOT}}
-  {{/DISK_RESOURCES}}
 
   - name: {{MACHINE_NAME}}-docker-status
     type: runtimeconfig.v1beta1.config

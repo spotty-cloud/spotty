@@ -52,3 +52,20 @@ class CEClient(object):
         accelerator_types = OrderedDict([(item['name'], item['maximumCardsPerInstance']) for item in res['items']])
 
         return accelerator_types
+
+    def create_disk(self, name: str, size: int = None, snapshot_link: str = None) -> str:
+        params = {
+            'name': name,
+            'type': 'zones/%s/diskTypes/pd-standard' % self._zone,
+            'physicalBlockSizeBytes': 4096,
+        }
+
+        if size:
+            params['sizeGb'] = size
+
+        if snapshot_link:
+            params['sourceSnapshot'] = snapshot_link
+
+        res = self._client.disks().insert(project=self._project_id, zone=self._zone, body=params).execute()
+
+        return res['targetLink']
