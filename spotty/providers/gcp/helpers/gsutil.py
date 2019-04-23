@@ -1,5 +1,6 @@
 import json
 import logging
+import shlex
 from shutil import which
 import subprocess
 import re
@@ -29,7 +30,7 @@ class GSUtil(object):
         return self._run(args, False, capture_output=capture_output)
 
     @staticmethod
-    def get_rsync_arguments(filters: list = None, delete: bool = False, dry_run: bool = False):
+    def get_rsync_arguments(filters: list = None, delete: bool = False, quote: bool = False, dry_run: bool = False):
         args = []
 
         if dry_run:
@@ -60,7 +61,8 @@ class GSUtil(object):
             for path in sync_filter['exclude']:
                 path_regs.append(GSUtil.fnmatch_translate(path))
 
-            args += ['-x', '^(%s)$' % '|'.join(path_regs)]
+            filter_regex = '^(%s)$' % '|'.join(path_regs)
+            args += ['-x', shlex.quote(filter_regex) if quote else filter_regex]
 
         return args
 

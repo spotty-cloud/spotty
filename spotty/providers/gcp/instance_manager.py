@@ -5,6 +5,7 @@ from spotty.providers.gcp.config.instance_config import InstanceConfig
 from spotty.providers.gcp.deployment.image_deployment import ImageDeployment
 from spotty.providers.gcp.deployment.instance_deployment import InstanceDeployment
 from spotty.providers.gcp.errors.image_not_found import ImageNotFoundError
+from spotty.providers.gcp.helpers.sync import sync_local_to_bucket, sync_bucket_to_instance
 from spotty.utils import render_table
 
 
@@ -65,7 +66,18 @@ class InstanceManager(AbstractInstanceManager):
         self.instance_deployment.stack.delete_stack(output)
 
     def sync(self, output: AbstractOutputWriter, dry_run=False):
-        raise NotImplementedError
+        # create or get existing bucket for the project
+        bucket_name = self.instance_deployment.bucket.get_or_create_bucket(output, dry_run)
+
+        # sync the project with the bucket
+        output.write('Syncing the project with the bucket...')
+        sync_local_to_bucket(self.project_config.project_dir, bucket_name, self.project_config.sync_filters, dry_run)
+
+        if not dry_run:
+            # sync the bucket with the instance
+            output.write('Syncing the bucket with the instance...')
+            sync_bucket_to_instance(self.project_config.sync_filters, self.get_ip_address(), self.ssh_port,
+                                    self.ssh_user, self.ssh_key_path)
 
     def download(self, download_filters: list, output: AbstractOutputWriter, dry_run=False):
         raise NotImplementedError

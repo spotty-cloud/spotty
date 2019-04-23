@@ -24,7 +24,7 @@ class AwsCli(object):
 
     @staticmethod
     def get_s3_sync_arguments(filters: list = None, exact_timestamp: bool = False, delete: bool = False,
-                              quote=False, dry_run: bool = False):
+                              quote: bool = False, dry_run: bool = False):
         args = []
 
         if filters:

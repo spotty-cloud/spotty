@@ -11,7 +11,8 @@ def get_project_gs_path(bucket_name: str):
 
 
 def get_instance_sync_arguments(sync_filters: list):
-    return GSUtil.get_rsync_arguments(sync_filters)
+    """Returns arguments for the "gsutil rsync" command that will be run the instance side."""
+    return GSUtil.get_rsync_arguments(sync_filters, quote=True)
 
 
 def sync_local_to_bucket(project_dir, bucket_name, sync_filters, dry_run=False):

@@ -1,4 +1,5 @@
 import os
+from subprocess import list2cmdline
 from typing import List
 import chevron
 import pystache
@@ -8,7 +9,7 @@ from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.providers.gcp.config.instance_config import InstanceConfig
 from spotty.providers.gcp.deployment.project_resources.disk_volume import DiskVolume
-from spotty.providers.gcp.helpers.sync import BUCKET_SYNC_DIR
+from spotty.providers.gcp.helpers.sync import BUCKET_SYNC_DIR, get_instance_sync_arguments
 
 
 def prepare_instance_template(instance_config: InstanceConfig, container: ContainerDeployment, sync_filters: list,
@@ -36,6 +37,7 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
         'PROJECT_GS_BUCKET': bucket_name,
         'BUCKET_SYNC_DIR': BUCKET_SYNC_DIR,
         'HOST_PROJECT_DIR': container.host_project_dir,
+        'SYNC_ARGS': list2cmdline(get_instance_sync_arguments(sync_filters)),
         'DOCKER_DATA_ROOT_DIR': instance_config.docker_data_root,
         'DOCKER_IMAGE': container.config.image,
         'DOCKERFILE_PATH': container.dockerfile_path,
