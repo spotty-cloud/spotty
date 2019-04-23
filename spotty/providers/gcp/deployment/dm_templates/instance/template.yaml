@@ -5,6 +5,8 @@ resources:
       zone: {{ZONE}}
       machineType: zones/{{ZONE}}/machineTypes/{{MACHINE_TYPE}}
       scheduling:
+        onHostMaintenance: TERMINATE
+        automaticRestart: false
         preemptible: {{PREEMPTIBLE}}
       serviceAccounts:
         - email: {{SERVICE_ACCOUNT_EMAIL}}

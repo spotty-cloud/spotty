@@ -1,3 +1,4 @@
+from datetime import datetime
 from spotty.providers.gcp.helpers.ce_client import CEClient
 
 
@@ -75,3 +76,27 @@ class Instance(object):
     @property
     def public_ip_address(self):
         return self._data['networkInterfaces'][0]['accessConfigs'][0]['natIP']
+
+    @property
+    def status(self) -> str:
+        return self._data['status']
+
+    @property
+    def machine_type(self) -> str:
+        return self._data['machineType'].split('/')[-1]
+
+    @property
+    def zone(self) -> str:
+        return self._data['zone'].split('/')[-1]
+
+    @property
+    def creation_timestamp(self) -> str:
+        # fix the format: '2019-04-20T16:21:49.536-07:00' -> '2019-04-20T16:21:49-0700'
+        time_str = self._data['creationTimestamp'][:-10] + \
+                   self._data['creationTimestamp'][-6:-3] + \
+                   self._data['creationTimestamp'][-2:]
+        return datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%S%z')
+
+    @property
+    def is_preemtible(self) -> bool:
+        return self._data['scheduling']['preemptible']

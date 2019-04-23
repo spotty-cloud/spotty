@@ -21,7 +21,7 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
         template = f.read()
 
     # get disk attachments
-    disk_attachments, disk_device_names, disk_mount_dirs = _get_disk_attachments(volumes)
+    disk_attachments, disk_device_names, disk_mount_dirs = _get_disk_attachments(volumes, instance_config.zone)
 
     # get Docker runtime parameters
     runtime_parameters = container.get_runtime_parameters(bool(instance_config.gpu))
@@ -66,7 +66,7 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
     return template
 
 
-def _get_disk_attachments(volumes: List[AbstractInstanceVolume]):
+def _get_disk_attachments(volumes: List[AbstractInstanceVolume], zone: str):
     disk_attachments = []
     disk_device_names = []
     disk_mount_dirs = []
@@ -77,7 +77,7 @@ def _get_disk_attachments(volumes: List[AbstractInstanceVolume]):
             disk_device_names.append(device_name)
             disk_mount_dirs.append(volume.mount_dir)
             disk_attachments.append({
-                'DISK_LINK': 'zones/us-central1-b/disks/%s' % volume.disk_name,
+                'DISK_LINK': 'zones/%s/disks/%s' % (zone, volume.disk_name),
                 'DEVICE_NAME': device_name,
             })
 

@@ -5,6 +5,7 @@ from spotty.providers.gcp.config.instance_config import InstanceConfig
 from spotty.providers.gcp.deployment.image_deployment import ImageDeployment
 from spotty.providers.gcp.deployment.instance_deployment import InstanceDeployment
 from spotty.providers.gcp.errors.image_not_found import ImageNotFoundError
+from spotty.utils import render_table
 
 
 class InstanceManager(AbstractInstanceManager):
@@ -42,10 +43,8 @@ class InstanceManager(AbstractInstanceManager):
                 if res != 'y':
                     raise ValueError('The operation was cancelled.')
 
-                # terminating the instance to make EBS volumes available
-                output.write('Terminating the instance...')
-                instance.terminate()
-                instance.wait_instance_terminated()
+                # terminating the instance without applying deletion policies
+                self.instance_deployment.stack.delete_stack(output)
 
             # check that the AMI exists
             if not deployment.get_image():
@@ -75,7 +74,23 @@ class InstanceManager(AbstractInstanceManager):
         raise NotImplementedError
 
     def get_status_text(self) -> str:
-        return ''
+        instance = self.instance_deployment.get_instance()
+        if not instance:
+            raise InstanceNotRunningError(self.instance_config.name)
+
+        table = [
+            ('Instance Status', instance.status),
+            ('Machine Type', instance.machine_type),
+            ('Zone', instance.zone),
+        ]
+
+        if instance.public_ip_address:
+            table.append(('Public IP Address', instance.public_ip_address))
+
+        table.append(('Launch Time', instance.creation_timestamp.today().strftime('%Y-%m-%d %H:%M:%S')))
+        table.append(('Purchasing Option', 'Preemtible' if instance.is_preemtible else 'On-demand'))
+
+        return render_table(table)
 
     def get_public_ip_address(self) -> str:
         """Returns a public IP address of the running instance."""

@@ -1,17 +1,17 @@
 #cloud-config
 
 write_files:
-  - path: /tmp/scripts/init.sh
+  - path: /tmp/spotty/instance/scripts/init.sh
     permissions: 0755
-    owner: root
+    owner: ubuntu
     content: |
       #!/bin/bash -x
 
       # prepare the instance and run Docker container
-      /tmp/scripts/prepare_instance.sh \
-        && /tmp/scripts/mount_volumes.sh \
-        && /tmp/scripts/sync_project.sh \
-        && /tmp/scripts/run_container.sh
+      /tmp/spotty/instance/scripts/prepare_instance.sh \
+        && /tmp/spotty/instance/scripts/mount_volumes.sh \
+        && /tmp/spotty/instance/scripts/sync_project.sh \
+        && /tmp/spotty/instance/scripts/run_container.sh
 
       # send signal that the Docker container is ready or failed
       DOCKER_EXIT_CODE=$?
@@ -22,22 +22,33 @@ write_files:
         exit $DOCKER_EXIT_CODE
       fi
 
-  - path: /tmp/scripts/prepare_instance.sh
+  - path: /tmp/spotty/instance/scripts/prepare_instance.sh
     permissions: 0755
-    owner: root
+    owner: ubuntu
     content: |
       #!/bin/bash -xe
 
       # install jq
       apt-get install -y jq
 
-      # create directory for "spotty run" logs
-      mkdir -p /var/log/spotty-run
-      chmod 777 /var/log/spotty-run
+      # create directory for Docker scripts
+      mkdir -p /tmp/spotty/container/scripts/run
+      chmod -R 755 /tmp/spotty
+      chown -R ubuntu:ubuntu /tmp/spotty
 
-  - path: /tmp/scripts/mount_volumes.sh
+      # create directory for Spotty logs
+      mkdir -p /var/log/spotty/run
+      chmod -R 755 /var/log/spotty
+      chown -R ubuntu:ubuntu /var/log/spotty
+
+      # create a project directory
+      if [ -n "${HostProjectDirectory}" ]; then
+        mkdir -p ${HostProjectDirectory}
+      fi
+
+  - path: /tmp/spotty/instance/scripts/mount_volumes.sh
     permissions: 0755
-    owner: root
+    owner: ubuntu
     content: |
       #!/bin/bash -xe
 
@@ -56,9 +67,9 @@ write_files:
         resize2fs $DEVICE
       done
 
-  - path: /tmp/scripts/sync_project.sh
+  - path: /tmp/spotty/instance/scripts/sync_project.sh
     permissions: 0755
-    owner: root
+    owner: ubuntu
     content: |
       #!/bin/bash -xe
 
@@ -67,9 +78,9 @@ write_files:
         gsutil -m rsync -r "$@" gs://{{PROJECT_GS_BUCKET}}/{{BUCKET_SYNC_DIR}} {{HOST_PROJECT_DIR}}
       fi
 
-  - path: /tmp/scripts/run_container.sh
+  - path: /tmp/spotty/instance/scripts/run_container.sh
     permissions: 0755
-    owner: root
+    owner: ubuntu
     content: |
       #!/bin/bash -xe
 
@@ -93,14 +104,11 @@ write_files:
       fi
 
       if [ -n "$DOCKER_IMAGE" ]; then
-        # create directory for Docker scripts
-        mkdir -p /tmp/docker
-        chmod 777 /tmp/docker
-
         # run docker container
         CONTAINER_NAME=spotty
         docker run {{DOCKER_RUNTIME_PARAMS}} \
-          -v /root/.config:/root/.config -v /tmp/docker:/tmp/docker \
+          -v /root/.config:/root/.config \
+          -v /tmp/spotty/container/scripts:/tmp/scripts \
           --name $CONTAINER_NAME $DOCKER_IMAGE /bin/sh
 
         WORKING_DIR=""
@@ -113,25 +121,26 @@ write_files:
 
         # create a script to connect to the docker container
         mkdir -p /scripts
-        cat > /scripts/container_bash.sh <<EOL
+        cat > /tmp/spotty/instance/scripts/container_bash.sh <<EOL
       #!/bin/bash
       docker exec -it $WORKING_DIR $CONTAINER_NAME /bin/bash \$@
       EOL
-        chmod +x /scripts/container_bash.sh
+        chmod 755 /tmp/spotty/instance/scripts/container_bash.sh
+        chown ubuntu:ubuntu /tmp/spotty/instance/scripts/container_bash.sh
 
         # create an alias to connect to the docker container
         CONTAINER_BASH_ALIAS=container
-        echo "alias $CONTAINER_BASH_ALIAS=\"sudo /scripts/container_bash.sh\"" >> /home/ubuntu/.bashrc
-        echo "alias $CONTAINER_BASH_ALIAS=\"/scripts/container_bash.sh\"" >> /root/.bashrc
+        echo "alias $CONTAINER_BASH_ALIAS=\"sudo /tmp/spotty/instance/scripts/container_bash.sh\"" >> /home/ubuntu/.bashrc
+        echo "alias $CONTAINER_BASH_ALIAS=\"/tmp/spotty/instance/scripts/container_bash.sh\"" >> /root/.bashrc
 
         # run custom user commands
-        docker exec $WORKING_DIR $CONTAINER_NAME /bin/bash -xe /tmp/docker/docker_commands.sh \
-          > /var/log/docker-commands.log 2>&1
+        docker exec $WORKING_DIR $CONTAINER_NAME /bin/bash -xe /tmp/scripts/startup_commands.sh \
+          > /var/log/spotty/container-startup-commands.log 2>&1
       fi
 
-  - path: /tmp/docker/docker_commands.sh
-    permissions: 0755
-    owner: root
+  - path: /tmp/spotty/container/scripts/startup_commands.sh
+    permissions: 0644
+    owner: ubuntu
     content: |
       echo "Nothing to do"
 
@@ -142,4 +151,4 @@ write_files:
       bind-key x kill-pane
 
 runcmd:
-  - /tmp/scripts/init.sh
+  - /tmp/spotty/instance/scripts/init.sh
