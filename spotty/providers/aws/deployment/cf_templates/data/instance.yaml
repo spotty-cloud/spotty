@@ -106,12 +106,16 @@ Resources:
           'Fn::Base64': !Sub |
             #!/bin/bash -x
 
-            # install CloudFormation tools
-            apt-get update
-            apt-get install -y python-setuptools
-            mkdir -p aws-cfn-bootstrap-latest
-            curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
-            easy_install aws-cfn-bootstrap-latest
+            cd /root
+
+            # install CloudFormation tools if they are not installed yet
+            if [ ! -e /usr/local/bin/cfn-init ]; then
+              apt-get update
+              apt-get install -y python-setuptools
+              mkdir -p aws-cfn-bootstrap-latest
+              curl https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz | tar xz -C aws-cfn-bootstrap-latest --strip-components 1
+              python2 -m easy_install aws-cfn-bootstrap-latest
+            fi
 
             # prepare the instance and run Docker container
             /usr/local/bin/cfn-init \
