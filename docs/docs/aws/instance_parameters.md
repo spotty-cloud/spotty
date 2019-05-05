@@ -62,3 +62,7 @@ Read more: [How to cache a Docker image](/spotty/docs/faq/#how-to-cache-a-docker
 and `spotty sync` will do SSH connections to the instance using the IP address __127.0.0.1__ and the specified port. 
 It can be useful in case when the instance doesn't have a public IP address and SSH access is provided through a 
 tunnel to a local port.
+
+- __`managedPolicyArns`__ _(optional)_ - a list of Amazon Resource Names (ARNs) of the IAM managed policies that 
+you want to attach to the instance role. Read more about Managed Policies 
+[here](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html).

@@ -12,11 +12,11 @@ from spotty.providers.aws.deployment.abstract_aws_deployment import AbstractAwsD
 from spotty.providers.aws.deployment.checks import check_az_and_subnet, check_max_price
 from spotty.providers.aws.deployment.project_resources.ebs_volume import EbsVolume
 from spotty.providers.aws.deployment.cf_templates.instance_template import prepare_instance_template
+from spotty.providers.aws.deployment.project_resources.instance_profile_stack import InstanceProfileStackResource
 from spotty.providers.aws.errors.ami_not_found import AmiNotFoundError
 from spotty.providers.aws.helpers.download import get_tmp_instance_s3_path
 from spotty.providers.aws.helpers.sync import sync_project_with_s3, get_project_s3_path, get_instance_sync_arguments
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
-from spotty.providers.aws.deployment.project_resources.instance_profile_stack import create_or_update_instance_profile
 from spotty.providers.aws.deployment.project_resources.instance_stack import InstanceStackResource
 from spotty.providers.aws.config.validation import is_nitro_instance, is_gpu_instance
 from spotty.utils import render_table
@@ -68,7 +68,10 @@ class InstanceDeployment(AbstractAwsDeployment):
 
         # create or update instance profile
         if not dry_run:
-            instance_profile_arn = create_or_update_instance_profile(self.instance_config.region, output)
+            instance_profile_stack = InstanceProfileStackResource(
+                self._project_name, self.instance_config.name, self.instance_config.region)
+            instance_profile_arn = instance_profile_stack.create_or_update_stack(
+                self.instance_config.managed_policy_arns, output=output)
         else:
             instance_profile_arn = None
 

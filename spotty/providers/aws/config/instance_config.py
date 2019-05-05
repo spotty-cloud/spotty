@@ -47,3 +47,7 @@ class InstanceConfig(AbstractInstanceConfig):
     @property
     def max_price(self) -> float:
         return self._params['maxPrice']
+
+    @property
+    def managed_policy_arns(self) -> list:
+        return self._params['managedPolicyArns']
