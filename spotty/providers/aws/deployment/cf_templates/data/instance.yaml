@@ -138,6 +138,7 @@ Resources:
             - prepare_instance_config
             - mount_volumes_config
             - sync_project_config
+            - startup_commands_config
             - docker_container_config
         prepare_instance_config:
           files:
@@ -227,6 +228,16 @@ Resources:
           commands:
             sync_project:
               command: !Sub '/bin/bash -xe /tmp/spotty/instance/scripts/sync_project.sh ${SyncCommandArgs}'
+        startup_commands_config:
+          files:
+            /tmp/spotty/instance/scripts/startup_commands.sh:
+              owner: ubuntu
+              group: ubuntu
+              mode: '000644'
+              content: '# no content'
+          commands:
+            startup_commands:
+              command: !Sub '/bin/bash -xe /tmp/spotty/instance/scripts/startup_commands.sh'
         docker_container_config:
           files:
             /tmp/spotty/instance/scripts/run_container.sh:
@@ -292,7 +303,7 @@ Resources:
               owner: ubuntu
               group: ubuntu
               mode: '000644'
-              content: 'echo "Nothing to do"'
+              content: '# no content'
           commands:
             run_container:
               command: '/bin/bash -xe /tmp/spotty/instance/scripts/run_container.sh'

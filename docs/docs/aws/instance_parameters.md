@@ -66,3 +66,11 @@ tunnel to a local port.
 - __`managedPolicyArns`__ _(optional)_ - a list of Amazon Resource Names (ARNs) of the IAM managed policies that 
 you want to attach to the instance role. Read more about Managed Policies 
 [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html).
+
+- __`commands`__ _(optional)_ - commands that should be run on the host OS before a container is started. 
+For example, you could login to Amazon ECR to pull a Docker image from there 
+([Deep Learning Containers Images](https://docs.aws.amazon.com/dlami/latest/devguide/deep-learning-containers-images.html)):
+    ```yaml
+    commands: |
+      $(aws ecr get-login --no-include-email --region us-east-2 --registry-ids 763104351884)
+    ```
