@@ -5,66 +5,78 @@ from spotty.providers.aws.aws_resources.stack import Stack
 from spotty.providers.aws.deployment.cf_templates.instance_profile_template import prepare_instance_profile_template
 
 
-def create_or_update_instance_profile(region, output: AbstractOutputWriter):
-    """Creates or updates an instance profile.
-    It was moved to a separate stack because creating of an instance profile resource takes 2 minutes.
-    """
-    cf = boto3.client('cloudformation', region_name=region)
+class InstanceProfileStackResource(object):
 
-    instance_profile_stack_name = 'spotty-instance-profile'
-    template = prepare_instance_profile_template()
+    def __init__(self, project_name: str, instance_name: str, region: str):
+        self._cf = boto3.client('cloudformation', region_name=region)
+        self._region = region
+        self._stack_name = 'spotty-instance-profile-%s-%s' % (project_name.lower(), instance_name.lower())
 
-    stack = Stack.get_by_name(cf, instance_profile_stack_name)
-    try:
-        if stack:
-            _update_stack(cf, stack, template, output)
-        else:
-            _create_stack(cf, instance_profile_stack_name, template, output)
+    def create_or_update_stack(self, managed_policy_arns: list, output: AbstractOutputWriter):
+        """Creates or updates an instance profile.
+        It was moved to a separate stack because creating of an instance profile resource takes 2 minutes.
+        """
+        # check that policies exist
+        iam = boto3.client('iam', region_name=self._region)
+        for policy_arn in managed_policy_arns:
+            # if the policy doesn't exist, an error will be raised
+            iam.get_policy(PolicyArn=policy_arn)
 
-        stack = Stack.get_by_name(cf, instance_profile_stack_name)
-    except WaiterError:
-        stack = None
+        template = prepare_instance_profile_template(managed_policy_arns)
 
-    if not stack or stack.status not in ['CREATE_COMPLETE', 'UPDATE_COMPLETE']:
-        raise ValueError('Stack "%s" was not created.\n'
-                         'Please, see CloudFormation logs for the details.' % instance_profile_stack_name)
+        stack = Stack.get_by_name(self._cf, self._stack_name)
+        try:
+            if stack:
+                # update the stack and wait until it will be updated
+                self._update_stack(template, output)
+            else:
+                # create the stack and wait until it will be created
+                self._create_stack(template, output)
 
-    profile_arn = [row['OutputValue'] for row in stack.outputs if row['OutputKey'] == 'ProfileArn'][0]
+            stack = Stack.get_by_name(self._cf, self._stack_name)
+        except WaiterError:
+            stack = None
 
-    return profile_arn
+        if not stack or stack.status not in ['CREATE_COMPLETE', 'UPDATE_COMPLETE']:
+            raise ValueError('Stack "%s" was not created.\n'
+                             'Please, see CloudFormation logs for the details.' % self._stack_name)
 
+        profile_arn = [row['OutputValue'] for row in stack.outputs if row['OutputKey'] == 'ProfileArn'][0]
 
-def _create_stack(cf, stack_name, template: str, output: AbstractOutputWriter):
-    output.write('Creating IAM role for the instance...')
+        return profile_arn
 
-    stack = Stack.create_stack(
-        cf=cf,
-        StackName=stack_name,
-        TemplateBody=template,
-        Capabilities=['CAPABILITY_IAM'],
-        OnFailure='DELETE',
-    )
+    def _create_stack(self, template: str, output: AbstractOutputWriter):
+        """Creates the stack and waits until it will be created."""
+        output.write('Creating IAM role for the instance...')
 
-    # wait for the stack to be created
-    stack.wait_stack_created(delay=15)
-
-
-def _update_stack(cf, stack: Stack, template: str, output: AbstractOutputWriter):
-    try:
-        updated_stack = stack.update_stack(
-            cf=cf,
-            StackName=stack.name,
+        stack = Stack.create_stack(
+            cf=self._cf,
+            StackName=self._stack_name,
             TemplateBody=template,
             Capabilities=['CAPABILITY_IAM'],
+            OnFailure='DELETE',
         )
-    except ClientError as e:
-        # the stack was not updated because there are no changes
-        updated_stack = None
-        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
-        if error_code != 'ValidationError':
-            raise e
 
-    if updated_stack:
-        # wait for the stack to be updated
-        output.write('Updating IAM role for the instance...')
-        updated_stack.wait_stack_updated(delay=15)
+        # wait for the stack to be created
+        stack.wait_stack_created(delay=15)
+
+    def _update_stack(self, template: str, output: AbstractOutputWriter):
+        """Updates the stack and waits until it will be updated."""
+        try:
+            updated_stack = Stack.update_stack(
+                cf=self._cf,
+                StackName=self._stack_name,
+                TemplateBody=template,
+                Capabilities=['CAPABILITY_IAM'],
+            )
+        except ClientError as e:
+            # the stack was not updated because there are no changes
+            updated_stack = None
+            error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+            if error_code != 'ValidationError':
+                raise e
+
+        if updated_stack:
+            # wait for the stack to be updated
+            output.write('Updating IAM role for the instance...')
+            updated_stack.wait_stack_updated(delay=15)

@@ -72,6 +72,12 @@ def prepare_instance_template(instance_config: InstanceConfig, volumes: List[Abs
         output.write('- maximum Spot Instance price: %s'
                      % (('%.04f' % instance_config.max_price) if instance_config.max_price else 'on-demand'))
 
+    # set initial instance commands
+    if instance_config.commands:
+        template['Resources']['InstanceLaunchTemplate']['Metadata']['AWS::CloudFormation::Init'] \
+            ['startup_commands_config']['files']['/tmp/spotty/instance/scripts/startup_commands.sh']['content'] \
+            = instance_config.commands
+
     # set initial docker commands
     if container.config.commands:
         template['Resources']['InstanceLaunchTemplate']['Metadata']['AWS::CloudFormation::Init'] \
