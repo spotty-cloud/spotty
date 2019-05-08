@@ -3,7 +3,6 @@ from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.deployment.ami_deployment import AmiDeployment
 from spotty.providers.aws.deployment.instance_deployment import InstanceDeployment
-from spotty.providers.aws.errors.ami_not_found import AmiNotFoundError
 from spotty.providers.aws.helpers.download import download_from_s3_to_local, upload_from_instance_to_s3
 from spotty.providers.aws.helpers.sync import sync_project_with_s3, sync_instance_with_s3
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
@@ -51,18 +50,6 @@ class InstanceManager(AbstractInstanceManager):
                 output.write('Terminating the instance...')
                 instance.terminate()
                 instance.wait_instance_terminated()
-
-            # check that the AMI exists
-            if not deployment.get_ami():
-                print('The AMI "%s" doesn\'t exist. Do you want to create it?'
-                      % self.instance_config.ami_name)
-                res = input('Type "y" to confirm: ')
-                if res == 'y':
-                    # create an AMI
-                    self.ami_deployment.deploy(False, output)
-                    output.write()
-                else:
-                    raise AmiNotFoundError(self.instance_config.ami_name)
 
         # deploy the instance
         deployment.deploy(self.project_config, output, dry_run=dry_run)

@@ -37,16 +37,7 @@ Use [pip](http://www.pip-installer.org/en/latest/) to install or upgrade Spotty:
    - Read [this](https://medium.com/@apls/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365) 
    article for a real-world example.
 
-2. Create an AMI. Run the following command from the root directory of your project:
-
-    ```bash
-    $ spotty aws create-ami
-    ```
-
-    In several minutes you will have an AMI with NVIDIA Docker that Spotty will use 
-    for all your projects within the AWS region.
-
-3. Start an instance:
+2. Start an instance:
 
     ```bash
     $ spotty start
@@ -55,11 +46,7 @@ Use [pip](http://www.pip-installer.org/en/latest/) to install or upgrade Spotty:
     It will run a Spot Instance, restore snapshots if any, synchronize the project with the running instance 
     and start the Docker container with the environment.
 
-4. Train a model or run notebooks.
-
-    You can run custom scripts inside the Docker container using the `spotty run <SCRIPT_NAME>` command. Read more
-    about custom scripts in the documentation: 
-    [Configuration: "scripts" section](https://apls777.github.io/spotty/docs/configuration/#scripts-section-optional).
+3. Train a model or run notebooks.
 
     To connect to the running container via SSH, use the following command:
 
@@ -70,6 +57,10 @@ Use [pip](http://www.pip-installer.org/en/latest/) to install or upgrade Spotty:
     It runs a [tmux](https://github.com/tmux/tmux/wiki) session, so you can always detach this session using
     __`Ctrl + b`__, then __`d`__ combination of keys. To be attached to that session later, just use the
     `spotty ssh` command again.
+
+    Also, you can run your custom scripts inside the Docker container using the `spotty run <SCRIPT_NAME>` command. Read more
+    about custom scripts in the documentation: 
+    [Configuration: "scripts" section](https://apls777.github.io/spotty/docs/configuration/#scripts-section-optional).
 
 ## Contributions
 

@@ -4,6 +4,7 @@ from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.project_config import ProjectConfig
 from spotty.config.validation import is_subdir
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.providers.aws.aws_resources.image import Image
 from spotty.providers.aws.aws_resources.snapshot import Snapshot
 from spotty.providers.aws.aws_resources.volume import Volume
 from spotty.providers.aws.config.instance_config import VOLUME_TYPE_EBS
@@ -13,7 +14,6 @@ from spotty.providers.aws.deployment.checks import check_az_and_subnet, check_ma
 from spotty.providers.aws.deployment.project_resources.ebs_volume import EbsVolume
 from spotty.providers.aws.deployment.cf_templates.instance_template import prepare_instance_template
 from spotty.providers.aws.deployment.project_resources.instance_profile_stack import InstanceProfileStackResource
-from spotty.providers.aws.errors.ami_not_found import AmiNotFoundError
 from spotty.providers.aws.helpers.download import get_tmp_instance_s3_path
 from spotty.providers.aws.helpers.sync import sync_project_with_s3, get_project_s3_path, get_instance_sync_arguments
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
@@ -144,9 +144,8 @@ class InstanceDeployment(AbstractAwsDeployment):
         vpc_id = self.get_vpc_id()
 
         # get image info
-        ami = self.get_ami()
-        if not ami:
-            raise AmiNotFoundError(self.instance_config.ami_name)
+        ami = self._get_ami()
+        output.write('- AMI: "%s" (%s)' % (ami.name, ami.image_id))
 
         # check root volume size
         root_volume_size = self.instance_config.root_volume_size
@@ -194,6 +193,33 @@ class InstanceDeployment(AbstractAwsDeployment):
         }
 
         return parameters
+
+    def _get_ami(self) -> Image:
+        if self.instance_config.ami_id:
+            image = Image.get_by_id(self._ec2, self.instance_config.ami_id)
+            if not image:
+                ValueError('AMI with ID=%s not found.' % self.instance_config.ami_id)
+        else:
+            image = Image.get_by_name(self._ec2, self.instance_config.ami_name)
+            if not image:
+                if self.instance_config.has_ami_name:
+                    # AMI with the name specified in the configuration file was not found
+                    ValueError('AMI with the name "%s" was not found.' % self.instance_config.ami_name)
+                else:
+                    # get the latest "Deep Learning Base AMI"
+                    res = self._ec2.describe_images(
+                        Owners=['amazon'],
+                        Filters=[{'Name': 'name', 'Values': ['Deep Learning Base AMI (Ubuntu)*']}],
+                    )
+
+                    if not len(res['Images']):
+                        raise ValueError('AWS Deep Learning Base AMI not found.\n'
+                                         'Use the "spotty aws create-ami" command to create an AMI with NVIDIA Docker.')
+
+                    image_info = sorted(res['Images'], key=lambda x: x['CreationDate'], reverse=True)[0]
+                    image = Image(self._ec2, image_info)
+
+        return image
 
     def apply_deletion_policies(self, output: AbstractOutputWriter):
         """Applies deletion policies to the EBS volumes."""

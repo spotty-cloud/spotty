@@ -1,4 +1,5 @@
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.providers.aws.aws_resources.image import Image
 from spotty.providers.aws.deployment.abstract_aws_deployment import AbstractAwsDeployment
 from spotty.providers.aws.aws_resources.instance import Instance
 from spotty.providers.aws.deployment.cf_templates.ami_template import prepare_ami_template
@@ -31,9 +32,9 @@ class AmiDeployment(AbstractAwsDeployment):
             raise ValueError('"%s" is not a GPU instance' % instance_type)
 
         # check that an image with this name doesn't exist yet
-        ami = self.get_ami()
+        ami = Image.get_by_name(self._ec2, self.instance_config.ami_name)
         if ami:
-            raise ValueError('AMI with the name "%s" already exists.' % ami.name)
+            raise ValueError('AMI with the name "%s" already exists.' % self.instance_config.ami_name)
 
         # check availability zone and subnet
         check_az_and_subnet(self._ec2, self.instance_config.region, self.instance_config.availability_zone,
@@ -77,7 +78,7 @@ class AmiDeployment(AbstractAwsDeployment):
         stack_id = None
         if not self.stack.get_stack():
             # try to get the stack ID from the AMI tags (for older versions of Spotty)
-            ami = self.get_ami()
+            ami = Image.get_by_name(self._ec2, self.instance_config.ami_name)
             if not ami:
                 raise ValueError('AMI with the name "%s" not found.' % self.instance_config.ami_name)
 
