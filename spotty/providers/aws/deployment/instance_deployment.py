@@ -195,16 +195,23 @@ class InstanceDeployment(AbstractAwsDeployment):
         return parameters
 
     def _get_ami(self) -> Image:
+        """Returns an AMI that should be used for deployment.
+
+        Raises:
+            ValueError: If an AMI not found.
+        """
         if self.instance_config.ami_id:
+            # get an AMI by ID if the "amiId" parameter is specified
             image = Image.get_by_id(self._ec2, self.instance_config.ami_id)
             if not image:
-                ValueError('AMI with ID=%s not found.' % self.instance_config.ami_id)
+                raise ValueError('AMI with ID=%s not found.' % self.instance_config.ami_id)
         else:
+            # try to get an AMI by its name (if the "amiName" parameter is not specified, the default value is used)
             image = Image.get_by_name(self._ec2, self.instance_config.ami_name)
             if not image:
                 if self.instance_config.has_ami_name:
-                    # AMI with the name specified in the configuration file was not found
-                    ValueError('AMI with the name "%s" was not found.' % self.instance_config.ami_name)
+                    # if an AMI name was explicitly specified in the config, but the AMI was not found, raise an error
+                    raise ValueError('AMI with the name "%s" was not found.' % self.instance_config.ami_name)
                 else:
                     # get the latest "Deep Learning Base AMI"
                     res = self._ec2.describe_images(
