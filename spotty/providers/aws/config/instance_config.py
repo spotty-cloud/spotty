@@ -37,6 +37,10 @@ class InstanceConfig(AbstractInstanceConfig):
         return self._params['amiName'] if self._params['amiName'] else DEFAULT_AMI_NAME
 
     @property
+    def has_ami_name(self) -> bool:
+        return bool(self._params['amiName'])
+
+    @property
     def ami_id(self) -> str:
         return self._params['amiId']
 
@@ -47,3 +51,7 @@ class InstanceConfig(AbstractInstanceConfig):
     @property
     def max_price(self) -> float:
         return self._params['maxPrice']
+
+    @property
+    def managed_policy_arns(self) -> list:
+        return self._params['managedPolicyArns']

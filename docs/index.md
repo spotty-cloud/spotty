@@ -43,17 +43,6 @@ Prepare a `spotty.yaml` file and put it to the root directory of your project:
    - Read [this](https://medium.com/@apls/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365){:target="_blank"} 
    article for a real-world example.
 
-### __Create an AMI__
-
-Run the following command from the root directory of your project:
-
-```bash
-$ spotty aws create-ami
-```
-
-In several minutes you will have an AMI with NVIDIA Docker that Spotty will use 
-for all your projects within the AWS region.
-
 ### __Start an instance__
 
 Use the following command to launch an instance with the Docker container:

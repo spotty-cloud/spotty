@@ -26,3 +26,8 @@ class AbstractInstanceConfig(ABC):
     def local_ssh_port(self) -> int:
         """Local SSH port to connect to the instance (in case of a tunnel)."""
         return self._params['localSshPort']
+
+    @property
+    def commands(self) -> str:
+        """Commands that should be run once an instance is started."""
+        return self._params['commands']

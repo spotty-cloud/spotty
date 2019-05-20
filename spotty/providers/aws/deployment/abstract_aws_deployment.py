@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 import boto3
-from spotty.providers.aws.aws_resources.image import Image
 from spotty.providers.aws.aws_resources.subnet import Subnet
 from spotty.providers.aws.aws_resources.vpc import Vpc
 from spotty.providers.aws.config.instance_config import InstanceConfig
@@ -40,11 +39,3 @@ class AbstractAwsDeployment(ABC):
             vpc_id = default_vpc.vpc_id
 
         return vpc_id
-
-    def get_ami(self) -> Image:
-        if self.instance_config.ami_id:
-            image = Image.get_by_id(self._ec2, self.instance_config.ami_id)
-        else:
-            image = Image.get_by_name(self._ec2, self.instance_config.ami_name)
-
-        return image

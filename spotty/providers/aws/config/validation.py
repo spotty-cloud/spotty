@@ -26,6 +26,7 @@ def validate_instance_parameters(params: dict):
                                              And(lambda x: x > 0, error='"maxPrice" should be greater than 0 or '
                                                                         'should  not be specified.'),
                                              ),
+        Optional('managedPolicyArns', default=[]): [str],
     }
 
     volumes_checks = [

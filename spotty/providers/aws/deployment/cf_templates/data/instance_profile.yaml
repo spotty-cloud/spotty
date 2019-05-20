@@ -3,37 +3,41 @@ Resources:
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      Path: '/'
       Roles:
-      - Ref: InstanceRole
+        - Ref: InstanceRole
   InstanceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - ec2.amazonaws.com
-          Action:
-          - sts:AssumeRole
-      Path: '/'
-      Policies:
-      - PolicyName: S3RolePolicy
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
           - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
             Action:
-            - s3:ListAllMyBuckets
-            - s3:GetBucketLocation
-            - s3:ListBucket
-            - s3:GetObject
-            - s3:PutObject
-            - s3:DeleteObject
-            Resource:
-            - arn:aws:s3:::*
+              - sts:AssumeRole
+      {{#HAS_MANAGED_POLICIES}}
+      ManagedPolicyArns:
+        {{#MANAGED_POLICY_ARNS}}
+        - {{MANAGED_POLICY_ARN}}
+        {{/MANAGED_POLICY_ARNS}}
+      {{/HAS_MANAGED_POLICIES}}
+      Policies:
+        - PolicyName: S3AccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListAllMyBuckets
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource:
+                  - arn:aws:s3:::*
 Outputs:
   ProfileArn:
     Value: !GetAtt InstanceProfile.Arn
