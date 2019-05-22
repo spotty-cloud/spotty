@@ -54,9 +54,10 @@ class InstanceDeployment(AbstractGcpDeployment):
         # prepare Deployment Manager template
         output.write('Preparing the deployment template...')
         container = ContainerDeployment(project_config.project_name, volumes, project_config.container)
+        public_key_value = self.ssh_key.get_public_key_value()
         with output.prefix('  '):
             template = prepare_instance_template(self.instance_config, container, project_config.sync_filters, volumes,
-                                                 self.machine_name, bucket_name, output)
+                                                 self.machine_name, bucket_name, public_key_value, output)
         output.write('')
 
         # print information about the volumes

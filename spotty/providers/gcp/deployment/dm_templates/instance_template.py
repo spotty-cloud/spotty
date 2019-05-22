@@ -14,7 +14,7 @@ from spotty.providers.gcp.helpers.sync import BUCKET_SYNC_DIR, get_instance_sync
 
 def prepare_instance_template(instance_config: InstanceConfig, container: ContainerDeployment, sync_filters: list,
                               volumes: List[AbstractInstanceVolume], machine_name: str, bucket_name: str,
-                              output: AbstractOutputWriter):
+                              public_key_value: str, output: AbstractOutputWriter):
     """Prepares deployment template to run an instance."""
 
     # read and update the template
@@ -62,6 +62,7 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
         'GPU_TYPE': instance_config.gpu['type'] if instance_config.gpu else '',
         'GPU_COUNT': instance_config.gpu['count'] if instance_config.gpu else 0,
         'DISK_ATTACHMENTS': disk_attachments,
+        'PUB_KEY_VALUE': public_key_value,
     }
     template = chevron.render(template, parameters)
 

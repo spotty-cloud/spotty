@@ -41,7 +41,7 @@ resources:
         items:
           - key: 'ssh-keys'
             value: |
-              ubuntu:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCsA90Cib/jsl30u/QNpymqENKsgO0OJemWeTEW5bAvUt4/w1I+kXa/nSf6ap5lrVBe9WESItdIPzn7+fhXmL+x49mmOBBL2DFRSnw74Gw+8xEVdQ2sL9PPloUqmc3AAdAxaIJ73wsViRwWWbaD5MNnygOyNXKcc4DR2FxMjqp8aNublHnu9SZA7mhLu7rGeFBXMyZA6sMW4AxNwfAY1uhL0KYnVcuxcKabMw5aBen9DLOcoWx3m9xhwMhxxd/bGy6O6jAxijEZCnI4iFHeRd9YN+zHiOPve8p5SQhyrEVmUyK2WOwCAdHTkvGuvf2WcvBT42UkaFrDiLimV6cCSI8x ubuntu
+              ubuntu:ssh-rsa {{{PUB_KEY_VALUE}}} ubuntu
           - key: 'user-data'
             value: |
               {{{STARTUP_SCRIPT}}}
