@@ -38,6 +38,7 @@ class SshKey(object):
         if not os.path.isdir(self._keys_dir):
             os.makedirs(self._keys_dir, mode=0o755, exist_ok=True)
 
+        # check that the "ssh-keygen" tool is installed
         ssh_keygen_cmd = 'ssh-keygen'
         if which(ssh_keygen_cmd) is None:
             raise ValueError('"ssh-keygen" command not found.')
