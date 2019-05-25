@@ -10,7 +10,7 @@ write_files:
       # prepare the instance and run Docker container
       /tmp/spotty/instance/scripts/prepare_instance.sh \
         && /tmp/spotty/instance/scripts/mount_volumes.sh \
-        && /tmp/spotty/instance/scripts/sync_project.sh {{SYNC_ARGS}} \
+        && /tmp/spotty/instance/scripts/sync_project.sh {{{SYNC_ARGS}}} \
         && /tmp/spotty/instance/scripts/run_container.sh
 
       # send signal that the Docker container is ready or failed

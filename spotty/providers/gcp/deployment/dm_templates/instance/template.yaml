@@ -11,6 +11,9 @@ resources:
       serviceAccounts:
         - email: {{SERVICE_ACCOUNT_EMAIL}}
           scopes: ['https://www.googleapis.com/auth/cloud-platform']
+      tags:
+        items:
+          - {{MACHINE_NAME}}
       disks:
         - deviceName: boot
           type: PERSISTENT
@@ -45,6 +48,18 @@ resources:
           - key: 'user-data'
             value: |
               {{{STARTUP_SCRIPT}}}
+
+  - name: {{MACHINE_NAME}}-firewall-rule
+    type: compute.v1.firewall
+    properties:
+      network: global/networks/default
+      sourceRanges:
+        - 0.0.0.0/0
+      targetTags:
+        - {{MACHINE_NAME}}
+      allowed:
+        - IPProtocol: tcp
+          ports: [{{PORTS}}]
 
   - name: {{MACHINE_NAME}}-docker-status
     type: runtimeconfig.v1beta1.config

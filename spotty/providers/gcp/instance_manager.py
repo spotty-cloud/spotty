@@ -118,4 +118,4 @@ class InstanceManager(AbstractInstanceManager):
 
     @property
     def ssh_key_path(self):
-        raise NotImplementedError
+        return self.instance_deployment.ssh_key.private_key_file

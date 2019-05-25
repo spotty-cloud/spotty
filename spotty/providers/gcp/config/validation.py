@@ -9,7 +9,6 @@ def validate_instance_parameters(params: dict):
     from spotty.providers.gcp.config.instance_config import VOLUME_TYPE_DISK
 
     instance_parameters = {
-        'projectId': str,  # todo: remove it, project ID is a part of a service account credentials
         'zone': And(str, Regex(r'^[a-z0-9-]+$')),
         'machineType': And(str, And(is_valid_machine_type, error='Invalid instance type.')),
         Optional('gpu', default=None): {

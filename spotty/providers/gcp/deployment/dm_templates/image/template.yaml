@@ -3,7 +3,7 @@ resources:
     type: compute.v1.instance
     properties:
       zone: {{ZONE}}
-      machineType: https://www.googleapis.com/compute/v1/projects/{{GCP_PROJECT_ID}}/zones/{{ZONE}}/machineTypes/{{MACHINE_TYPE}}
+      machineType: zones/{{ZONE}}/machineTypes/{{MACHINE_TYPE}}
       scheduling:
         preemptible: {{PREEMPTIBLE}}
       serviceAccounts:
@@ -17,12 +17,12 @@ resources:
           initializeParams:
             sourceImage: {{SOURCE_IMAGE}}
       networkInterfaces:
-        - network: https://www.googleapis.com/compute/v1/projects/{{GCP_PROJECT_ID}}/global/networks/default
+        - network: global/networks/default
           accessConfigs:
             - name: External NAT
               type: ONE_TO_ONE_NAT
       guestAccelerators:
-        - acceleratorType: projects/{{GCP_PROJECT_ID}}/zones/{{ZONE}}/acceleratorTypes/{{GPU_TYPE}}
+        - acceleratorType: zones/{{ZONE}}/acceleratorTypes/{{GPU_TYPE}}
           acceleratorCount: {{GPU_COUNT}}
       metadata:
         items:

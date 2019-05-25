@@ -24,7 +24,6 @@ def prepare_image_template(instance_config: InstanceConfig, deployment_name: str
     # render the template
     parameters = {
         'SERVICE_ACCOUNT_EMAIL': 'spotty@spotty-221422.iam.gserviceaccount.com',
-        'GCP_PROJECT_ID': instance_config.project_id,
         'ZONE': instance_config.zone,
         'MACHINE_TYPE': instance_config.machine_type,
         'SOURCE_IMAGE': source_image_link,

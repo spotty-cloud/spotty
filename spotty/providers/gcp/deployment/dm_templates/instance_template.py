@@ -14,7 +14,7 @@ from spotty.providers.gcp.helpers.sync import BUCKET_SYNC_DIR, get_instance_sync
 
 def prepare_instance_template(instance_config: InstanceConfig, container: ContainerDeployment, sync_filters: list,
                               volumes: List[AbstractInstanceVolume], machine_name: str, bucket_name: str,
-                              public_key_value: str, output: AbstractOutputWriter):
+                              public_key_value: str, service_account_email: str, output: AbstractOutputWriter):
     """Prepares deployment template to run an instance."""
 
     # read and update the template
@@ -51,8 +51,7 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
 
     # render the template
     parameters = {
-        'SERVICE_ACCOUNT_EMAIL': 'spotty@spotty-221422.iam.gserviceaccount.com',
-        'GCP_PROJECT_ID': instance_config.project_id,
+        'SERVICE_ACCOUNT_EMAIL': service_account_email,
         'ZONE': instance_config.zone,
         'MACHINE_TYPE': instance_config.machine_type,
         'SOURCE_IMAGE': instance_config.image_name,
@@ -63,6 +62,7 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
         'GPU_COUNT': instance_config.gpu['count'] if instance_config.gpu else 0,
         'DISK_ATTACHMENTS': disk_attachments,
         'PUB_KEY_VALUE': public_key_value,
+        'PORTS': ', '.join([str(port) for port in set(container.config.ports + [22])]),
     }
     template = chevron.render(template, parameters)
 

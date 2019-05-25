@@ -28,7 +28,7 @@ class InstanceDeployment(AbstractGcpDeployment):
 
     @property
     def stack(self) -> InstanceStackResource:
-        return InstanceStackResource(self.machine_name, self.instance_config.project_id, self.instance_config.zone)
+        return InstanceStackResource(self.machine_name, self._credentials.project_id, self.instance_config.zone)
 
     def get_instance(self):
         return Instance.get_by_name(self._ce, self.machine_name)
@@ -46,7 +46,7 @@ class InstanceDeployment(AbstractGcpDeployment):
 
         # create disks
         if volumes:
-            output.write('Creating disks...')
+            output.write('\nCreating disks...')
             with output.prefix('  '):
                 self._create_disks(volumes, output=output, dry_run=dry_run)
             output.write('')
@@ -57,7 +57,8 @@ class InstanceDeployment(AbstractGcpDeployment):
         public_key_value = self.ssh_key.get_public_key_value()
         with output.prefix('  '):
             template = prepare_instance_template(self.instance_config, container, project_config.sync_filters, volumes,
-                                                 self.machine_name, bucket_name, public_key_value, output)
+                                                 self.machine_name, bucket_name, public_key_value,
+                                                 self._credentials.service_account_email, output)
         output.write('')
 
         # print information about the volumes
@@ -120,11 +121,11 @@ class InstanceDeployment(AbstractGcpDeployment):
                         if volume.size < 10:
                             raise ValueError('Size of a disk cannot be less than 10GB.')
 
-                        output.write('- disk "%s" will be created' % volume.disk_name)
-
                         disks_to_create.append((volume.disk_name, volume.size, None))
 
         # create disks
-        if not dry_run:
-            for disk_name, disk_size, snapshot_link in disks_to_create:
+        for disk_name, disk_size, snapshot_link in disks_to_create:
+            if not dry_run:
                 self._ce.create_disk(disk_name, disk_size, snapshot_link)
+
+            output.write('- disk "%s" was created' % disk_name)
