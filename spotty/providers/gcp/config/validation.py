@@ -1,8 +1,6 @@
 from schema import Schema, Optional, And, Regex, Or, Use
 from spotty.config.validation import validate_config, get_instance_parameters_schema
-
-DEFAULT_IMAGE_NAME = 'spotty'
-IMAGE_NAME_REGEX = r'^[\w-]+$'
+from spotty.providers.gcp.config.image_url import IMAGE_URL_REGEX
 
 
 def validate_instance_parameters(params: dict):
@@ -16,7 +14,8 @@ def validate_instance_parameters(params: dict):
             Optional('count', default=1): int,
         },
         Optional('onDemandInstance', default=False): bool,
-        Optional('imageName', default=DEFAULT_IMAGE_NAME): And(str, len, Regex(IMAGE_NAME_REGEX)),
+        Optional('imageName', default=None): And(str, len, Regex(r'^[\w-]+$')),
+        Optional('imageUrl', default=None): And(str, len, Regex(IMAGE_URL_REGEX)),
         Optional('bootDiskSize', default=0): And(Or(int, str), Use(str),
                                                  Regex(r'^\d+$', error='Incorrect value for "bootDiskSize".'),
                                                  Use(int),
@@ -28,7 +27,9 @@ def validate_instance_parameters(params: dict):
 
     instance_checks = [
         And(lambda x: not x['gpu'] or is_gpu_machine_type(x['machineType']),
-            error='GPU cannot be attached to shared-core or memory-optimized machine types'),
+            error='GPU cannot be attached to shared-core or memory-optimized machine types.'),
+        And(lambda x: not (x['imageName'] and x['imageUrl']),
+            error='"imageName" and "imageUrl" parameters cannot be used together.'),
     ]
 
     schema = get_instance_parameters_schema(instance_parameters, VOLUME_TYPE_DISK, instance_checks, [])

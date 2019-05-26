@@ -74,8 +74,12 @@ class Instance(object):
         return self._data['name']
 
     @property
-    def public_ip_address(self):
-        return self._data['networkInterfaces'][0]['accessConfigs'][0]['natIP']
+    def is_running(self) -> bool:
+        return self.status == 'RUNNING'
+
+    @property
+    def public_ip_address(self) -> str:
+        return self._data['networkInterfaces'][0]['accessConfigs'][0].get('natIP')
 
     @property
     def status(self) -> str:

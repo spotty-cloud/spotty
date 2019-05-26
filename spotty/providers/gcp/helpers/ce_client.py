@@ -10,14 +10,28 @@ class CEClient(object):
         self._zone = zone
         self._client = googleapiclient.discovery.build('compute', 'v1', cache_discovery=False)
 
-    def list_images(self, image_name=None):
+    def list_images(self, image_name: str = None, project_id: str = None):
+        """Returns a list of images that satisfy the name.
+            This method is used instead of the "get" because it doesn't raise an exception if an image doesn't exist.
+        """
+        if not project_id:
+            project_id = self._project_id
+
         filter_str = ('name=%s' % image_name) if image_name else None
-        res = self._client.images().list(project=self._project_id, filter=filter_str).execute()
+        res = self._client.images().list(project=project_id, filter=filter_str).execute()
 
         if not res.get('items'):
             return []
 
         return res['items']
+
+    def get_image_from_family(self, family_name: str, project_id: str = None):
+        if not project_id:
+            project_id = self._project_id
+
+        res = self._client.images().getFromFamily(project=project_id, family=family_name).execute()
+
+        return res
 
     def list_instances(self, machine_name=None):
         filter_str = ('name=%s' % machine_name) if machine_name else None

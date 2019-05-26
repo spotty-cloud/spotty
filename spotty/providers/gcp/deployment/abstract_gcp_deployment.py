@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from spotty.providers.gcp.config.instance_config import InstanceConfig
 from spotty.providers.gcp.helpers.gcp_credentials import GcpCredentials
 from spotty.providers.gcp.helpers.ssh_key import SshKey
-from spotty.providers.gcp.gcp_resources.image import Image
 from spotty.providers.gcp.helpers.ce_client import CEClient
 
 
@@ -27,6 +26,3 @@ class AbstractGcpDeployment(ABC):
     @property
     def ssh_key(self) -> SshKey:
         return SshKey(self._project_name, self.instance_config.zone, self.instance_config.provider_name)
-
-    def get_image(self) -> Image:
-        return Image.get_by_name(self._ce, self.instance_config.image_name)

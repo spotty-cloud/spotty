@@ -13,8 +13,9 @@ from spotty.providers.gcp.helpers.sync import BUCKET_SYNC_DIR, get_instance_sync
 
 
 def prepare_instance_template(instance_config: InstanceConfig, container: ContainerDeployment, sync_filters: list,
-                              volumes: List[AbstractInstanceVolume], machine_name: str, bucket_name: str,
-                              public_key_value: str, service_account_email: str, output: AbstractOutputWriter):
+                              volumes: List[AbstractInstanceVolume], machine_name: str, image_link: str,
+                              bucket_name: str, public_key_value: str, service_account_email: str,
+                              output: AbstractOutputWriter):
     """Prepares deployment template to run an instance."""
 
     # read and update the template
@@ -54,7 +55,7 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
         'SERVICE_ACCOUNT_EMAIL': service_account_email,
         'ZONE': instance_config.zone,
         'MACHINE_TYPE': instance_config.machine_type,
-        'SOURCE_IMAGE': instance_config.image_name,
+        'SOURCE_IMAGE': image_link,
         'STARTUP_SCRIPT': startup_script,
         'MACHINE_NAME': machine_name,
         'PREEMPTIBLE': 'false' if instance_config.on_demand else 'true',
@@ -65,6 +66,12 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
         'PORTS': ', '.join([str(port) for port in set(container.config.ports + [22])]),
     }
     template = chevron.render(template, parameters)
+
+    output.write('- image URL: ' + '/'.join(image_link.split('/')[-5:]))
+    output.write('- zone: ' + instance_config.zone)
+    output.write('- on-demand VM' if instance_config.on_demand else '- preemptible VM')
+    output.write(('- GPUs: %d x %s' % (instance_config.gpu['count'], instance_config.gpu['type']))
+                 if instance_config.gpu else '- no GPUs')
 
     return template
 

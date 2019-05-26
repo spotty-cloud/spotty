@@ -18,11 +18,8 @@ class InstanceStackResource(object):
     def name(self):
         return self._stack_name
 
-    def create_or_update_stack(self, template: str, output: AbstractOutputWriter):
+    def create_stack(self, template: str, output: AbstractOutputWriter):
         """Deploys a Deployment Manager template."""
-
-        # delete the stack if it exists
-        self.delete_stack(output)
 
         # create stack
         self._dm.deploy(self._stack_name, template)

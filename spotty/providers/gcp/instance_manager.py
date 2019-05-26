@@ -4,7 +4,6 @@ from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 from spotty.providers.gcp.config.instance_config import InstanceConfig
 from spotty.providers.gcp.deployment.image_deployment import ImageDeployment
 from spotty.providers.gcp.deployment.instance_deployment import InstanceDeployment
-from spotty.providers.gcp.errors.image_not_found import ImageNotFoundError
 from spotty.providers.gcp.helpers.sync import sync_local_to_bucket, sync_bucket_to_instance
 from spotty.utils import render_table
 
@@ -38,7 +37,7 @@ class InstanceManager(AbstractInstanceManager):
         if not dry_run:
             # check if the instance is already running
             instance = deployment.get_instance()
-            if instance:
+            if instance and instance.is_running:
                 print('Instance is already running. Are you sure you want to restart it?')
                 res = input('Type "y" to confirm: ')
                 if res != 'y':
@@ -46,18 +45,6 @@ class InstanceManager(AbstractInstanceManager):
 
                 # terminating the instance without applying deletion policies
                 self.instance_deployment.stack.delete_stack(output)
-
-            # check that the AMI exists
-            if not deployment.get_image():
-                print('The image "%s" doesn\'t exist. Do you want to create it?'
-                      % self.instance_config.image_name)
-                res = input('Type "y" to confirm: ')
-                if res == 'y':
-                    # create an image
-                    self.image_deployment.deploy(False, output)
-                    output.write()
-                else:
-                    raise ImageNotFoundError(self.instance_config.image_name)
 
         # deploy the instance
         deployment.deploy(self.project_config, output, dry_run=dry_run)
@@ -100,14 +87,14 @@ class InstanceManager(AbstractInstanceManager):
             table.append(('Public IP Address', instance.public_ip_address))
 
         table.append(('Launch Time', instance.creation_timestamp.today().strftime('%Y-%m-%d %H:%M:%S')))
-        table.append(('Purchasing Option', 'Preemtible' if instance.is_preemtible else 'On-demand'))
+        table.append(('Purchasing Option', 'Preemtible VM' if instance.is_preemtible else 'On-Demand VM'))
 
         return render_table(table)
 
     def get_public_ip_address(self) -> str:
         """Returns a public IP address of the running instance."""
         instance = self.instance_deployment.get_instance()
-        if not instance:
+        if not instance or not instance.is_running:
             raise InstanceNotRunningError(self.instance_config.name)
 
         return instance.public_ip_address

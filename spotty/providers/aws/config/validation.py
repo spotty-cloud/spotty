@@ -35,9 +35,9 @@ def validate_instance_parameters(params: dict):
 
     instance_checks = [
         And(lambda x: not (x['onDemandInstance'] and x['maxPrice']),
-            error='"maxPrice" cannot be specified for on-demand instances'),
+            error='"maxPrice" cannot be specified for on-demand instances.'),
         And(lambda x: not (x['amiName'] and x['amiId']),
-            error='"amiName" and "amiId" parameters cannot be used together'),
+            error='"amiName" and "amiId" parameters cannot be used together.'),
     ]
 
     schema = get_instance_parameters_schema(instance_parameters, VOLUME_TYPE_EBS, instance_checks, volumes_checks)

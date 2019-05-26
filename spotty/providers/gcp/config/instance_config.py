@@ -2,6 +2,7 @@ from spotty.config.abstract_instance_config import AbstractInstanceConfig
 from spotty.providers.gcp.config.validation import validate_instance_parameters
 
 VOLUME_TYPE_DISK = 'disk'
+DEFAULT_IMAGE_NAME = 'spotty'
 
 
 class InstanceConfig(AbstractInstanceConfig):
@@ -37,4 +38,12 @@ class InstanceConfig(AbstractInstanceConfig):
 
     @property
     def image_name(self) -> str:
-        return self._params['imageName']
+        return self._params['imageName'] if self._params['imageName'] else DEFAULT_IMAGE_NAME
+
+    @property
+    def has_image_name(self) -> bool:
+        return bool(self._params['imageName'])
+
+    @property
+    def image_url(self) -> str:
+        return self._params['imageUrl']

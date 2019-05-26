@@ -1,3 +1,4 @@
+from spotty.providers.gcp.config.image_url import ImageUrl
 from spotty.providers.gcp.helpers.ce_client import CEClient
 
 
@@ -27,13 +28,27 @@ class Image(object):
         self._data = data
 
     @staticmethod
-    def get_by_name(compute: CEClient, image_name: str):
+    def get_by_name(ce: CEClient, image_name: str):
         """Returns an image by its name."""
-        res = compute.list_images(image_name)
+        res = ce.list_images(image_name)
         if not res:
             return None
 
         return Image(res[0])
+
+    @staticmethod
+    def get_by_url(ce: CEClient, image_url: str):
+        image_url = ImageUrl(image_url)
+        if image_url.is_family:
+            image_data = ce.get_image_from_family(family_name=image_url.name, project_id=image_url.project_id)
+        else:
+            res = ce.list_images(image_name=image_url.name, project_id=image_url.project_id)
+            image_data = res[0] if res else None
+
+        if not image_data:
+            return None
+
+        return Image(image_data)
 
     @property
     def image_id(self) -> str:
@@ -48,7 +63,7 @@ class Image(object):
         return self._data['diskSizeGb']
 
     @property
-    def self_link(self):
+    def self_link(self) -> str:
         return self._data['selfLink']
 
     @property

@@ -9,5 +9,5 @@ class GcpCommand(AbstractProviderCommand):
     description = 'GCP commands'
     commands = [
         CreateImageCommand,
-        DeleteImageCommand,
+        # DeleteImageCommand,
     ]

@@ -20,7 +20,7 @@ resources:
           boot: true
           autoDelete: true
           initializeParams:
-            sourceImage: global/images/{{SOURCE_IMAGE}}
+            sourceImage: {{SOURCE_IMAGE}}
 
         {{#DISK_ATTACHMENTS}}
         - source: {{DISK_LINK}}
