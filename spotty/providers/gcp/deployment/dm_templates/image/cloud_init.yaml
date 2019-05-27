@@ -1,9 +1,10 @@
 #cloud-config
 
 write_files:
-  - path: /tmp/scripts/init.sh
+  - path: /run/spotty-image/scripts/init.sh
     permissions: 0755
     owner: root
+    group: root
     content: |
       #!/bin/bash -x
 
@@ -17,37 +18,44 @@ write_files:
       curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
       apt-get update && sudo apt-get install google-cloud-sdk
 
-      # install NVIDIA Docker
-      /tmp/scripts/install_docker.sh
+      # install NVIDIA driver and NVIDIA Docker
+      /bin/bash -xe /run/spotty-image/scripts/prepare_instance.sh
 
-      # send signal that the instance is ready
-      DOCKER_EXIT_CODE=$?
-      if [[ $DOCKER_EXIT_CODE -eq 0 ]] ; then
-        gcloud beta runtime-config configs variables set /success/1 1 --config-name {{DEPLOYMENT_NAME}}-docker-status --is-text
+      if [[ $? -eq 0 ]] ; then
+        # send a signal that the instance is ready
+        gcloud beta runtime-config configs variables set /success/1 1 --config-name {{MACHINE_NAME}}-docker-status --is-text
+
+        {{#DEBUG_MODE}}
+        # debug mode: send a success signal without creating an image
+        gcloud beta runtime-config configs variables set /success/1 0 --config-name {{MACHINE_NAME}}-image-status --is-text
+        {{/DEBUG_MODE}}
+        {{^DEBUG_MODE}}
+        # create an image
+        IMAGE_ID=`/bin/bash -xe /run/spotty-image/scripts/create_image.sh`
+
+        if [[ $? -eq 0 ]] ; then
+          # send a success signal with the image ID (it will be used for the deployment output)
+          gcloud beta runtime-config configs variables set /success/1 $IMAGE_ID --config-name {{MACHINE_NAME}}-image-status --is-text
+        else
+          # something failed during image creation, send a failure signal
+          gcloud beta runtime-config configs variables set /failure/1 1 --config-name {{MACHINE_NAME}}-image-status --is-text
+        fi
+        {{/DEBUG_MODE}}
       else
-        gcloud beta runtime-config configs variables set /failure/1 1 --config-name {{DEPLOYMENT_NAME}}-docker-status --is-text
-        exit $DOCKER_EXIT_CODE
+        # something failed during installation, send a failure signal
+        gcloud beta runtime-config configs variables set /failure/1 1 --config-name {{MACHINE_NAME}}-docker-status --is-text
       fi
 
-      # create the image
-      IMAGE_ID=`/tmp/scripts/create_image.sh`
-
-      # send signal that the image is created
-      IMAGE_EXIT_CODE=$?
-      if [[ $IMAGE_EXIT_CODE -eq 0 ]] ; then
-        gcloud beta runtime-config configs variables set /success/1 $IMAGE_ID --config-name {{DEPLOYMENT_NAME}}-image-status --is-text
-      else
-        gcloud beta runtime-config configs variables set /failure/1 1 --config-name {{DEPLOYMENT_NAME}}-image-status --is-text
-        exit $IMAGE_EXIT_CODE
-      fi
+      # delete the instace
+      gcloud compute instances delete {{MACHINE_NAME}} --zone {{ZONE}} -q
 
       # shutdown the instance
-      # TODO: delete instace trough CLI
       shutdown -h now
 
-  - path: /tmp/scripts/install_docker.sh
+  - path: /run/spotty-image/scripts/prepare_instance.sh
     permissions: 0755
     owner: root
+    group: root
     content: |
       #!/bin/bash -xe
 
@@ -65,14 +73,17 @@ write_files:
          $(lsb_release -cs) \
          stable"
       apt-get update
-      apt-get install -y docker-ce
+      apt-get install -y \
+        docker-ce=5:{{DOCKER_CE_VERSION}}~3-0~ubuntu-xenial \
+        docker-ce-cli=5:{{DOCKER_CE_VERSION}}~3-0~ubuntu-xenial \
+        containerd.io
 
       # install NVIDIA driver
       apt-key adv --fetch-keys  http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
       bash -c 'echo "deb http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64 /" > /etc/apt/sources.list.d/cuda.list'
       mkdir /usr/lib/nvidia  # a fix to install the driver, see: https://devtalk.nvidia.com/default/topic/1032456/linux/nvidia-387-26-for-ubuntu-16-04-package-broken-/
       apt-get update
-      apt-get install -y nvidia-410
+      apt-get install -y nvidia-{{NVIDIA_DRIVER_VERSION}}
 
       # install nvidia-docker2
       curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | apt-key add -
@@ -80,7 +91,9 @@ write_files:
       curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
         tee /etc/apt/sources.list.d/nvidia-docker.list
       apt-get update
-      apt-get install -y nvidia-docker2
+      apt-get install -y \
+        nvidia-container-runtime=2.0.0+docker{{DOCKER_CE_VERSION}}-1 \
+        nvidia-docker2={{NVIDIA_DOCKER_VERSION}}+docker{{DOCKER_CE_VERSION}}-1
 
       # reload the Docker daemon configuration
       pkill -SIGHUP dockerd
@@ -89,9 +102,10 @@ write_files:
       docker run --runtime=nvidia --rm nvidia/cuda:10.0-base-ubuntu16.04 nvidia-smi
       docker rmi $(docker images -q)
 
-  - path: /tmp/scripts/create_image.sh
+  - path: /run/spotty-image/scripts/create_image.sh
     permissions: 0755
     owner: root
+    group: root
     content: |
       #!/bin/bash -xe
 
@@ -102,9 +116,14 @@ write_files:
       sync
 
       # create AMI
-      DISK_NAME=`curl "http://metadata.google.internal/computeMetadata/v1/instance/disks/0/device-name" -H "Metadata-Flavor: Google"`
-      IMAGE_JSON=`gcloud compute images create {{IMAGE_NAME}} --force --source-disk $DISK_NAME --source-disk-zone {{ZONE}} --format json`
-      echo $IMAGE_JSON | jq -r '.id'
+      IMAGE_JSON=`gcloud compute images create {{IMAGE_NAME}} \
+          --force \
+          --source-disk {{MACHINE_NAME}} \
+          --source-disk-zone {{ZONE}} \
+          {{#IMAGE_FAMILY}}--family {{IMAGE_FAMILY}} {{/IMAGE_FAMILY}}\
+          --description "Spotty Image v{{STACK_VERSION}}: Ubuntu 16.04 LTS, NVIDIA driver {{NVIDIA_DRIVER_VERSION}}, Docker CE {{DOCKER_CE_VERSION}}, NVIDIA Docker {{NVIDIA_DOCKER_VERSION}}." \
+          --format json`
+      echo $IMAGE_JSON | jq -r '.[0].id'
 
 runcmd:
-  - /tmp/scripts/init.sh
+  - /bin/bash -x /run/spotty-image/scripts/init.sh

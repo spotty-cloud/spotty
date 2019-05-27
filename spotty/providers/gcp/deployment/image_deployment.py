@@ -1,86 +1,64 @@
-from collections import OrderedDict
-
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.gcp.config.instance_config import InstanceConfig
+from spotty.providers.gcp.deployment.abstract_gcp_deployment import AbstractGcpDeployment
+from spotty.providers.gcp.deployment.project_resources.image_stack import ImageStack
 from spotty.providers.gcp.gcp_resources.image import Image
-from spotty.providers.gcp.helpers.ce_client import CEClient
-from spotty.providers.gcp.helpers.deployment import wait_resources
-from spotty.providers.gcp.helpers.dm_client import DMClient
+from spotty.providers.gcp.gcp_resources.instance import Instance
 
 
-class ImageDeployment(object):
+class ImageDeployment(AbstractGcpDeployment):
 
-    def __init__(self, instance_config: InstanceConfig):
-        self._instance_config = instance_config
-        self._compute_client = CEClient(instance_config.project_id, instance_config.zone)
-        self._dm_client = DMClient(instance_config.project_id, instance_config.zone)
+    # version of the image stack
+    VERSION = '1.0.0'
 
     @property
-    def compute_client(self) -> CEClient:
-        return self._compute_client
+    def machine_name(self) -> str:
+        return 'spotty-image-%s' % self.instance_config.image_name.lower()
 
     @property
-    def instance_config(self) -> InstanceConfig:
-        return self._instance_config
+    def stack(self):
+        return ImageStack(self.instance_config.image_name, self._credentials.project_id, self.instance_config.zone)
 
-    def get_image(self) -> Image:
-        return Image.get_by_name(self._compute_client, self.instance_config.image_name)
+    def deploy(self, image_family: str, debug_mode: bool, output: AbstractOutputWriter):
+        # check that the "amiId" parameter is not set
+        if self.instance_config.image_url:
+            raise ValueError('The "imageUrl" parameter cannot be used when creating an image.')
 
-    def deploy(self, key_name, keep_instance: bool, output: AbstractOutputWriter, dry_run=False):
-        # check that it's a GPU instance type
+        # check that it's an instance with GPU
         if not self.instance_config.gpu:
             raise ValueError('Instance with GPU is required to create an image with NVIDIA Docker')
 
         # check GPU type
-        accelerator_types = self._compute_client.get_accelerator_types()
+        accelerator_types = self._ce.get_accelerator_types()
         gpu_type = self.instance_config.gpu['type']
         if gpu_type not in accelerator_types:
             raise ValueError('GPU type "%s" is not supported in the "%s" zone.\nAvailable GPU types are: %s.' %
                              (gpu_type, self.instance_config.zone, ', '.join(accelerator_types.keys())))
+
         # TODO: gpu count check
 
-        if keep_instance and not key_name:
-            output.write('Key Pair name is not specified, you will not be able to connect to the instance.')
-
-        # # check that an image with this name doesn't exist yet
-        # image = self.get_image()
-        # if image:
-        #     raise ValueError('Image with the name "%s" already exists.' % image.name)
-
-        # create stack
-        deployment_name = 'spotty-image-%s' % self.instance_config.image_name.lower()
-        res = self._dm_client.get(deployment_name)
-        if res:
-            raise ValueError('Deployment "%s" already exists.' % deployment_name)
+        # check that an image with this name doesn't exist yet
+        image = Image.get_by_name(self._ce, self.instance_config.image_name)
+        if image:
+            raise ValueError('Image with the name "%s" already exists.' % image.name)
 
         # get the latest Ubuntu 16.04 image
-        compute = self.compute_client.compute
-        image_data = compute.images().getFromFamily(project='ubuntu-os-cloud', family='ubuntu-1604-lts').execute()
-        image = Image(image_data)
+        ubuntu_family_name = 'projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts'
+        image = Image.get_by_url(self._ce, ubuntu_family_name)
 
         # prepare deployment template
         from spotty.providers.gcp.deployment.dm_templates.image_template import prepare_image_template
-        template = prepare_image_template(self.instance_config, deployment_name, image.self_link)
+        template = prepare_image_template(self.instance_config, self.machine_name, image.self_link, image_family,
+                                          self._credentials.service_account_email, self.VERSION, debug_mode=debug_mode)
 
-        # TODO: OnFailure='DO_NOTHING' if keep_instance else 'DELETE',
-        self._dm_client.deploy(deployment_name, template, dry_run)
+        # create stack
+        self.stack.create_stack(template, self.machine_name, debug_mode, output)
 
-        output.write('Waiting for the image to be created...')
+    def get_ip_address(self):
+        instance = Instance.get_by_name(self._ce, self.machine_name)
+        if not instance or not instance.is_running:
+            return None
 
-        deployment_name = 'spotty-image-%s' % self.instance_config.image_name.lower() # TMP
-        resource_messages = OrderedDict([
-            ('%s-instance' % deployment_name, 'launching the instance'),
-            ('%s-docker-waiter' % deployment_name, 'installing NVIDIA Docker'),
-            ('%s-image-waiter' % deployment_name, 'creating the image and terminating the instance'),
-        ])
+        if self._instance_config.local_ssh_port:
+            return '127.0.0.1'
 
-        # wait for the stack to be created
-        with output.prefix('  '):
-            wait_resources(self._dm_client, deployment_name, resource_messages, output)
-
-        output.write('\n'
-                     '--------------------------------------------------\n'
-                     'Image "%s" was successfully created.\n'
-                     'Use the "spotty start" command to run an instance.\n'
-                     '--------------------------------------------------'
-                     % self.instance_config.image_name)
+        return instance.public_ip_address

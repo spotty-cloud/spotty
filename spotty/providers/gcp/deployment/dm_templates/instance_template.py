@@ -2,14 +2,13 @@ import os
 from subprocess import list2cmdline
 from typing import List
 import chevron
-import pystache
-import re
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.providers.gcp.config.instance_config import InstanceConfig
 from spotty.providers.gcp.deployment.project_resources.disk_volume import DiskVolume
 from spotty.providers.gcp.helpers.sync import BUCKET_SYNC_DIR, get_instance_sync_arguments
+from spotty.utils import fix_indents_for_lines
 
 
 def prepare_instance_template(instance_config: InstanceConfig, container: ContainerDeployment, sync_filters: list,
@@ -30,7 +29,7 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
 
     # render startup script
     startup_script = open(os.path.join(os.path.dirname(__file__), 'instance', 'cloud_init.yaml'), 'r').read()
-    startup_script = pystache.render(startup_script, {
+    startup_script = chevron.render(startup_script, {
         'MACHINE_NAME': machine_name,
         'ZONE': instance_config.zone,
         'DISK_DEVICE_NAMES': ('"%s"' % '" "'.join(disk_device_names)) if disk_device_names else '',
@@ -47,16 +46,13 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
         'DOCKER_WORKING_DIR': container.config.working_dir,
     })
 
-    indent_size = len(re.search('( *){{{STARTUP_SCRIPT}}}', template).group(1))
-    startup_script = startup_script.replace('\n', '\n' + ' ' * indent_size)  # fix indent for the YAML file
-
     # render the template
     parameters = {
         'SERVICE_ACCOUNT_EMAIL': service_account_email,
         'ZONE': instance_config.zone,
         'MACHINE_TYPE': instance_config.machine_type,
         'SOURCE_IMAGE': image_link,
-        'STARTUP_SCRIPT': startup_script,
+        'STARTUP_SCRIPT': fix_indents_for_lines(startup_script, template, '{{{STARTUP_SCRIPT}}}'),
         'MACHINE_NAME': machine_name,
         'PREEMPTIBLE': 'false' if instance_config.on_demand else 'true',
         'GPU_TYPE': instance_config.gpu['type'] if instance_config.gpu else '',

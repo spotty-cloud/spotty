@@ -11,7 +11,7 @@ class DMClient(object):
         self._zone = zone
         self._client = googleapiclient.discovery.build('deploymentmanager', 'v2', cache_discovery=False)
 
-    def get(self, deployment_name):
+    def get(self, deployment_name: str):
         try:
             res = self._client.deployments().get(project=self._project_id, deployment=deployment_name).execute()
         except HttpError as e:
@@ -22,7 +22,7 @@ class DMClient(object):
 
         return res
 
-    def deploy(self, deployment_name, template, dry_run=False):
+    def deploy(self, deployment_name: str, template: str, dry_run: bool = False):
         res = self._client.deployments().insert(project=self._project_id, body={
             'name': deployment_name,
             'target': {
@@ -34,11 +34,11 @@ class DMClient(object):
 
         return res
 
-    def delete(self, deployment_name):
+    def delete(self, deployment_name: str):
         res = self._client.deployments().delete(project=self._project_id, deployment=deployment_name).execute()
         return res
 
-    def get_resource(self, deployment_name, resource_name) -> dict:
+    def get_resource(self, deployment_name: str, resource_name: str) -> dict:
         try:
             res = self._client.resources().get(project=self._project_id,
                                                deployment=deployment_name,

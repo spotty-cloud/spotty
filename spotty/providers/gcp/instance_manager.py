@@ -18,7 +18,7 @@ class InstanceManager(AbstractInstanceManager):
     @property
     def image_deployment(self) -> ImageDeployment:
         """Returns an image deployment manager."""
-        raise NotImplementedError
+        return ImageDeployment(self.project_config.project_name, self.instance_config)
 
     def _get_instance_config(self, config: dict) -> InstanceConfig:
         return InstanceConfig(config)

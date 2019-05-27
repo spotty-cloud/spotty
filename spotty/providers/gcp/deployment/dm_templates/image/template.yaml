@@ -1,5 +1,5 @@
 resources:
-  - name: {{DEPLOYMENT_NAME}}-instance
+  - name: {{MACHINE_NAME}}
     type: compute.v1.instance
     properties:
       zone: {{ZONE}}
@@ -15,6 +15,7 @@ resources:
           boot: true
           autoDelete: true
           initializeParams:
+            diskName: {{MACHINE_NAME}}
             sourceImage: {{SOURCE_IMAGE}}
       networkInterfaces:
         - network: global/networks/default
@@ -30,26 +31,26 @@ resources:
             value: |
               {{{STARTUP_SCRIPT}}}
 
-  - name: {{DEPLOYMENT_NAME}}-docker-status
+  - name: {{MACHINE_NAME}}-docker-status
     type: runtimeconfig.v1beta1.config
     properties:
-      config: {{DEPLOYMENT_NAME}}-docker-status
+      config: {{MACHINE_NAME}}-docker-status
       description: Docker status
 
-  - name: {{DEPLOYMENT_NAME}}-image-status
+  - name: {{MACHINE_NAME}}-image-status
     type: runtimeconfig.v1beta1.config
     properties:
-      config: {{DEPLOYMENT_NAME}}-image-status
+      config: {{MACHINE_NAME}}-image-status
       description: Image status
 
-  - name: {{DEPLOYMENT_NAME}}-docker-waiter
+  - name: {{MACHINE_NAME}}-docker-waiter
     type: runtimeconfig.v1beta1.waiter
     metadata:
       dependsOn:
-        - {{DEPLOYMENT_NAME}}-instance
+        - {{MACHINE_NAME}}
     properties:
-      parent: $(ref.{{DEPLOYMENT_NAME}}-docker-status.name)
-      waiter: {{DEPLOYMENT_NAME}}-docker-waiter
+      parent: $(ref.{{MACHINE_NAME}}-docker-status.name)
+      waiter: {{MACHINE_NAME}}-docker-waiter
       timeout: 1800s
       success:
         cardinality:
@@ -60,14 +61,14 @@ resources:
           path: /failure
           number: 1
 
-  - name: {{DEPLOYMENT_NAME}}-image-waiter
+  - name: {{MACHINE_NAME}}-image-waiter
     type: runtimeconfig.v1beta1.waiter
     metadata:
       dependsOn:
-        - {{DEPLOYMENT_NAME}}-docker-waiter
+        - {{MACHINE_NAME}}-docker-waiter
     properties:
-      parent: $(ref.{{DEPLOYMENT_NAME}}-image-status.name)
-      waiter: {{DEPLOYMENT_NAME}}-image-waiter
+      parent: $(ref.{{MACHINE_NAME}}-image-status.name)
+      waiter: {{MACHINE_NAME}}-image-waiter
       timeout: 1200s
       success:
         cardinality:
@@ -78,15 +79,23 @@ resources:
           path: /failure
           number: 1
 
-  - name: {{DEPLOYMENT_NAME}}-image-status-success
+  - name: {{MACHINE_NAME}}-image-status-success
     type: runtimeconfig.v1beta1.variable
     metadata:
       dependsOn:
-        - {{DEPLOYMENT_NAME}}-image-waiter
+        - {{MACHINE_NAME}}-image-waiter
     properties:
-      parent: $(ref.{{DEPLOYMENT_NAME}}-image-status.name)
+      parent: $(ref.{{MACHINE_NAME}}-image-status.name)
       variable: /success/1
+
+  - name: {{IMAGE_NAME}}
+    type: compute.v1.image
+    metadata:
+      dependsOn:
+        - {{MACHINE_NAME}}-image-waiter
+    properties:
+      sourceImage: global/images/{{IMAGE_NAME}}
 
 outputs:
   - name: imageId
-    value: $(ref.{{DEPLOYMENT_NAME}}-image-status-success.text)
+    value: $(ref.{{MACHINE_NAME}}-image-status-success.text)
