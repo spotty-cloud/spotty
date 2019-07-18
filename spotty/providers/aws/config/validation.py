@@ -110,7 +110,7 @@ def is_valid_instance_type(instance_type: str):
         'g3s.xlarge', 'g3.4xlarge', 'g3.8xlarge', 'g3.16xlarge',
         'cg1.4xlarge',
         'p2.xlarge', 'p2.8xlarge', 'p2.16xlarge',
-        'p3.2xlarge', 'p3.8xlarge', 'p3.16xlarge',
+        'p3.2xlarge', 'p3.8xlarge', 'p3.16xlarge', 'p3dn.24xlarge',
         'd2.xlarge', 'd2.2xlarge', 'd2.4xlarge', 'd2.8xlarge',
         'f1.2xlarge', 'f1.16xlarge',
         'm5.large', 'm5.xlarge', 'm5.2xlarge', 'm5.4xlarge', 'm5.12xlarge', 'm5.24xlarge',
