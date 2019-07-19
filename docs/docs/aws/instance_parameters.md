@@ -8,7 +8,7 @@ permalink: /docs/aws-provider/instance-parameters/
 
 # AWS Instance Parameters
 
-- __`region`__ - AWS region where to run an instance (you can use command `spotty spot-prices` to find the 
+- __`region`__ - AWS region where to run an instance (you can use command `spotty aws spot-prices` to find the 
 cheapest region).
 
 - __`availabilityZone`__ _(optional)_ - AWS availability zone where to run an instance. If a zone is not specified, it 

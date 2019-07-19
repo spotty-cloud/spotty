@@ -8,7 +8,7 @@ permalink: /docs/configuration/
 # Configuration
 
 By default, Spotty is looking for a `spotty.yaml` file in the root directory of the project. This file describes 
-parameters of a remote instance and an environment for the project. Here is a basic example of such file:
+parameters of a remote instance and an environment for the project. Here is a basic example of such file for AWS:
 
 ```yaml
 project:
@@ -38,6 +38,10 @@ instances:
           parameters:
             size: 10
 ```
+
+For GCP, `project` and `container` configurations are exactly the same, but an instance 
+configuration is slightly different, you can find the specification 
+[here](/spotty/docs/gcp-provider/instance-parameters/).
 
 ## Available Parameters
 
@@ -129,13 +133,12 @@ This section contains a list of instances. Each instance is described with the f
 - __`name`__ - a name of the instance. Use this name to manage the instance with the commands like 
 "spotty start" or "spotty stop". Also Spotty uses this name in the names of AWS<!-- and GCP--> resources.
 
-- __`provider`__ - a provider for the instance. At the moment Spotty supports only "__aws__" provider 
-(Amazon Web Services).
-<!--and "__gcp__" (Google Cloud Platform)-->
+- __`provider`__ - a provider for the instance. At the moment Spotty supports "__aws__" (Amazon Web Services).
+and "__gcp__" (Google Cloud Platform) providers.
 
 - __`parameters`__ - parameters of the instance. These parameters are different for different providers:
     - [AWS Instance Parameters](/spotty/docs/aws-provider/instance-parameters/)
-<!-- - [GCP instance parameters](/spotty/docs/gcp/instance-parameters/)-->
+    - [GCP instance parameters](/spotty/docs/gcp-provider/instance-parameters/)
 
 ### __`scripts`__ section _(optional)_:
 
@@ -157,7 +160,7 @@ tensorboard: |
 For example, training can be started using the following command:
 
 ```bash
-$ spotty run train -p MODEL=my-model
+spotty run train -p MODEL=my-model
 ```
 
 Use the __`Ctrl + b`__, then __`d`__ combination of keys to be detached from the SSH session - 

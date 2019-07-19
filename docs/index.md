@@ -11,7 +11,7 @@ permalink: /
 
 Spotty makes training of deep learning models on 
 [AWS Spot Instances](https://aws.amazon.com/ec2/spot/){:target="_blank"}
-<!--and on [GCP Preemtible VMs](https://cloud.google.com/preemptible-vms/){:target="_blank"} (including TPUs) -->
+and on [GCP Preemtible VMs](https://cloud.google.com/preemptible-vms/){:target="_blank"}
 as simple as training on your local machine.
 {: .fs-6 .fw-300 }
 
@@ -28,11 +28,14 @@ as simple as training on your local machine.
 Requirements:
   * Python >=3.5
   * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html){:target="_blank"})
+  if you're going to work with AWS
+  * Google Cloud SDK (see [Installing Google Cloud SDK](https://cloud.google.com/sdk/install)) 
+  if you're going to work with GCP
 
 Use [pip](http://www.pip-installer.org/en/latest/){:target="_blank"} to install or upgrade Spotty:
 
 ```bash
-$ pip install -U spotty
+pip install -U spotty
 ```
 
 ### __Prepare a configuration file__
@@ -48,7 +51,7 @@ Prepare a `spotty.yaml` file and put it to the root directory of your project:
 Use the following command to launch an instance with the Docker container:
     
 ```bash
-$ spotty start
+spotty start
 ```
 
 It will start a Spot instance, restore snapshots if any, synchronize the project with the running instance 
@@ -59,7 +62,7 @@ and start the Docker container with the project environment.
 To connect to the running container via SSH, use the following command:
 
 ```bash
-$ spotty ssh
+spotty ssh
 ```
 
 It runs a [tmux](https://github.com/tmux/tmux/wiki){:target="_blank"} session, so you can always detach this session using
