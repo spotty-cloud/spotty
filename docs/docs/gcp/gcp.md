@@ -1,9 +1,9 @@
 ---
 layout: default
-title: GCP Provider
+title: GCP Provider (beta)
 has_children: true
-nav_order: 4
+nav_order: 5
 permalink: /docs/gcp-provider/
 ---
 
-# GCP Provider
+# GCP Provider _(beta)_

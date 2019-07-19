@@ -1,14 +1,14 @@
 ---
 layout: default
 title: Commands
-parent: GCP Provider
+parent: GCP Provider (beta)
 nav_order: 2
 permalink: /docs/gcp-provider/commands/
 ---
 
 # GCP Commands
 
-Available commands:
+Commands that are specific for a GCP provider:
 
   - `spotty gcp create-image [-h] [-d] [-c CONFIG] [-f FAMILY_NAME] [--debug-mode] [INSTANCE_NAME]`
 

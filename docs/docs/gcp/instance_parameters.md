@@ -1,31 +1,34 @@
 ---
 layout: default
 title: Instance Parameters
-parent: GCP Provider
+parent: GCP Provider (beta)
 nav_order: 1
 permalink: /docs/gcp-provider/instance-parameters/
 ---
 
 # GCP Instance Parameters
 
+Instance parameters are part of the [configuration file](/spotty/docs/configuration-file/), but 
+for each provider they are different. Here you can find parameters for a GCP instance:
+
 - __`zone`__ - GCP zone where to run an instance.
 
 - __`machineType`__ - a type of the instance to run. You can find a list of predefined machine types
-here: [Machine Types](https://cloud.google.com/compute/docs/machine-types). If you in doubt what to use,
+here: [Machine Types](https://cloud.google.com/compute/docs/machine-types){:target="_blank"}. If you in doubt what to use,
 just go for `n1-standard-1`. To attach GPUs to the selected machine type, use the `gpu` parameter (see 
 the details below).
 
 - __`gpu`__ _(optional)_ - _a dictionary with keys `type` and `count`_:
     - __`type`__ - a type of GPU to attach to the instance. Read more about GPUs and their availabily
-    in different zones here: [GPUs on Compute Engine](https://cloud.google.com/compute/docs/gpus/).
+    in different zones here: [GPUs on Compute Engine](https://cloud.google.com/compute/docs/gpus/){:target="_blank"}.
     - __`count`__ _(optional)_ - a number of GPUs that should be attached to the instance. The default
     value is 1. See here a number of GPUs that you can attach to different machine types: 
-    [Valid numbers of GPUs for each machine type](https://cloud.google.com/ml-engine/docs/tensorflow/using-gpus#gpu-compatibility-table).
+    [Valid numbers of GPUs for each machine type](https://cloud.google.com/ml-engine/docs/tensorflow/using-gpus#gpu-compatibility-table){:target="_blank"}.
 
-- __`onDemandInstance`__ _(optional)_ - run On-demand VM instead of a Preemptible VM. Available values: "true", 
-"false" (default value is "false"). __Note:__ Be aware that GCP terminates preemptible instances in 24 hours. 
-Read more about Preemptible VMs here: 
-[https://cloud.google.com/compute/docs/instances/preemptible](https://cloud.google.com/compute/docs/instances/preemptible).
+- __`onDemandInstance`__ _(optional)_ - run an on-demand instance instead of a preemptible one (available values are 
+"true" or "false"). By default, this value is "false", so Spotty will be running a preemptible instance. __Note:__ be 
+aware that GCP terminates preemptible instances in 24 hours. Read more about Preemptible VMs 
+[here](https://cloud.google.com/compute/docs/instances/preemptible){:target="_blank"}.
 
 - __`imageName`__ _(optional)_ - a name of the image with NVIDIA Docker in the current GCP project. You can use 
 the `spotty gcp create-image` command to create it. By default, the command will create an image with the name 

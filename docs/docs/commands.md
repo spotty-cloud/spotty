@@ -1,11 +1,11 @@
 ---
 layout: default
-title: Commands
+title: Spotty Commands
 nav_order: 3
 permalink: /docs/commands/
 ---
 
-# Commands
+# Spotty Commands
 
 - __Start an instance__:
 
@@ -52,7 +52,7 @@ permalink: /docs/commands/
    ```
 
   Downloads files from the running instance. The `FILTER` parameters have the same format as 
-  [Sync Filters](/spotty/docs/configuration/#project-section) in a configuration file but work only for inclusion.
+  [Sync Filters](/spotty/docs/configuration-file/#project-section) in a configuration file but work only for inclusion.
 
 - __Run a custom script on an instance:__
 
@@ -62,7 +62,8 @@ permalink: /docs/commands/
              [INSTANCE_NAME] SCRIPT_NAME
   ```
 
-  Runs a custom script inside the Docker container (see "scripts" section in [Configuration](/spotty/docs/configuration/#scripts-section-optional)).
+  Runs a custom script inside the Docker container (see "scripts" section in 
+  [Configuration File](/spotty/docs/configuration-file/#scripts-section-optional)).
 
   Use the __`Ctrl + b`__, then __`x`__ combination of keys to kill tmux window with the process.
 

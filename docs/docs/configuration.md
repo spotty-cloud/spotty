@@ -1,11 +1,11 @@
 ---
 layout: default
-title: Configuration
+title: Configuration File
 nav_order: 2
-permalink: /docs/configuration/
+permalink: /docs/configuration-file/
 ---
 
-# Configuration
+# Configuration File
 
 By default, Spotty is looking for a `spotty.yaml` file in the root directory of the project. This file describes 
 parameters of a remote instance and an environment for the project. Here is a basic example of such file for AWS:

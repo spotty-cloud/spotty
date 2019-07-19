@@ -8,7 +8,7 @@ permalink: /docs/aws-provider/commands/
 
 # AWS Commands
 
-Available commands:
+Commands that are specific for an AWS provider:
 
   - `spotty aws create-ami [-h] [-d] [-c CONFIG] [--debug-mode] [INSTANCE_NAME]`
 

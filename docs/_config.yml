@@ -14,8 +14,8 @@ plugins:
 # the theme settings
 search_enabled: true
 aux_links:
-    GitHub:
-      - https://github.com/apls777/spotty
+  GitHub:
+    - https://github.com/apls777/spotty
 
 webrick:
   headers:
