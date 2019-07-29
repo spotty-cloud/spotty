@@ -31,8 +31,6 @@ class ImageDeployment(AbstractGcpDeployment):
         # check GPU configuration
         check_gpu_configuration(self._ce, self.instance_config.gpu)
 
-        exit()
-
         # check that an image with this name doesn't exist yet
         image = Image.get_by_name(self._ce, self.instance_config.image_name)
         if image:
