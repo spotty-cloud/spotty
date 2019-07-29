@@ -3,6 +3,7 @@ from spotty.providers.gcp.deployment.abstract_gcp_deployment import AbstractGcpD
 from spotty.providers.gcp.deployment.project_resources.image_stack import ImageStack
 from spotty.providers.gcp.gcp_resources.image import Image
 from spotty.providers.gcp.gcp_resources.instance import Instance
+from spotty.providers.gcp.helpers.deployment import check_gpu_configuration
 
 
 class ImageDeployment(AbstractGcpDeployment):
@@ -19,7 +20,7 @@ class ImageDeployment(AbstractGcpDeployment):
         return ImageStack(self.instance_config.image_name, self._credentials.project_id, self.instance_config.zone)
 
     def deploy(self, image_family: str, debug_mode: bool, output: AbstractOutputWriter):
-        # check that the "amiId" parameter is not set
+        # check that the "imageUrl" parameter is not set
         if self.instance_config.image_url:
             raise ValueError('The "imageUrl" parameter cannot be used when creating an image.')
 
@@ -27,14 +28,10 @@ class ImageDeployment(AbstractGcpDeployment):
         if not self.instance_config.gpu:
             raise ValueError('Instance with GPU is required to create an image with NVIDIA Docker')
 
-        # check GPU type
-        accelerator_types = self._ce.get_accelerator_types()
-        gpu_type = self.instance_config.gpu['type']
-        if gpu_type not in accelerator_types:
-            raise ValueError('GPU type "%s" is not supported in the "%s" zone.\nAvailable GPU types are: %s.' %
-                             (gpu_type, self.instance_config.zone, ', '.join(accelerator_types.keys())))
+        # check GPU configuration
+        check_gpu_configuration(self._ce, self.instance_config.gpu)
 
-        # TODO: gpu count check
+        exit()
 
         # check that an image with this name doesn't exist yet
         image = Image.get_by_name(self._ce, self.instance_config.image_name)

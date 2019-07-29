@@ -10,6 +10,10 @@ class CEClient(object):
         self._zone = zone
         self._client = googleapiclient.discovery.build('compute', 'v1', cache_discovery=False)
 
+    @property
+    def zone(self):
+        return self._zone
+
     def list_images(self, image_name: str = None, project_id: str = None):
         """Returns a list of images that satisfy the name.
             This method is used instead of the "get" because it doesn't raise an exception if an image doesn't exist.

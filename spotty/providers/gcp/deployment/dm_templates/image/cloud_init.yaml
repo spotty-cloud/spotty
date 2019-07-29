@@ -16,7 +16,7 @@ write_files:
       export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
       echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
       curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-      apt-get update && sudo apt-get install google-cloud-sdk
+      apt-get update && sudo apt-get install -y google-cloud-sdk
 
       # install NVIDIA driver and NVIDIA Docker
       /bin/bash -xe /run/spotty-image/scripts/prepare_instance.sh
@@ -110,7 +110,7 @@ write_files:
       #!/bin/bash -xe
 
       # install jq
-      apt-get install -y jq
+      apt-get install -y jq > /dev/null
 
       # flush the disk buffers
       sync
@@ -123,6 +123,8 @@ write_files:
           {{#IMAGE_FAMILY}}--family {{IMAGE_FAMILY}} {{/IMAGE_FAMILY}}\
           --description "Spotty Image v{{STACK_VERSION}}: Ubuntu 16.04 LTS, NVIDIA driver {{NVIDIA_DRIVER_VERSION}}, Docker CE {{DOCKER_CE_VERSION}}, NVIDIA Docker {{NVIDIA_DOCKER_VERSION}}." \
           --format json`
+
+      # return the image ID
       echo $IMAGE_JSON | jq -r '.[0].id'
 
 runcmd:

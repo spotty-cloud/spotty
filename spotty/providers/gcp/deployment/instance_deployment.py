@@ -12,6 +12,7 @@ from spotty.providers.gcp.deployment.dm_templates.instance_template import prepa
 from spotty.providers.gcp.deployment.project_resources.instance_stack import InstanceStackResource
 from spotty.providers.gcp.gcp_resources.image import Image
 from spotty.providers.gcp.gcp_resources.instance import Instance
+from spotty.providers.gcp.helpers.deployment import check_gpu_configuration
 from spotty.providers.gcp.helpers.sync import sync_local_to_bucket
 
 
@@ -45,6 +46,9 @@ class InstanceDeployment(AbstractGcpDeployment):
         # sync the project with the bucket
         output.write('Syncing the project with the bucket...')
         sync_local_to_bucket(project_config.project_dir, bucket_name, project_config.sync_filters, dry_run)
+
+        # check GPU configuration
+        check_gpu_configuration(self._ce, self.instance_config.gpu)
 
         # get volumes
         volumes = self._get_volumes()
