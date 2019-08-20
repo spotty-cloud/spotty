@@ -81,6 +81,11 @@ class InstanceDeployment(AbstractGcpDeployment):
         if not dry_run:
             stack.create_stack(template, output=output)
 
+    def delete(self, output: AbstractOutputWriter):
+        self.stack.delete_stack(output)
+
+        # TODO: apply deletion policies
+
     def _get_volumes(self) -> List[AbstractInstanceVolume]:
         volumes = []
         for volume_config in self.instance_config.volumes:

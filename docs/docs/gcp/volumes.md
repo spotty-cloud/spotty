@@ -18,6 +18,8 @@ instance.
 restored from that snapshot.
 3. If neither snapshot nor disk with this name exists, a new disk will be created. 
 
+### __(!) Note:__ Deletion Policies aren't implemented yet, so your disks will always retain. Below you can see how it's supposed to work.
+
 When you're stopping the instance Spotty applies deletion policies for the disks. There are 4 deletion policies that 
 can be specified using the `deletionPolicy` parameter:
 

@@ -3,6 +3,7 @@ from collections import OrderedDict
 from time import sleep
 from httplib2 import ServerNotFoundError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.providers.gcp.gcp_resources.stack import Stack
 from spotty.providers.gcp.helpers.ce_client import CEClient
 from spotty.providers.gcp.helpers.dm_client import DMClient
 
@@ -16,6 +17,13 @@ def wait_resources(dm: DMClient, deployment_name: str, resource_messages: Ordere
 
             # get the resource info
             try:
+                # check that the deployment is not failed
+                stack = Stack.get_by_name(dm, deployment_name)
+                if stack.error:
+                    raise ValueError('Deployment "%s" failed.\n'
+                                     'Error: %s' % (deployment_name, stack.error['message']))
+
+                # get resources
                 resource = dm.get_resource(deployment_name, resource_name)
             except (ConnectionResetError, ServerNotFoundError):
                 logging.warning('Connection problem')

@@ -58,9 +58,19 @@ class Stack(object):
 
         return Stack(dm, res)
 
+    @staticmethod
+    def create(dm: DMClient, deployment_name: str, template: str):
+        res = dm.deploy(deployment_name, template)
+        return Stack(dm, res)
+
     @property
     def name(self) -> str:
         return self._data['name']
+
+    @property
+    def error(self) -> str:
+        """Returns an error in the format: {'code': '...', 'message': '...'}."""
+        return self._data.get('operation', {}).get('error', {}).get('errors', [None])[0]
 
     def delete(self):
         self._dm.delete(self.name)

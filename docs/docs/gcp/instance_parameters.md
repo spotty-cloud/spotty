@@ -57,7 +57,10 @@ Read more: [How to cache a Docker image](/spotty/docs/faq/#how-to-cache-a-docker
 
         - __`deletionPolicy`__ _(optional)_ - what to do with the disk once the instance is terminated using the 
         `spotty stop` command. Possible values include: "__create_snapshot__" _(value by default)_, "__update_snapshot__", 
-        "__retain__" and  "__delete__". Read more: [Disks and Deletion Policies](/spotty/docs/gcp-provider/disks-and-deletion-policies/).
+        "__retain__" and  "__delete__". Read more: 
+        [Disks and Deletion Policies](/spotty/docs/gcp-provider/disks-and-deletion-policies/).
+        
+            __(!) Note:__ Deletion Policies aren't implemented yet, so your disks will always retain.
 
         - __`diskName`__ _(optional)_ - name of the disk. The default name is 
         "{project_name}-{instance_name}-{volume_name}".

@@ -25,10 +25,6 @@ write_files:
         # send a signal that the instance is ready
         gcloud beta runtime-config configs variables set /success/1 1 --config-name {{MACHINE_NAME}}-docker-status --is-text
 
-        {{#DEBUG_MODE}}
-        # debug mode: send a success signal without creating an image
-        gcloud beta runtime-config configs variables set /success/1 0 --config-name {{MACHINE_NAME}}-image-status --is-text
-        {{/DEBUG_MODE}}
         {{^DEBUG_MODE}}
         # create an image
         IMAGE_ID=`/bin/bash -xe /run/spotty-image/scripts/create_image.sh`
@@ -46,11 +42,13 @@ write_files:
         gcloud beta runtime-config configs variables set /failure/1 1 --config-name {{MACHINE_NAME}}-docker-status --is-text
       fi
 
+      {{^DEBUG_MODE}}
       # delete the instace
       gcloud compute instances delete {{MACHINE_NAME}} --zone {{ZONE}} -q
 
       # shutdown the instance
       shutdown -h now
+      {{/DEBUG_MODE}}
 
   - path: /run/spotty-image/scripts/prepare_instance.sh
     permissions: 0755

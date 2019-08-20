@@ -50,7 +50,8 @@ class InstanceManager(AbstractInstanceManager):
         deployment.deploy(self.project_config, output, dry_run=dry_run)
 
     def stop(self, output: AbstractOutputWriter):
-        self.instance_deployment.stack.delete_stack(output)
+        # delete the deployment and apply deletion policies for the volumes
+        self.instance_deployment.delete(output)
 
     def sync(self, output: AbstractOutputWriter, dry_run=False):
         # create or get existing bucket for the project

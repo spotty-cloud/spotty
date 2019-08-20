@@ -9,6 +9,9 @@ resources:
       serviceAccounts:
         - email: {{SERVICE_ACCOUNT_EMAIL}}
           scopes: ['https://www.googleapis.com/auth/cloud-platform']
+      tags:
+        items:
+          - {{MACHINE_NAME}}
       disks:
         - deviceName: boot
           type: PERSISTENT
@@ -22,11 +25,18 @@ resources:
           accessConfigs:
             - name: External NAT
               type: ONE_TO_ONE_NAT
+      {{#GPU_TYPE}}
       guestAccelerators:
         - acceleratorType: zones/{{ZONE}}/acceleratorTypes/{{GPU_TYPE}}
           acceleratorCount: {{GPU_COUNT}}
+      {{/GPU_TYPE}}
       metadata:
         items:
+          {{#PUB_KEY_VALUE}}
+          - key: 'ssh-keys'
+            value: |
+              ubuntu:ssh-rsa {{{PUB_KEY_VALUE}}} ubuntu
+          {{/PUB_KEY_VALUE}}
           - key: 'user-data'
             value: |
               {{{STARTUP_SCRIPT}}}
@@ -37,11 +47,13 @@ resources:
       config: {{MACHINE_NAME}}-docker-status
       description: Docker status
 
+  {{^DEBUG_MODE}}
   - name: {{MACHINE_NAME}}-image-status
     type: runtimeconfig.v1beta1.config
     properties:
       config: {{MACHINE_NAME}}-image-status
       description: Image status
+  {{/DEBUG_MODE}}
 
   - name: {{MACHINE_NAME}}-docker-waiter
     type: runtimeconfig.v1beta1.waiter
@@ -61,6 +73,7 @@ resources:
           path: /failure
           number: 1
 
+  {{^DEBUG_MODE}}
   - name: {{MACHINE_NAME}}-image-waiter
     type: runtimeconfig.v1beta1.waiter
     metadata:
@@ -78,7 +91,10 @@ resources:
         cardinality:
           path: /failure
           number: 1
+  {{/DEBUG_MODE}}
 
+  {{^DEBUG_MODE}}
+  # create a variable that will contain an image ID (used in the deployment outputs)
   - name: {{MACHINE_NAME}}-image-status-success
     type: runtimeconfig.v1beta1.variable
     metadata:
@@ -87,7 +103,10 @@ resources:
     properties:
       parent: $(ref.{{MACHINE_NAME}}-image-status.name)
       variable: /success/1
+  {{/DEBUG_MODE}}
 
+  {{^DEBUG_MODE}}
+  # acquire the created image resource to remove it later with the deployment
   - name: {{IMAGE_NAME}}
     type: compute.v1.image
     metadata:
@@ -95,7 +114,10 @@ resources:
         - {{MACHINE_NAME}}-image-waiter
     properties:
       sourceImage: global/images/{{IMAGE_NAME}}
+  {{/DEBUG_MODE}}
 
+{{^DEBUG_MODE}}
 outputs:
   - name: imageId
     value: $(ref.{{MACHINE_NAME}}-image-status-success.text)
+{{/DEBUG_MODE}}

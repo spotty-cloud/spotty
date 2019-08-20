@@ -95,6 +95,25 @@ class InstanceDeployment(AbstractAwsDeployment):
         if not dry_run:
             self.stack.create_or_update_stack(template, parameters, output)
 
+    def delete(self, output: AbstractOutputWriter):
+        # terminate the instance
+        instance = self.get_instance()
+        if instance:
+            output.write('Terminating the instance...')
+            instance.terminate()
+            instance.wait_instance_terminated()
+        else:
+            output.write('The instance is already terminated.')
+
+        # delete the stack in background if it exists
+        self.stack.delete_stack(output, no_wait=True)
+
+        output.write('Applying deletion policies for the volumes...')
+
+        # apply deletion policies for the volumes
+        with output.prefix('  '):
+            self._apply_deletion_policies(output)
+
     def _get_availability_zone(self, volumes: List[AbstractInstanceVolume]):
         """Checks that existing volumes located in the same AZ and the AZ from the
         config file matches volumes AZ.
@@ -228,7 +247,7 @@ class InstanceDeployment(AbstractAwsDeployment):
 
         return image
 
-    def apply_deletion_policies(self, output: AbstractOutputWriter):
+    def _apply_deletion_policies(self, output: AbstractOutputWriter):
         """Applies deletion policies to the EBS volumes."""
 
         # get volumes
