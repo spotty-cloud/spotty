@@ -28,8 +28,10 @@ class BucketResource(object):
         if not bucket_name:
             bucket_name = '-'.join([self._bucket_prefix, random_string(12), self._region])
             if not dry_run:
-                self._s3.create_bucket(ACL='private', Bucket=bucket_name,
-                                       CreateBucketConfiguration={'LocationConstraint': self._region})
+                # a fix for the boto3 issue: https://github.com/boto/boto3/issues/125
+                bucket_config = None if self._region == 'us-east-1' else {'LocationConstraint': self._region}
+                self._s3.create_bucket(ACL='private', Bucket=bucket_name, CreateBucketConfiguration=bucket_config)
+
             output.write('Bucket "%s" was created.' % bucket_name)
 
         return bucket_name

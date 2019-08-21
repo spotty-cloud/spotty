@@ -32,6 +32,10 @@ class EbsVolume(AbstractInstanceVolume):
         return self._params['size']
 
     @property
+    def type(self) -> str:
+        return self._params['type']
+
+    @property
     def deletion_policy(self) -> str:
         return self._params['deletionPolicy']
 

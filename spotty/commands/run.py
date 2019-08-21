@@ -20,8 +20,9 @@ class RunCommand(AbstractConfigCommand):
         parser.add_argument('-r', '--restart', action='store_true',
                             help='Restart the script (kills previous session if it exists)')
         parser.add_argument('script_name', metavar='SCRIPT_NAME', type=str, help='Script name')
-        parser.add_argument('-p', '--parameters', metavar='PARAMETER=VALUE', nargs='*', type=str, default=[],
-                            help='Script parameters')
+        parser.add_argument('-p', '--parameter', metavar='PARAMETER=VALUE', action='append', type=str, default=[],
+                            help='Set the value for a script parameter (you can use this argument multiple times '
+                                 'to set several parameters)')
 
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
         # check that the script exists
@@ -31,7 +32,7 @@ class RunCommand(AbstractConfigCommand):
             raise ValueError('Script "%s" is not defined in the configuration file.' % script_name)
 
         # replace script parameters
-        params = parse_parameters(args.parameters)
+        params = parse_parameters(args.parameter)
         script_content = render_script(scripts[script_name], params)
 
         # check that the instance is started
