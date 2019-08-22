@@ -68,7 +68,7 @@ class InstanceManager(AbstractInstanceManager):
                                     self.ssh_user, self.ssh_key_path)
 
     def download(self, download_filters: list, output: AbstractOutputWriter, dry_run=False):
-        raise NotImplementedError
+        raise NotImplementedError('GCP provider doesn\'t have an implementation of the "download" command yet.')
 
     def clean(self, output: AbstractOutputWriter):
         raise NotImplementedError
@@ -88,7 +88,7 @@ class InstanceManager(AbstractInstanceManager):
             table.append(('Public IP Address', instance.public_ip_address))
 
         table.append(('Launch Time', instance.creation_timestamp.today().strftime('%Y-%m-%d %H:%M:%S')))
-        table.append(('Purchasing Option', 'Preemtible VM' if instance.is_preemtible else 'On-Demand VM'))
+        table.append(('Purchasing Option', 'Preemtible VM' if instance.is_preemtible else 'On-demand VM'))
 
         return render_table(table)
 

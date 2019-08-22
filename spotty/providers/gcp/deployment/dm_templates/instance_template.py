@@ -3,6 +3,7 @@ from subprocess import list2cmdline
 from typing import List
 import chevron
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.config.validation import is_subdir
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.providers.gcp.config.instance_config import InstanceConfig
@@ -63,11 +64,18 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
     }
     template = chevron.render(template, parameters)
 
+    # print some information about the deployment
     output.write('- image URL: ' + '/'.join(image_link.split('/')[-5:]))
     output.write('- zone: ' + instance_config.zone)
     output.write('- on-demand VM' if instance_config.on_demand else '- preemptible VM')
     output.write(('- GPUs: %d x %s' % (instance_config.gpu['count'], instance_config.gpu['type']))
                  if instance_config.gpu else '- no GPUs')
+
+    # print name of the volume where Docker data will be stored
+    if instance_config.docker_data_root:
+        docker_data_volume_name = [volume.name for volume in volumes
+                                   if is_subdir(instance_config.docker_data_root, volume.mount_dir)][0]
+        output.write('- Docker data will be stored on the "%s" volume' % docker_data_volume_name)
 
     return template
 

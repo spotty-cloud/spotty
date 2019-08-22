@@ -127,9 +127,8 @@ def get_instance_parameters_schema(instance_parameters: dict, default_volume_typ
             Optional('localSshPort', default=None): Or(None, And(int, lambda x: 0 <= x <= 65535)),
             Optional('commands', default=''): str,
         },
-        And(lambda x: not x['dockerDataRoot'] or
-                      [True for v in x['volumes'] if v['parameters']['mountDir'] and
-                       is_subdir(x['dockerDataRoot'], v['parameters']['mountDir'])],
+        And(lambda x: not x['dockerDataRoot'] or any([True for v in x['volumes'] if v['parameters']['mountDir'] and
+                                                      is_subdir(x['dockerDataRoot'], v['parameters']['mountDir'])]),
             error='The "mountDir" of one of the volumes must be a prefix for the "dockerDataRoot" path.'),
         *instance_checks
     ))
