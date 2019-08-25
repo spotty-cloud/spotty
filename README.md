@@ -5,13 +5,14 @@
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/spotty.svg)
 ![PyPI - License](https://img.shields.io/pypi/l/spotty.svg)
 
-Spotty drastically simplifies training of deep learning models on AWS:
+Spotty drastically simplifies training of deep learning models on AWS and GCP:
 
-- it makes training on AWS GPU instances as simple as training on your local computer
-- it automatically manages all necessary AWS resources including AMIs, volumes, snapshots and SSH keys
-- it makes your model trainable on AWS by everyone with a couple of commands
+- it makes training on GPU instances as simple as training on your local machine
+- it automatically manages all necessary cloud resources including images, volumes, snapshots and SSH keys
+- it makes your model trainable in the cloud by everyone with a couple of commands
 - it uses [tmux](https://en.wikipedia.org/wiki/Tmux) to easily detach remote processes from their terminals
-- it saves you up to 70% of the costs by using [Spot Instances](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances.html)
+- it saves you up to 70% of the costs by using [AWS Spot Instances](https://aws.amazon.com/ec2/spot/){:target="_blank"}
+and [GCP Preemtible VMs](https://cloud.google.com/preemptible-vms/){:target="_blank"}
 
 ## Documentation
 
@@ -23,7 +24,10 @@ article on Medium for a real-world example.
 
 Requirements:
   * Python >=3.5
-  * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html))
+  * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html){:target="_blank"})
+  if you're using AWS
+  * Google Cloud SDK (see [Installing Google Cloud SDK](https://cloud.google.com/sdk/install){:target="_blank"}) 
+  if you're using GCP
 
 Use [pip](http://www.pip-installer.org/en/latest/) to install or upgrade Spotty:
 

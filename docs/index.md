@@ -28,9 +28,9 @@ as simple as training on your local machine.
 Requirements:
   * Python >=3.5
   * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html){:target="_blank"})
-  if you're going to work with AWS
+  if you're using AWS
   * Google Cloud SDK (see [Installing Google Cloud SDK](https://cloud.google.com/sdk/install){:target="_blank"}) 
-  if you're going to work with GCP
+  if you're using GCP
 
 Use [pip](http://www.pip-installer.org/en/latest/){:target="_blank"} to install or upgrade Spotty:
 

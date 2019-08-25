@@ -8,7 +8,7 @@ permalink: /docs/gcp-provider/commands/
 
 # GCP Commands
 
-Commands that are specific for a GCP provider:
+Commands that are specific for the GCP provider:
 
   - `spotty gcp create-image [-h] [-d] [-c CONFIG] [-f FAMILY_NAME] [--debug-mode] [INSTANCE_NAME]`
 
