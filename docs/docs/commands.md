@@ -28,7 +28,8 @@ permalink: /docs/commands/
 - __Connect to an instance__:
 
   ```
-  spotty ssh  [-h] [-d] [-c CONFIG] [-H] [-s SESSION_NAME] [-l] [INSTANCE_NAME]
+  spotty ssh [-h] [-d] [-c CONFIG] [-H] [-s SESSION_NAME] [-l]
+             [INSTANCE_NAME]
   ```
 
   Connects to the running Docker container or to the instance itself. Use the `-H` flag to connect to the host OS 
@@ -46,19 +47,18 @@ permalink: /docs/commands/
 - __Download files from an instance__:
 
   ```
-  spotty download [-h] [-d] [-c CONFIG] -f FILTER [FILTER ...]
-                  [--dry-run]
+  spotty download [-h] [-d] [-c CONFIG] -i PATTERN [--dry-run]
                   [INSTANCE_NAME]
    ```
 
-  Downloads files from the running instance. The `FILTER` parameters have the same format as 
-  [Sync Filters](/spotty/docs/configuration-file/#project-section) in a configuration file but work only for inclusion.
+  Downloads files from the running instance. The `PATTERN` parameter has the same format and works in the same way as 
+  __Include Filters__ for the `aws s3 sync` command: see [Sync Filters](/spotty/docs/configuration-file/#project-section).
 
 - __Run a custom script on an instance:__
 
   ```
   spotty run [-h] [-d] [-c CONFIG] [-s SESSION_NAME] [-S] [-l] [-r]
-             [-p [PARAMETER=VALUE [PARAMETER=VALUE ...]]]
+             [-p PARAMETER=VALUE]
              [INSTANCE_NAME] SCRIPT_NAME
   ```
 
@@ -80,7 +80,7 @@ permalink: /docs/commands/
   
   Scripts can be parametrized. Parameters in a script are indicated by double braces. For example, 
   {% raw %}`echo {{msg1}} {{msg2}}`{% endraw %}. Use the `-p` parameter to replace script parameters with real values: 
-  `-p msg1=deep msg2=learning`. If some script parameters were not provided, they will be replaced with
+  `-p msg1=deep -p msg2=learning`. If some script parameters were not provided, they will be replaced with
   empty strings.
 
 All the commands have the `-c` parameter to specify a path to the configuration file. By default, Spotty is looking for 

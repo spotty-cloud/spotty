@@ -60,8 +60,7 @@ class Stack(object):
 
     @staticmethod
     def create(dm: DMClient, deployment_name: str, template: str):
-        res = dm.deploy(deployment_name, template)
-        return Stack(dm, res)
+        return dm.deploy(deployment_name, template)
 
     @property
     def name(self) -> str:

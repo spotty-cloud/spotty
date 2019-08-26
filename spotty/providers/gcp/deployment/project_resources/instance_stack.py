@@ -29,8 +29,8 @@ class InstanceStackResource(object):
     def create_stack(self, template: str, output: AbstractOutputWriter):
         """Deploys a Deployment Manager template."""
 
-        # create stack
-        self._dm.deploy(self._stack_name, template)
+        # create a stack
+        Stack.create(self._dm, self._stack_name, template)
 
         output.write('Waiting for the stack to be created...')
 

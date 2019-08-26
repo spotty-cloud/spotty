@@ -2,7 +2,7 @@
 layout: default
 title: Disks and Deletion Policies
 parent: GCP Provider (beta)
-nav_order: 3
+nav_order: 4
 permalink: /docs/gcp-provider/disks-and-deletion-policies/
 ---
 

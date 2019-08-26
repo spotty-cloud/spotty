@@ -2,7 +2,7 @@
 layout: default
 title: Instance Parameters
 parent: GCP Provider (beta)
-nav_order: 1
+nav_order: 2
 permalink: /docs/gcp-provider/instance-parameters/
 ---
 

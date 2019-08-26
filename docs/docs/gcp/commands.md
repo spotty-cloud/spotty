@@ -2,7 +2,7 @@
 layout: default
 title: Commands
 parent: GCP Provider (beta)
-nav_order: 2
+nav_order: 3
 permalink: /docs/gcp-provider/commands/
 ---
 
