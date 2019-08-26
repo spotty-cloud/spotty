@@ -4,7 +4,7 @@ from spotty.providers.gcp.helpers.ce_client import CEClient
 
 class Instance(object):
 
-    def __init__(self, data: dict):
+    def __init__(self, ce: CEClient, data: dict):
         """
         Args:
             data (dict): Example:
@@ -58,6 +58,7 @@ class Instance(object):
                 'tags': {'fingerprint': '42WmSpB8rSM='},
                 'zone': 'https://www.googleapis.com/compute/v1/projects/spotty-221422/zones/us-east1-b'}
         """
+        self._ce = ce
         self._data = data
 
     @staticmethod
@@ -67,7 +68,7 @@ class Instance(object):
         if not res:
             return None
 
-        return Instance(res[0])
+        return Instance(ce, res[0])
 
     @property
     def name(self) -> str:
@@ -76,6 +77,11 @@ class Instance(object):
     @property
     def is_running(self) -> bool:
         return self.status == 'RUNNING'
+
+    @property
+    def is_terminated(self) -> bool:
+        # see Instance Life Cycle: https://cloud.google.com/compute/docs/instances/instance-life-cycle
+        return self.status == 'TERMINATED'
 
     @property
     def public_ip_address(self) -> str:

@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.gcp.gcp_resources.stack import Stack
+from spotty.providers.gcp.helpers.ce_client import CEClient
 from spotty.providers.gcp.helpers.deployment import wait_resources
 from spotty.providers.gcp.helpers.dm_client import DMClient
 
@@ -9,6 +10,7 @@ class ImageStackResource(object):
 
     def __init__(self, image_name: str, project_id: str, zone: str):
         self._dm = DMClient(project_id, zone)
+        self._ce = CEClient(project_id, zone)
         self._image_name = image_name
         self._stack_name = 'spotty-image-%s' % image_name
 
@@ -37,7 +39,8 @@ class ImageStackResource(object):
 
         # wait for the stack to be created
         with output.prefix('  '):
-            wait_resources(self._dm, self._stack_name, resource_messages, output)
+            wait_resources(self._dm, self._ce, self._stack_name, resource_messages,
+                           instance_resource_name=machine_name, machine_name=machine_name, output=output)
 
         if debug_mode:
             output.write('Stack "%s" was created in debug mode.' % self._stack_name)
@@ -49,20 +52,18 @@ class ImageStackResource(object):
                          '--------------------------------------------------'
                          % self._image_name)
 
-    def delete_stack(self, output: AbstractOutputWriter, no_wait: bool = False):
+    def delete_stack(self, output: AbstractOutputWriter):
         # check that the stack exist
         stack = self.get_stack()
         if not stack:
             raise ValueError('Deployment "%s" not found.' % self._stack_name)
 
-        if not no_wait:
-            output.write('Waiting for the deployment to be deleted...')
+        output.write('Waiting for the deployment to be deleted...')
 
         # delete the stack
         try:
             stack.delete()
-            if not no_wait:
-                stack.wait_stack_deleted()
+            stack.wait_stack_deleted()
         except Exception as e:
             raise ValueError('Deployment "%s" was not deleted. Error: %s\n'
                              'See Deployment Manager logs for details.' % (self._stack_name, str(e)))

@@ -3,13 +3,19 @@ from collections import OrderedDict
 from time import sleep
 from httplib2 import ServerNotFoundError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.providers.gcp.gcp_resources.instance import Instance
 from spotty.providers.gcp.gcp_resources.stack import Stack
 from spotty.providers.gcp.helpers.ce_client import CEClient
 from spotty.providers.gcp.helpers.dm_client import DMClient
+from spotty.providers.gcp.helpers.dm_resource import DMResource
 
 
-def wait_resources(dm: DMClient, deployment_name: str, resource_messages: OrderedDict, output: AbstractOutputWriter,
-                   delay: int = 5):
+def wait_resources(dm: DMClient, ce: CEClient, deployment_name: str, resource_messages: OrderedDict,
+                   instance_resource_name: str, machine_name: str, output: AbstractOutputWriter, delay: int = 5):
+    # make sure that the instance resource is in the messages list
+    assert any(resource_name == instance_resource_name for resource_name, _ in resource_messages.items())
+
+    created_resources = set()
     for resource_name, message in resource_messages.items():
         output.write('- %s...' % message)
         while True:
@@ -23,8 +29,15 @@ def wait_resources(dm: DMClient, deployment_name: str, resource_messages: Ordere
                     raise ValueError('Deployment "%s" failed.\n'
                                      'Error: %s' % (deployment_name, stack.error['message']))
 
+                # check if the instance was preempted, terminated or deleted right after creation
+                if instance_resource_name in created_resources:
+                    instance = Instance.get_by_name(ce, machine_name)
+                    if not instance or instance.is_terminated:
+                        raise ValueError('Error: the instance was unexpectedly terminated. Please, check out the '
+                                         'instance logs to find out the reason.\n')
+
                 # get resources
-                resource = dm.get_resource(deployment_name, resource_name)
+                resource = DMResource.get_by_name(dm, deployment_name, resource_name)
             except (ConnectionResetError, ServerNotFoundError):
                 logging.warning('Connection problem')
                 continue
@@ -34,20 +47,17 @@ def wait_resources(dm: DMClient, deployment_name: str, resource_messages: Ordere
                 continue
 
             # resource was successfully created
-            if 'finalProperties' in resource:
+            if resource.is_created:
                 break
 
-            # an error occurred
-            if 'error' in resource.get('update', {}):
-                raise ValueError('Deployment "%s" failed.\n'
-                                 'Error: %s'
-                                 % (deployment_name, resource['update']['error']['errors'][0]['message']))
+            # resource wasn't created
+            if resource.is_failed:
+                error_msg = ('Error: ' + resource.error_message) if resource.error_message \
+                    else 'Please, see Deployment Manager logs for the details.' % deployment_name
 
-            # unexpected status
-            if 'state' in resource.get('update', {}) \
-                    and resource['update']['state'] not in ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'IN_PREVIEW']:
-                raise ValueError('Deployment "%s" failed.\n'
-                                 'Please, see Deployment Manager logs for the details.' % deployment_name)
+                raise ValueError('Deployment "%s" failed.\n%s' % (deployment_name, error_msg))
+
+        created_resources.add(resource_name)
 
 
 def check_gpu_configuration(ce: CEClient, gpu_parameters: dict):

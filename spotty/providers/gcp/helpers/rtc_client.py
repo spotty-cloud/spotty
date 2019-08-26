@@ -14,3 +14,12 @@ class RtcClient(object):
         res = self._rtc.projects().get(name=config_name, fields=fields).execute()
 
         return res
+
+    def set_value(self, config_name: str, variable_name: str, value: str):
+        config_name = 'projects/%s/configs/%s' % (self._project_id, config_name)
+        res = self._rtc.projects().configs().variables().create(parent=config_name, body={
+            'name': '%s/variables/%s' % (config_name, variable_name),
+            'text': str(value),
+        }).execute()
+
+        return res

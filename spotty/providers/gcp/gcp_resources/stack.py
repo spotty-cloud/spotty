@@ -68,6 +68,19 @@ class Stack(object):
         return self._data['name']
 
     @property
+    def status(self) -> str:
+        return self._data.get('operation', {}).get('status')
+
+    @property
+    def is_running(self):
+        return self.status == 'RUNNING'
+
+    @property
+    def is_done(self):
+        """A deployment has the done status when it's successfully created or failed."""
+        return self.status == 'DONE'
+
+    @property
     def error(self) -> str:
         """Returns an error in the format: {'code': '...', 'message': '...'}."""
         return self._data.get('operation', {}).get('error', {}).get('errors', [None])[0]
@@ -80,6 +93,17 @@ class Stack(object):
         while stack:
             try:
                 stack = self.get_by_name(self._dm, self.name)
+            except (ConnectionResetError, ServerNotFoundError):
+                logging.warning('Connection problem')
+                continue
+
+            sleep(delay)
+
+    def wait_stack_done(self, delay=5):
+        is_done = False
+        while not is_done:
+            try:
+                is_done = self.get_by_name(self._dm, self.name).is_done
             except (ConnectionResetError, ServerNotFoundError):
                 logging.warning('Connection problem')
                 continue

@@ -28,13 +28,14 @@ class DMClient(object):
             'target': {
                 'config': {
                     'content': template,
-                }
+                },
             },
         }, preview=dry_run).execute()
 
         return res
 
     def delete(self, deployment_name: str):
+        """Deletes a deployment and all of the resources in the deployment."""
         res = self._client.deployments().delete(project=self._project_id, deployment=deployment_name).execute()
         return res
 
