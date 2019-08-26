@@ -67,11 +67,11 @@ class DMResource(object):
         return DMResource(dm, res)
 
     @property
-    def is_created(self):
+    def is_created(self) -> bool:
         return 'finalProperties' in self._data
 
     @property
-    def error_message(self):
+    def error_message(self) -> str:
         if 'error' not in self._data.get('update', {}):
             return None
 
@@ -86,7 +86,7 @@ class DMResource(object):
         return self.state == 'IN_PROGRESS'
 
     @property
-    def is_failed(self):
+    def is_failed(self) -> bool:
         # an error occurred or the resource is in an unexpected status
         return self.error_message or (self.state is not None and
                                       self.state not in ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'IN_PREVIEW'])

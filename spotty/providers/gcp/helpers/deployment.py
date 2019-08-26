@@ -18,7 +18,9 @@ def wait_resources(dm: DMClient, ce: CEClient, deployment_name: str, resource_me
     created_resources = set()
     for resource_name, message in resource_messages.items():
         output.write('- %s...' % message)
-        while True:
+
+        is_created = False
+        while not is_created:
             sleep(delay)
 
             # get the resource info
@@ -36,7 +38,7 @@ def wait_resources(dm: DMClient, ce: CEClient, deployment_name: str, resource_me
                         raise ValueError('Error: the instance was unexpectedly terminated. Please, check out the '
                                          'instance logs to find out the reason.\n')
 
-                # get resources
+                # get resource
                 resource = DMResource.get_by_name(dm, deployment_name, resource_name)
             except (ConnectionResetError, ServerNotFoundError):
                 logging.warning('Connection problem')
@@ -46,16 +48,15 @@ def wait_resources(dm: DMClient, ce: CEClient, deployment_name: str, resource_me
             if not resource:
                 continue
 
-            # resource was successfully created
-            if resource.is_created:
-                break
-
-            # resource wasn't created
+            # resource failed
             if resource.is_failed:
                 error_msg = ('Error: ' + resource.error_message) if resource.error_message \
                     else 'Please, see Deployment Manager logs for the details.' % deployment_name
 
                 raise ValueError('Deployment "%s" failed.\n%s' % (deployment_name, error_msg))
+
+            # resource was successfully created
+            is_created = resource.is_created
 
         created_resources.add(resource_name)
 

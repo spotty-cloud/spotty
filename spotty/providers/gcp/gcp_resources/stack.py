@@ -85,6 +85,13 @@ class Stack(object):
         """Returns an error in the format: {'code': '...', 'message': '...'}."""
         return self._data.get('operation', {}).get('error', {}).get('errors', [None])[0]
 
+    @property
+    def fingerprint(self) -> str:
+        return self._data['fingerprint']
+
+    def stop(self):
+        self._dm.stop(self.name, self.fingerprint)
+
     def delete(self):
         self._dm.delete(self.name)
 
@@ -103,7 +110,8 @@ class Stack(object):
         is_done = False
         while not is_done:
             try:
-                is_done = self.get_by_name(self._dm, self.name).is_done
+                stack = self.get_by_name(self._dm, self.name)
+                is_done = stack.is_done
             except (ConnectionResetError, ServerNotFoundError):
                 logging.warning('Connection problem')
                 continue

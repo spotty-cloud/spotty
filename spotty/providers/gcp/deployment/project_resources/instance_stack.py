@@ -55,6 +55,10 @@ class InstanceStackResource(object):
         # delete the stack
         try:
             if stack.is_running:
+                # stop an ongoing operation first to make sure the delete method
+                # won't raise an error "Resource '...' has an ongoing conflicting operation"
+                stack.stop()
+
                 # if the docker-waiter resource is still waiting for a signal, send a failure signal
                 # to be able to delete the stack
                 resource = DMResource.get_by_name(self._dm, self._stack_name, self._DOCKER_WAITER_RESOURCE_NAME)
