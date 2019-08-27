@@ -48,15 +48,17 @@ Read more: [How to cache a Docker image](/spotty/docs/faq/#how-to-cache-a-docker
     volume attached to the container's filesystem.
 
     - __`parameters`__ _(optional)_ - parameters of the volume:
-        - __`type`__ _(optional)_ - the volume type. Supported volume types: "gp2", "sc1", "st1" and "standard".
-        The default value is "gp2". Read more: [Amazon EBS Volume Types](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html).
+        - __`type`__ _(optional)_ - the volume type. Supported types: "__gp2__", "__sc1__", "__st1__" 
+        and "__standard__". The default value is "gp2". Read more here: 
+        [Amazon EBS Volume Types](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html){:target="_blank"}.
     
         - __`size`__ _(optional)_ - size of the volume in GB. Size of the volume cannot be less than the size of 
         the existing snapshot but can be increased.
 
         - __`deletionPolicy`__ _(optional)_ - what to do with the volume once the instance is terminated using the 
         `spotty stop` command. Possible values include: "__create_snapshot__" _(value by default)_, "__update_snapshot__", 
-        "__retain__" and  "__delete__". Read more: [Volumes and Deletion Policies](/spotty/docs/aws-provider/volumes-and-deletion-policies/).
+        "__retain__" and  "__delete__". Read more here: 
+        [Volumes and Deletion Policies](/spotty/docs/aws-provider/volumes-and-deletion-policies/).
 
         - __`volumeName`__ _(optional)_ - name of the EBS volume. The default name is 
         "{project_name}-{instance_name}-{volume_name}".
