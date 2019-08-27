@@ -52,7 +52,8 @@ def validate_ebs_volume_parameters(params: dict):
         Optional('volumeName', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
         Optional('mountDir', default=''): str,  # all the checks happened in the base configuration
         Optional('size', default=0): And(int, lambda x: x > 0),
-        Optional('type', default='gp2'): lambda x: x in ['gp2', 'io1', 'sc1', 'st1', 'standard'],
+        # TODO: add the "iops" parameter to support the "io1" EBS volume type
+        Optional('type', default='gp2'): lambda x: x in ['gp2', 'sc1', 'st1', 'standard'],
         Optional('deletionPolicy', default=EbsVolume.DP_CREATE_SNAPSHOT): And(
             str,
             lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,

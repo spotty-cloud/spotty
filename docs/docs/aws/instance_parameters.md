@@ -48,6 +48,9 @@ Read more: [How to cache a Docker image](/spotty/docs/faq/#how-to-cache-a-docker
     volume attached to the container's filesystem.
 
     - __`parameters`__ _(optional)_ - parameters of the volume:
+        - __`type`__ _(optional)_ - the volume type. Supported volume types: "gp2", "sc1", "st1" and "standard".
+        The default value is "gp2". Read more: [Amazon EBS Volume Types](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html).
+    
         - __`size`__ _(optional)_ - size of the volume in GB. Size of the volume cannot be less than the size of 
         the existing snapshot but can be increased.
 
