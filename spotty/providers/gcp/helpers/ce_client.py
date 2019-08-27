@@ -66,8 +66,8 @@ class CEClient(object):
 
     def get_accelerator_types(self) -> OrderedDict:
         res = self._client.acceleratorTypes().list(project=self._project_id, zone=self._zone).execute()
-
-        accelerator_types = OrderedDict([(item['name'], item['maximumCardsPerInstance']) for item in res['items']])
+        accelerator_types = OrderedDict([(item['name'], item['maximumCardsPerInstance'])
+                                         for item in res.get('items', [])])
 
         return accelerator_types
 

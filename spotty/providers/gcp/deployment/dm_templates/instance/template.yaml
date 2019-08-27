@@ -5,8 +5,10 @@ resources:
       zone: {{ZONE}}
       machineType: zones/{{ZONE}}/machineTypes/{{MACHINE_TYPE}}
       scheduling:
+        {{#GPU_TYPE}}
         onHostMaintenance: TERMINATE
         automaticRestart: false
+        {{/GPU_TYPE}}
         preemptible: {{PREEMPTIBLE}}
       serviceAccounts:
         - email: {{SERVICE_ACCOUNT_EMAIL}}

@@ -15,8 +15,12 @@ for the created project.
 3. Enable the [Runtime Configuration API](https://console.developers.google.com/apis/library/runtimeconfig.googleapis.com){:target="_blank"} 
 for the created project.
 4. [Create a service account](https://console.cloud.google.com/iam-admin/serviceaccounts/create){:target="_blank"}.
-5. Add the __"Compute Admin"__, __"Deployment Manager Editor"__ and __"Cloud RuntimeConfig Admin"__ 
-roles to the created service account: [https://console.cloud.google.com/iam-admin/iam](https://console.cloud.google.com/iam-admin/iam){:target="_blank"}.
+5. Go to the [IAM page](https://console.cloud.google.com/iam-admin/iam){:target="_blank"} and add the following 
+roles to the created service account:
+    1. _Compute Admin_
+    2. _Storage Admin_
+    3. _Deployment Manager Editor_
+    4. _Cloud RuntimeConfig Admin_
 6. Make sure you have a quota to run GPU instances:
     1. Go to the quotas page in "IAM & admin" and filter the list of services by setting the Metric 
     field to __"GPUs (all regions)"__: [https://console.cloud.google.com/iam-admin/quotas?metric=GPUs%20(all%20regions)](https://console.cloud.google.com/iam-admin/quotas?metric=GPUs%20(all%20regions)){:target="_blank"}.
