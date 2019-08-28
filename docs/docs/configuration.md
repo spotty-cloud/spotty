@@ -41,7 +41,7 @@ instances:
 
 For GCP, `project` and `container` configurations are exactly the same, but an instance 
 configuration is slightly different, you can find the specification 
-[here](/spotty/docs/gcp-provider/instance-parameters/).
+[here]({{ site.baseurl }}/docs/gcp-provider/instance-parameters/).
 
 ## Available Parameters
 
@@ -137,8 +137,8 @@ This section contains a list of instances. Each instance is described with the f
 and "__gcp__" (Google Cloud Platform) providers.
 
 - __`parameters`__ - parameters of the instance. These parameters are different for different providers:
-    - [AWS Instance Parameters](/spotty/docs/aws-provider/instance-parameters/)
-    - [GCP instance parameters](/spotty/docs/gcp-provider/instance-parameters/)
+    - [AWS Instance Parameters]({{ site.baseurl }}/docs/aws-provider/instance-parameters/)
+    - [GCP instance parameters]({{ site.baseurl }}/docs/gcp-provider/instance-parameters/)
 
 ### __`scripts`__ section _(optional)_:
 

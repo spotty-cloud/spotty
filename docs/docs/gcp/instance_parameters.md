@@ -8,7 +8,7 @@ permalink: /docs/gcp-provider/instance-parameters/
 
 # GCP Instance Parameters
 
-Instance parameters are part of the [configuration file](/spotty/docs/configuration-file/), but 
+Instance parameters are part of the [configuration file]({{ site.baseurl }}/docs/configuration-file/), but 
 for each provider they are different. Here you can find parameters for a GCP instance:
 
 - __`zone`__ - GCP zone where to run an instance.
@@ -45,7 +45,7 @@ the instance is terminated. Use attached volumes to store the data that you need
 parameter below).
 
 - __`dockerDataRoot`__ _(optional)_ - directory where Docker will store all downloaded and built images. 
-Read more: [How to cache a Docker image](/spotty/docs/faq/#how-to-cache-a-docker-image).
+Read more: [How to cache a Docker image]({{ site.baseurl }}/docs/faq/#how-to-cache-a-docker-image).
 
 - __`volumes`__ _(optional)_ - the list of volumes to attach to the instance:
     - __`name`__ - a name of the volume. This name should match one of the container's `volumeMounts` to have this 
@@ -58,7 +58,7 @@ Read more: [How to cache a Docker image](/spotty/docs/faq/#how-to-cache-a-docker
         - __`deletionPolicy`__ _(optional)_ - what to do with the disk once the instance is terminated using the 
         `spotty stop` command. Possible values include: "__create_snapshot__" _(value by default)_, "__update_snapshot__", 
         "__retain__" and  "__delete__". Read more: 
-        [Disks and Deletion Policies](/spotty/docs/gcp-provider/disks-and-deletion-policies/).
+        [Disks and Deletion Policies]({{ site.baseurl }}/docs/gcp-provider/disks-and-deletion-policies/).
         
             __(!) Note:__ Deletion Policies are not implemented yet, so your disks will always retain.
 

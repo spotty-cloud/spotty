@@ -52,7 +52,7 @@ permalink: /docs/commands/
    ```
 
   Downloads files from the running instance. The `PATTERN` parameter has the same format and works in the same way as 
-  __Include Filters__ for the `aws s3 sync` command: see [Sync Filters](/spotty/docs/configuration-file/#project-section).
+  __Include Filters__ for the `aws s3 sync` command: see [Sync Filters]({{ site.baseurl }}/docs/configuration-file/#project-section).
 
 - __Run a custom script on an instance:__
 
@@ -63,7 +63,7 @@ permalink: /docs/commands/
   ```
 
   Runs a custom script inside the Docker container (see "scripts" section in 
-  [Configuration File](/spotty/docs/configuration-file/#scripts-section-optional)).
+  [Configuration File]({{ site.baseurl }}/docs/configuration-file/#scripts-section-optional)).
 
   Use the __`Ctrl + b`__, then __`x`__ combination of keys to kill tmux window with the process.
 

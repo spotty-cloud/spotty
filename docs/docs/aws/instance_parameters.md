@@ -8,7 +8,7 @@ permalink: /docs/aws-provider/instance-parameters/
 
 # AWS Instance Parameters
 
-Instance parameters are part of the [configuration file](/spotty/docs/configuration-file/), but 
+Instance parameters are part of the [configuration file]({{ site.baseurl }}/docs/configuration-file/), but 
 for each provider they are different. Here you can find parameters for an AWS instance:
 
 - __`region`__ - AWS region where to run an instance (you can use command `spotty aws spot-prices` to find the 
@@ -41,7 +41,7 @@ it's the On-demand price for the chosen instance type. Read more here:
 the instance is terminated. Use attached volumes to store the data you need to keep (see "volumes" parameter below).
 
 - __`dockerDataRoot`__ _(optional)_ - directory where Docker will store all downloaded and built images. 
-Read more: [How to cache a Docker image](/spotty/docs/faq/#how-to-cache-a-docker-image).
+Read more: [How to cache a Docker image]({{ site.baseurl }}/docs/faq/#how-to-cache-a-docker-image).
 
 - __`volumes`__ _(optional)_ - the list of volumes to attach to the instance:
     - __`name`__ - a name of the volume. This name should match one of the container's `volumeMounts` to have this 
@@ -58,7 +58,7 @@ Read more: [How to cache a Docker image](/spotty/docs/faq/#how-to-cache-a-docker
         - __`deletionPolicy`__ _(optional)_ - what to do with the volume once the instance is terminated using the 
         `spotty stop` command. Possible values include: "__create_snapshot__" _(value by default)_, "__update_snapshot__", 
         "__retain__" and  "__delete__". Read more here: 
-        [Volumes and Deletion Policies](/spotty/docs/aws-provider/volumes-and-deletion-policies/).
+        [Volumes and Deletion Policies]({{ site.baseurl }}/docs/aws-provider/volumes-and-deletion-policies/).
 
         - __`volumeName`__ _(optional)_ - name of the EBS volume. The default name is 
         "{project_name}-{instance_name}-{volume_name}".
