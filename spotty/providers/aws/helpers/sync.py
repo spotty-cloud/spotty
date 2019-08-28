@@ -8,6 +8,7 @@ def get_project_s3_path(bucket_name: str):
 
 
 def get_instance_sync_arguments(sync_filters: list):
+    """Returns arguments for the "aws sync" command that will be run the instance side."""
     return AwsCli.get_s3_sync_arguments(sync_filters, exact_timestamp=True, quote=True)
 
 

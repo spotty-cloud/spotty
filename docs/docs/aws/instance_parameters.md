@@ -8,7 +8,10 @@ permalink: /docs/aws-provider/instance-parameters/
 
 # AWS Instance Parameters
 
-- __`region`__ - AWS region where to run an instance (you can use command `spotty spot-prices` to find the 
+Instance parameters are part of the [configuration file](/spotty/docs/configuration-file/), but 
+for each provider they are different. Here you can find parameters for an AWS instance:
+
+- __`region`__ - AWS region where to run an instance (you can use command `spotty aws spot-prices` to find the 
 cheapest region).
 
 - __`availabilityZone`__ _(optional)_ - AWS availability zone where to run an instance. If a zone is not specified, it 
@@ -45,12 +48,17 @@ Read more: [How to cache a Docker image](/spotty/docs/faq/#how-to-cache-a-docker
     volume attached to the container's filesystem.
 
     - __`parameters`__ _(optional)_ - parameters of the volume:
+        - __`type`__ _(optional)_ - the volume type. Supported types: "__gp2__", "__sc1__", "__st1__" 
+        and "__standard__". The default value is "gp2". Read more here: 
+        [Amazon EBS Volume Types](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html){:target="_blank"}.
+    
         - __`size`__ _(optional)_ - size of the volume in GB. Size of the volume cannot be less than the size of 
         the existing snapshot but can be increased.
 
         - __`deletionPolicy`__ _(optional)_ - what to do with the volume once the instance is terminated using the 
         `spotty stop` command. Possible values include: "__create_snapshot__" _(value by default)_, "__update_snapshot__", 
-        "__retain__" and  "__delete__". Read more: [Volumes and Deletion Policies](/spotty/docs/aws-provider/volumes-and-deletion-policies/).
+        "__retain__" and  "__delete__". Read more here: 
+        [Volumes and Deletion Policies](/spotty/docs/aws-provider/volumes-and-deletion-policies/).
 
         - __`volumeName`__ _(optional)_ - name of the EBS volume. The default name is 
         "{project_name}-{instance_name}-{volume_name}".
@@ -65,11 +73,11 @@ tunnel to a local port.
 
 - __`managedPolicyArns`__ _(optional)_ - a list of Amazon Resource Names (ARNs) of the IAM managed policies that 
 you want to attach to the instance role. Read more about Managed Policies 
-[here](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html).
+[here](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html){:target="_blank"}.
 
 - __`commands`__ _(optional)_ - commands that should be run on the host OS before a container is started. 
 For example, you could login to Amazon ECR to pull a Docker image from there 
-([Deep Learning Containers Images](https://docs.aws.amazon.com/dlami/latest/devguide/deep-learning-containers-images.html)):
+([Deep Learning Containers Images](https://docs.aws.amazon.com/dlami/latest/devguide/deep-learning-containers-images.html){:target="_blank"}):
     ```yaml
     commands: |
       $(aws ecr get-login --no-include-email --region us-east-2 --registry-ids 763104351884)

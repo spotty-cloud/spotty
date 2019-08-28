@@ -24,7 +24,7 @@ def get_current_spot_price(ec2, instance_type, availability_zone=''):
     spot_prices = get_spot_prices(ec2, instance_type)
     if availability_zone:
         if availability_zone not in spot_prices:
-            raise ValueError('Spot price for the "%s" availability zone not found.')
+            raise ValueError('Spot price for the "%s" availability zone not found.' % availability_zone)
 
         current_price = spot_prices[availability_zone]
     else:

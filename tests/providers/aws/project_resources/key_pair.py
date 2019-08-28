@@ -10,19 +10,21 @@ class TestKeyPairResource(unittest.TestCase):
     def test_key_path(self):
         region = 'eu-central-1'
         project_name = 'TEST_PROJECT'
-        key_resource = KeyPairResource(project_name, region)
+        provider_name = 'aws'
+        key_resource = KeyPairResource(project_name, region, provider_name)
 
         # check key path
         key_name = 'spotty-key-%s-%s' % (project_name.lower(), region)
-        key_path = os.path.join(os.path.expanduser('~'), '.spotty', 'keys', key_name)
+        key_path = os.path.join(os.path.expanduser('~'), '.spotty', 'keys', provider_name, key_name)
         self.assertEqual(key_resource.key_path, key_path)
 
     @mock_ec2
     def test_create_and_delete_key(self):
         region = 'eu-central-1'
         project_name = 'TEST_PROJECT'
+        provider_name = 'aws'
         ec2 = boto3.client('ec2', region_name=region)
-        key_resource = KeyPairResource(project_name, region)
+        key_resource = KeyPairResource(project_name, region, provider_name)
 
         # key doesn't exist
         self.assertFalse(key_resource._ec2_key_exists())

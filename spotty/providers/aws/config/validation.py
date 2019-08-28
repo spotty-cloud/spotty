@@ -9,7 +9,7 @@ def validate_instance_parameters(params: dict):
         'region': And(str, Regex(r'^[a-z0-9-]+$')),
         Optional('availabilityZone', default=''): And(str, Regex(r'^[a-z0-9-]+$')),
         Optional('subnetId', default=''): And(str, Regex(r'^subnet-[a-z0-9]+$')),
-        'instanceType': And(str, And(is_valid_instance_type, error='Invalid instance type.')),
+        'instanceType': str,
         Optional('onDemandInstance', default=False): bool,
         Optional('amiName', default=None): And(str, len, Regex(r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$')),
         Optional('amiId', default=None): And(str, len, Regex(r'^ami-[a-z0-9]+$')),
@@ -35,9 +35,9 @@ def validate_instance_parameters(params: dict):
 
     instance_checks = [
         And(lambda x: not (x['onDemandInstance'] and x['maxPrice']),
-            error='"maxPrice" cannot be specified for on-demand instances'),
+            error='"maxPrice" cannot be specified for on-demand instances.'),
         And(lambda x: not (x['amiName'] and x['amiId']),
-            error='"amiName" and "amiId" parameters cannot be used together'),
+            error='"amiName" and "amiId" parameters cannot be used together.'),
     ]
 
     schema = get_instance_parameters_schema(instance_parameters, VOLUME_TYPE_EBS, instance_checks, volumes_checks)
@@ -52,6 +52,8 @@ def validate_ebs_volume_parameters(params: dict):
         Optional('volumeName', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
         Optional('mountDir', default=''): str,  # all the checks happened in the base configuration
         Optional('size', default=0): And(int, lambda x: x > 0),
+        # TODO: add the "iops" parameter to support the "io1" EBS volume type
+        Optional('type', default='gp2'): lambda x: x in ['gp2', 'sc1', 'st1', 'standard'],
         Optional('deletionPolicy', default=EbsVolume.DP_CREATE_SNAPSHOT): And(
             str,
             lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,
@@ -65,55 +67,19 @@ def validate_ebs_volume_parameters(params: dict):
 
 
 def is_gpu_instance(instance_type: str):
+    # a list of GPU instance from: https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing
     return instance_type in [
         'p2.xlarge', 'p2.8xlarge', 'p2.16xlarge',
-        'p3.2xlarge', 'p3.8xlarge', 'p3.16xlarge',
+        'p3.2xlarge', 'p3.8xlarge', 'p3.16xlarge', 'p3dn.24xlarge',
         'g3s.xlarge', 'g3.4xlarge', 'g3.8xlarge', 'g3.16xlarge',
     ]
 
 
 def is_nitro_instance(instance_type):
-    return instance_type in [
-        'c5.large', 'c5.xlarge', 'c5.2xlarge', 'c5.4xlarge', 'c5.9xlarge', 'c5.18xlarge',
-        'c5d.large', 'c5d.xlarge', 'c5d.2xlarge', 'c5d.4xlarge', 'c5d.9xlarge', 'c5d.18xlarge',
-        'm5.large', 'm5.xlarge', 'm5.2xlarge', 'm5.4xlarge', 'm5.12xlarge', 'm5.24xlarge',
-        'm5d.large', 'm5d.xlarge', 'm5d.2xlarge', 'm5d.4xlarge', 'm5d.12xlarge', 'm5d.24xlarge',
-        'i3.metal',
-    ]
+    # a list of Nitro-based instances from:
+    # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances
+    nitro_prefixes = ['a1', 'c5', 'c5d', 'c5n', 'i3en', 'm5', 'm5a', 'm5ad', 'm5d', 'r5', 'r5a', 'r5ad', 'r5d',
+                         't3', 't3a', 'z1d']
+    nitro_types = ['p3dn.24xlarge', 'i3.metal', 'u-6tb1.metal', 'u-9tb1.metal', 'u-12tb1.metal']
 
-
-def is_valid_instance_type(instance_type: str):
-    return instance_type in [
-        't1.micro',
-        't2.nano', 't2.micro', 't2.small', 't2.medium', 't2.large', 't2.xlarge', 't2.2xlarge',
-        'm1.small', 'm1.medium', 'm1.large', 'm1.xlarge',
-        'm3.medium', 'm3.large', 'm3.xlarge', 'm3.2xlarge',
-        'm4.large', 'm4.xlarge', 'm4.2xlarge', 'm4.4xlarge', 'm4.10xlarge', 'm4.16xlarge',
-        'm2.xlarge', 'm2.2xlarge', 'm2.4xlarge',
-        'cr1.8xlarge',
-        'r3.large', 'r3.xlarge', 'r3.2xlarge', 'r3.4xlarge', 'r3.8xlarge',
-        'r4.large', 'r4.xlarge', 'r4.2xlarge', 'r4.4xlarge', 'r4.8xlarge', 'r4.16xlarge',
-        'x1.16xlarge', 'x1.32xlarge',
-        'x1e.xlarge', 'x1e.2xlarge', 'x1e.4xlarge', 'x1e.8xlarge', 'x1e.16xlarge', 'x1e.32xlarge',
-        'i2.xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge',
-        'i3.large', 'i3.xlarge', 'i3.2xlarge', 'i3.4xlarge', 'i3.8xlarge', 'i3.16xlarge', 'i3.metal',
-        'hi1.4xlarge',
-        'hs1.8xlarge',
-        'c1.medium', 'c1.xlarge',
-        'c3.large', 'c3.xlarge', 'c3.2xlarge', 'c3.4xlarge', 'c3.8xlarge',
-        'c4.large', 'c4.xlarge', 'c4.2xlarge', 'c4.4xlarge', 'c4.8xlarge',
-        'c5.large', 'c5.xlarge', 'c5.2xlarge', 'c5.4xlarge', 'c5.9xlarge', 'c5.18xlarge',
-        'c5d.large', 'c5d.xlarge', 'c5d.2xlarge', 'c5d.4xlarge', 'c5d.9xlarge', 'c5d.18xlarge',
-        'cc1.4xlarge',
-        'cc2.8xlarge',
-        'g2.2xlarge', 'g2.8xlarge',
-        'g3s.xlarge', 'g3.4xlarge', 'g3.8xlarge', 'g3.16xlarge',
-        'cg1.4xlarge',
-        'p2.xlarge', 'p2.8xlarge', 'p2.16xlarge',
-        'p3.2xlarge', 'p3.8xlarge', 'p3.16xlarge',
-        'd2.xlarge', 'd2.2xlarge', 'd2.4xlarge', 'd2.8xlarge',
-        'f1.2xlarge', 'f1.16xlarge',
-        'm5.large', 'm5.xlarge', 'm5.2xlarge', 'm5.4xlarge', 'm5.12xlarge', 'm5.24xlarge',
-        'm5d.large', 'm5d.xlarge', 'm5d.2xlarge', 'm5d.4xlarge', 'm5d.12xlarge', 'm5d.24xlarge',
-        'h1.2xlarge', 'h1.4xlarge', 'h1.8xlarge', 'h1.16xlarge',
-    ]
+    return any(instance_type.startswith(prefix + '.') for prefix in nitro_prefixes) or instance_type in nitro_types

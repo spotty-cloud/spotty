@@ -1,0 +1,153 @@
+#cloud-config
+
+write_files:
+  - path: /tmp/spotty/instance/scripts/init.sh
+    permissions: 0755
+    owner: ubuntu
+    content: |
+      #!/bin/bash -x
+
+      # prepare the instance and run Docker container
+      /tmp/spotty/instance/scripts/prepare_instance.sh \
+        && /tmp/spotty/instance/scripts/mount_volumes.sh \
+        && /tmp/spotty/instance/scripts/sync_project.sh {{{SYNC_ARGS}}} \
+        && /tmp/spotty/instance/scripts/run_container.sh
+
+      # send signal that the Docker container is ready or failed
+      DOCKER_EXIT_CODE=$?
+      if [[ $DOCKER_EXIT_CODE -eq 0 ]] ; then
+        gcloud beta runtime-config configs variables set /success/1 1 --config-name {{MACHINE_NAME}}-docker-status --is-text
+      else
+        gcloud beta runtime-config configs variables set /failure/1 1 --config-name {{MACHINE_NAME}}-docker-status --is-text
+        exit $DOCKER_EXIT_CODE
+      fi
+
+  - path: /tmp/spotty/instance/scripts/prepare_instance.sh
+    permissions: 0755
+    owner: ubuntu
+    content: |
+      #!/bin/bash -xe
+
+      # install jq
+      apt-get install -y jq
+
+      # create directory for Docker scripts
+      mkdir -p /tmp/spotty/container/scripts/run
+      chmod -R 755 /tmp/spotty
+      chown -R ubuntu:ubuntu /tmp/spotty
+
+      # create directory for Spotty logs
+      mkdir -p /var/log/spotty/run
+      chmod -R 755 /var/log/spotty
+      chown -R ubuntu:ubuntu /var/log/spotty
+
+      # create a project directory
+      if [ -n "${HostProjectDirectory}" ]; then
+        mkdir -p ${HostProjectDirectory}
+      fi
+
+  - path: /tmp/spotty/instance/scripts/mount_volumes.sh
+    permissions: 0755
+    owner: ubuntu
+    content: |
+      #!/bin/bash -xe
+
+      DEVICE_NAMES=({{{DISK_DEVICE_NAMES}}})
+      MOUNT_DIRS=({{{DISK_MOUNT_DIRS}}})
+
+      for i in ${!DEVICE_NAMES[*]}
+      do
+        DEVICE=/dev/disk/by-id/google-${DEVICE_NAMES[$i]}
+        MOUNT_DIR=${MOUNT_DIRS[$i]}
+
+        blkid -o value -s TYPE $DEVICE || mkfs -t ext4 $DEVICE
+        mkdir -p $MOUNT_DIR
+        mount $DEVICE $MOUNT_DIR
+        resize2fs $DEVICE
+      done
+
+  - path: /tmp/spotty/instance/scripts/sync_project.sh
+    permissions: 0755
+    owner: ubuntu
+    content: |
+      #!/bin/bash -e
+
+      if [ -n "{{PROJECT_GS_BUCKET}}" ] && [ -n "{{HOST_PROJECT_DIR}}" ]; then
+        mkdir -p {{HOST_PROJECT_DIR}}
+        gsutil -m rsync -r "$@" gs://{{PROJECT_GS_BUCKET}}/{{BUCKET_SYNC_DIR}} {{HOST_PROJECT_DIR}}
+      fi
+
+  - path: /tmp/spotty/instance/scripts/run_container.sh
+    permissions: 0755
+    owner: ubuntu
+    content: |
+      #!/bin/bash -xe
+
+      # change docker data root directory
+      if [ -n "{{DOCKER_DATA_ROOT_DIR}}" ]; then
+        jq '. + { "data-root": "{{DOCKER_DATA_ROOT_DIR}}" }' /etc/docker/daemon.json > /tmp/docker_daemon.json \
+          && mv /tmp/docker_daemon.json /etc/docker/daemon.json
+        service docker restart
+
+        # remove all containers
+        if [[ $(docker ps -aq | wc -c) -ne 0 ]]; then
+          docker rm $(docker ps -aq)
+        fi
+      fi
+
+      # build docker image
+      DOCKER_IMAGE="{{DOCKER_IMAGE}}"
+      if [ -n "{{DOCKERFILE_PATH}}" ]; then
+        DOCKER_IMAGE=spotty:`date +%s`
+        docker build -t $DOCKER_IMAGE -f {{DOCKERFILE_PATH}} {{DOCKER_BUILD_CONTEXT_PATH}}
+      fi
+
+      if [ -n "$DOCKER_IMAGE" ]; then
+        # run docker container
+        CONTAINER_NAME=spotty
+        docker run {{DOCKER_RUNTIME_PARAMS}} \
+          -v /root/.config:/root/.config \
+          -v /tmp/spotty/container/scripts:/tmp/scripts \
+          --name $CONTAINER_NAME $DOCKER_IMAGE /bin/sh
+
+        WORKING_DIR=""
+        if [ -n "{{DOCKER_WORKING_DIR}}" ]; then
+          WORKING_DIR="-w {{DOCKER_WORKING_DIR}}"
+
+          # create working directory if it doesn't exist
+          docker exec $CONTAINER_NAME mkdir -p {{DOCKER_WORKING_DIR}}
+        fi
+
+        # create a script to connect to the docker container
+        mkdir -p /scripts
+        cat > /tmp/spotty/instance/scripts/container_bash.sh <<EOL
+      #!/bin/bash
+      docker exec -it $WORKING_DIR $CONTAINER_NAME /bin/bash \$@
+      EOL
+        chmod 755 /tmp/spotty/instance/scripts/container_bash.sh
+        chown ubuntu:ubuntu /tmp/spotty/instance/scripts/container_bash.sh
+
+        # create an alias to connect to the docker container
+        CONTAINER_BASH_ALIAS=container
+        echo "alias $CONTAINER_BASH_ALIAS=\"sudo /tmp/spotty/instance/scripts/container_bash.sh\"" >> /home/ubuntu/.bashrc
+        echo "alias $CONTAINER_BASH_ALIAS=\"/tmp/spotty/instance/scripts/container_bash.sh\"" >> /root/.bashrc
+
+        # run custom user commands
+        docker exec $WORKING_DIR $CONTAINER_NAME /bin/bash -xe /tmp/scripts/startup_commands.sh \
+          > /var/log/spotty/container-startup-commands.log 2>&1
+      fi
+
+  - path: /tmp/spotty/container/scripts/startup_commands.sh
+    permissions: 0644
+    owner: ubuntu
+    content: |
+      echo "Nothing to do"
+
+  - path: /home/ubuntu/.tmux.conf
+    permissions: 0664
+    owner: ubuntu
+    content: |
+      bind-key x kill-pane
+
+runcmd:
+  - /tmp/spotty/instance/scripts/init.sh

@@ -5,12 +5,18 @@ class AbstractInstanceConfig(ABC):
 
     def __init__(self, config: dict):
         self._name = config['name']
+        self._provider_name = config['provider']
         self._params = config['parameters']
 
     @property
     def name(self) -> str:
         """Name of the instance."""
         return self._name
+
+    @property
+    def provider_name(self):
+        """Provider name."""
+        return self._provider_name
 
     @property
     def volumes(self) -> list:

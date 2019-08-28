@@ -25,7 +25,7 @@ class AbstractAwsDeployment(ABC):
 
     @property
     def key_pair(self) -> KeyPairResource:
-        return KeyPairResource(self._project_name, self.instance_config.region)
+        return KeyPairResource(self._project_name, self.instance_config.region, self.instance_config.provider_name)
 
     def get_vpc_id(self) -> str:
         """Returns VPC ID that should be used for deployment."""

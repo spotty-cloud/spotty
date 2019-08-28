@@ -27,7 +27,7 @@ def get_description():
 
 setup(name='spotty',
       version=get_version(),
-      description='Training deep learning models on AWS EC2 Spot Instances',
+      description='Training deep learning models on AWS Spot Instances and GCP Preemtible VMs',
       url='http://github.com/apls777/spotty',
       author='Oleg Polosin',
       author_email='apls777@gmail.com',
@@ -39,6 +39,8 @@ setup(name='spotty',
       scripts=['bin/spotty'],
       install_requires=[
           'boto3>=1.9.0',
+          'google-api-python-client>=1.7.8',
+          'google-cloud-storage>=1.15.0',
           'cfn_flip',  # to work with CloudFormation templates
           'schema',
           'chevron',

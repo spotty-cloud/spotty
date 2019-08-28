@@ -111,6 +111,7 @@ def _get_volume_resource(volume: EbsVolume, output: AbstractOutputWriter):
                 'Key': 'Name',
                 'Value': volume.ec2_volume_name,
             }],
+            'VolumeType': volume.type,
         },
     }
 

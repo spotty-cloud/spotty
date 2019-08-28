@@ -9,11 +9,12 @@ def parse_parameters(script_params: str):
     for param in script_params:
         match = re.match('(\w+)=(.*)', param)
         if not match:
-            raise ValueError('Invalid script parameter: "%s"' % param)
+            raise ValueError('Invalid format for the script parameter: "%s" (the "PARAMETER=VALUE" format is expected).'
+                             % param)
 
         param_name, param_value = match.groups()
         if param_name in params:
-            raise ValueError('Parameter "%s" defined twice' % param_name)
+            raise ValueError('Parameter "%s" was defined twice.' % param_name)
 
         params[param_name] = param_value
 

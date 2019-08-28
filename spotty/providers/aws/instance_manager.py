@@ -55,23 +55,8 @@ class InstanceManager(AbstractInstanceManager):
         deployment.deploy(self.project_config, output, dry_run=dry_run)
 
     def stop(self, output: AbstractOutputWriter):
-        # terminate the instance
-        instance = self.instance_deployment.get_instance()
-        if instance:
-            output.write('Terminating the instance...')
-            instance.terminate()
-            instance.wait_instance_terminated()
-        else:
-            output.write('The instance is already terminated.')
-
-        # delete the stack
-        self.instance_deployment.stack.delete_stack(output, no_wait=True)
-
-        output.write('Applying deletion policies for the volumes...')
-
-        # apply deletion policies for the volumes
-        with output.prefix('  '):
-            self.instance_deployment.apply_deletion_policies(output)
+        # delete the stack and apply deletion policies
+        self.instance_deployment.delete(output)
 
     def clean(self, output: AbstractOutputWriter):
         pass
