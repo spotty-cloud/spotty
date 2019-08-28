@@ -6,6 +6,7 @@ import subprocess
 import re
 # from awscli.customizations.s3.fileinfo import FileInfo
 # from awscli.customizations.s3.filters import Filter
+import os
 
 
 class GsutilCommandError(Exception):
@@ -50,7 +51,7 @@ class GSUtil(object):
 
         if filters:
             if len(filters) > 1 or ('include' in filters[0]):
-                raise ValueError('At the moment GCP provider supports only one list of exclude filters ¯\_(ツ)_/¯')
+                raise ValueError('At the moment GCP provider supports only one list of exclude filters.')
 
             sync_filter = filters[0]
             if ('exclude' in sync_filter and 'include' in sync_filter) \
@@ -59,6 +60,7 @@ class GSUtil(object):
 
             path_regs = []
             for path in sync_filter['exclude']:
+                path = path.replace('/', os.sep)  # fix for Windows machines
                 path_regs.append(GSUtil.fnmatch_translate(path))
 
             filter_regex = '^(%s)$' % '|'.join(path_regs)
