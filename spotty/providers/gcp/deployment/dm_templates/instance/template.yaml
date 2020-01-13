@@ -23,6 +23,7 @@ resources:
           autoDelete: true
           initializeParams:
             sourceImage: {{SOURCE_IMAGE}}
+            diskSizeGb: {{BOOT_DISK_SIZE}}
 
         {{#DISK_ATTACHMENTS}}
         - source: {{DISK_LINK}}
