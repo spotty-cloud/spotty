@@ -74,7 +74,7 @@ write_files:
       apt-get install -y \
         docker-ce=5:{{DOCKER_CE_VERSION}}~3-0~ubuntu-xenial \
         docker-ce-cli=5:{{DOCKER_CE_VERSION}}~3-0~ubuntu-xenial \
-        containerd.io
+        containerd.io={{CONTAINERD_IO_VERSION}}
 
       # install NVIDIA driver
       apt-key adv --fetch-keys  http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
@@ -89,15 +89,13 @@ write_files:
       curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
         tee /etc/apt/sources.list.d/nvidia-docker.list
       apt-get update
-      apt-get install -y \
-        nvidia-container-runtime=2.0.0+docker{{DOCKER_CE_VERSION}}-1 \
-        nvidia-docker2={{NVIDIA_DOCKER_VERSION}}+docker{{DOCKER_CE_VERSION}}-1
+      apt-get install -y nvidia-container-toolkit={{NVIDIA_CONTAINER_TOOLKIT_VERSION}}
 
       # reload the Docker daemon configuration
-      pkill -SIGHUP dockerd
+      systemctl restart docker
 
       # test NVIDIA Docker runtime
-      docker run --runtime=nvidia --rm nvidia/cuda:10.0-base-ubuntu16.04 nvidia-smi
+      docker run --gpus all --rm nvidia/cuda:10.1-base-ubuntu16.04 nvidia-smi
       docker rmi $(docker images -q)
 
   - path: /run/spotty-image/scripts/create_image.sh
@@ -118,8 +116,9 @@ write_files:
           --force \
           --source-disk {{MACHINE_NAME}} \
           --source-disk-zone {{ZONE}} \
+          --storage-location eu \
           {{#IMAGE_FAMILY}}--family {{IMAGE_FAMILY}} {{/IMAGE_FAMILY}}\
-          --description "Spotty Image v{{STACK_VERSION}}: Ubuntu 16.04 LTS, NVIDIA driver {{NVIDIA_DRIVER_VERSION}}, Docker CE {{DOCKER_CE_VERSION}}, NVIDIA Docker {{NVIDIA_DOCKER_VERSION}}." \
+          --description "Spotty Image v{{STACK_VERSION}}: Ubuntu 16.04 LTS, NVIDIA driver {{NVIDIA_DRIVER_VERSION}}, Docker CE {{DOCKER_CE_VERSION}}, NVIDIA Container Toolkit {{NVIDIA_CONTAINER_TOOLKIT_VERSION}}." \
           --format json`
 
       # return the image ID

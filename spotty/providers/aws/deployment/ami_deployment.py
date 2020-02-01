@@ -11,7 +11,7 @@ from spotty.providers.aws.config.validation import is_gpu_instance
 class AmiDeployment(AbstractAwsDeployment):
 
     # version of the AMI stack
-    VERSION = '1.0.4'
+    VERSION = '1.1.0'
 
     @property
     def ec2_instance_name(self) -> str:
@@ -61,6 +61,10 @@ class AmiDeployment(AbstractAwsDeployment):
             'InstanceType': self.instance_config.instance_type,
             'ImageName': self.instance_config.ami_name,
             'InstanceNameTag': self.ec2_instance_name,
+            'NvidiaDriverVersion': '410',
+            'DockerCEVersion': '19.03.5',
+            'ContainerdIOVersion': '1.2.10-3',
+            'NvidiaContainerToolkitVersion': '1.0.5-1',
         }
 
         if debug_mode:

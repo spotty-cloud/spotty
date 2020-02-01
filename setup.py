@@ -35,7 +35,10 @@ setup(name='spotty',
       long_description=get_description(),
       long_description_content_type='text/markdown',
       packages=find_packages(exclude=['tests*']),
-      package_data={'spotty.providers.aws.deployment.cf_templates': ['data/*.yaml']},
+      package_data={
+          'spotty.providers.aws.deployment.cf_templates': ['data/*.yaml'],
+          'spotty.providers.gcp.deployment.dm_templates': ['image/*.yaml', 'instance/*.yaml'],
+      },
       scripts=['bin/spotty'],
       install_requires=[
           'boto3>=1.9.0',

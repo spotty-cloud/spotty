@@ -53,7 +53,7 @@ class ContainerDeployment(object):
         """Returns parameters for the ""docker run" command."""
         parameters = self._config.runtime_parameters + ['-td', '--net=host']
         if is_nvidia_runtime:
-            parameters += ['--runtime=nvidia']
+            parameters += ['--gpus', 'all']
 
         for volume_mount in self.volume_mounts:
             parameters += ['-v', '%s:%s' % (volume_mount.host_dir, volume_mount.container_dir)]

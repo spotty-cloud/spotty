@@ -168,7 +168,7 @@ class InstanceDeployment(AbstractGcpDeployment):
                     raise ValueError('Image with the name "%s" was not found.' % self.instance_config.image_name)
                 else:
                     # get the latest image from the "spotty-cloud" project
-                    spotty_image_family_url = 'projects/spotty-cloud/global/images/family/spotty'
+                    spotty_image_family_url = 'projects/spotty-cloud/global/images/family/spotty-1-2-5'
                     image = Image.get_by_url(self._ce, spotty_image_family_url)
                     if not image:
                         raise ValueError('Image "%s" not found.\n'

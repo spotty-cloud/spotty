@@ -235,11 +235,11 @@ class InstanceDeployment(AbstractAwsDeployment):
                     # get the latest "Deep Learning Base AMI"
                     res = self._ec2.describe_images(
                         Owners=['amazon'],
-                        Filters=[{'Name': 'name', 'Values': ['Deep Learning Base AMI (Ubuntu)*']}],
+                        Filters=[{'Name': 'name', 'Values': ['Deep Learning AMI (Ubuntu 16.04) Version*']}],
                     )
 
                     if not len(res['Images']):
-                        raise ValueError('AWS Deep Learning Base AMI not found.\n'
+                        raise ValueError('AWS Deep Learning AMI not found.\n'
                                          'Use the "spotty aws create-ami" command to create an AMI with NVIDIA Docker.')
 
                     image_info = sorted(res['Images'], key=lambda x: x['CreationDate'], reverse=True)[0]

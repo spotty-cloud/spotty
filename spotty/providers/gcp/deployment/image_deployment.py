@@ -9,7 +9,7 @@ from spotty.providers.gcp.helpers.deployment import check_gpu_configuration
 class ImageDeployment(AbstractGcpDeployment):
 
     # version of the image stack
-    VERSION = '1.0.0'
+    VERSION = '1.1.0'
 
     @property
     def machine_name(self) -> str:

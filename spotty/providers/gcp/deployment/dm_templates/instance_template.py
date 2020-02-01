@@ -18,10 +18,6 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
                               output: AbstractOutputWriter):
     """Prepares deployment template to run an instance."""
 
-    # read and update the template
-    with open(os.path.join(os.path.dirname(__file__), 'instance', 'template.yaml')) as f:
-        template = f.read()
-
     # get disk attachments
     disk_attachments, disk_device_names, disk_mount_dirs = _get_disk_attachments(volumes, instance_config.zone)
 
@@ -29,7 +25,9 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
     runtime_parameters = container.get_runtime_parameters(bool(instance_config.gpu))
 
     # render startup script
-    startup_script = open(os.path.join(os.path.dirname(__file__), 'instance', 'cloud_init.yaml'), 'r').read()
+    with open(os.path.join(os.path.dirname(__file__), 'instance', 'cloud_init.yaml')) as f:
+        startup_script = f.read()
+
     startup_script = chevron.render(startup_script, {
         'MACHINE_NAME': machine_name,
         'ZONE': instance_config.zone,
@@ -45,14 +43,22 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
         'DOCKER_BUILD_CONTEXT_PATH': container.docker_context_path,
         'DOCKER_RUNTIME_PARAMS': runtime_parameters,
         'DOCKER_WORKING_DIR': container.config.working_dir,
+        'INSTANCE_STARTUP_COMMANDS': fix_indents_for_lines(instance_config.commands, startup_script,
+                                                           '{{{INSTANCE_STARTUP_COMMANDS}}}'),
+        'CONTAINER_STARTUP_COMMANDS': fix_indents_for_lines(container.config.commands, startup_script,
+                                                            '{{{CONTAINER_STARTUP_COMMANDS}}}'),
     })
 
     # render the template
-    parameters = {
+    with open(os.path.join(os.path.dirname(__file__), 'instance', 'template.yaml')) as f:
+        template = f.read()
+
+    template = chevron.render(template, {
         'SERVICE_ACCOUNT_EMAIL': service_account_email,
         'ZONE': instance_config.zone,
         'MACHINE_TYPE': instance_config.machine_type,
         'SOURCE_IMAGE': image_link,
+        'BOOT_DISK_SIZE': instance_config.boot_disk_size,
         'STARTUP_SCRIPT': fix_indents_for_lines(startup_script, template, '{{{STARTUP_SCRIPT}}}'),
         'MACHINE_NAME': machine_name,
         'PREEMPTIBLE': 'false' if instance_config.on_demand else 'true',
@@ -61,8 +67,7 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
         'DISK_ATTACHMENTS': disk_attachments,
         'PUB_KEY_VALUE': public_key_value,
         'PORTS': ', '.join([str(port) for port in set(container.config.ports + [22])]),
-    }
-    template = chevron.render(template, parameters)
+    })
 
     # print some information about the deployment
     output.write('- image URL: ' + '/'.join(image_link.split('/')[-5:]))
