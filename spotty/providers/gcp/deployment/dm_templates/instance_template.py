@@ -58,6 +58,7 @@ def prepare_instance_template(instance_config: InstanceConfig, container: Contai
         'ZONE': instance_config.zone,
         'MACHINE_TYPE': instance_config.machine_type,
         'SOURCE_IMAGE': image_link,
+        'BOOT_DISK_SIZE': instance_config.boot_disk_size,
         'STARTUP_SCRIPT': fix_indents_for_lines(startup_script, template, '{{{STARTUP_SCRIPT}}}'),
         'MACHINE_NAME': machine_name,
         'PREEMPTIBLE': 'false' if instance_config.on_demand else 'true',

@@ -22,8 +22,9 @@ def prepare_image_template(instance_config: InstanceConfig, machine_name: str, s
         'IMAGE_FAMILY': image_family if image_family else '',
         'STACK_VERSION': stack_version,
         'NVIDIA_DRIVER_VERSION': '410',
-        'DOCKER_CE_VERSION': '18.09.3',
-        'NVIDIA_DOCKER_VERSION': '2.0.3',
+        'DOCKER_CE_VERSION': '19.03.5',
+        'CONTAINERD_IO_VERSION': '1.2.10-3',
+        'NVIDIA_CONTAINER_TOOLKIT_VERSION': '1.0.5-1',
         'DEBUG_MODE': debug_mode,
     })
 
