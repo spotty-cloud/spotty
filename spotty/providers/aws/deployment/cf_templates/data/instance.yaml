@@ -186,9 +186,9 @@ Resources:
               mode: '000644'
               content: !Sub |
                 bind-key x kill-pane
-          # commands:
-            # prepare_instance:
-            #   command: '/bin/bash -xe /tmp/spotty/instance/scripts/prepare_instance.sh'
+          commands:
+            prepare_instance:
+              command: '/bin/bash -xe /tmp/spotty/instance/scripts/prepare_instance.sh'
         mount_volumes_config:
           files:
             /tmp/spotty/instance/scripts/mount_volumes.sh:
@@ -211,9 +211,9 @@ Resources:
                   mount $DEVICE $MOUNT_DIR
                   resize2fs $DEVICE
                 done
-          # commands:
-          #   mount_volumes:
-          #     command: '/bin/bash -xe /tmp/spotty/instance/scripts/mount_volumes.sh'
+          commands:
+            mount_volumes:
+              command: '/bin/bash -xe /tmp/spotty/instance/scripts/mount_volumes.sh'
         sync_project_config:
           files:
             /tmp/spotty/instance/scripts/sync_project.sh:
@@ -224,9 +224,9 @@ Resources:
                 #!/bin/bash -e
 
                 aws s3 sync ${ProjectS3Path} ${HostProjectDirectory} "$@"
-          # commands:
-          #   sync_project:
-          #     command: !Sub '/bin/bash -xe /tmp/spotty/instance/scripts/sync_project.sh ${SyncCommandArgs}'
+          commands:
+            sync_project:
+              command: !Sub '/bin/bash -xe /tmp/spotty/instance/scripts/sync_project.sh ${SyncCommandArgs}'
         startup_commands_config:
           files:
             /tmp/spotty/instance/scripts/startup_commands.sh:
@@ -234,9 +234,9 @@ Resources:
               group: ubuntu
               mode: '000644'
               content: '# no content'
-          # commands:
-          #   startup_commands:
-          #     command: !Sub '/bin/bash -xe /tmp/spotty/instance/scripts/startup_commands.sh'
+          commands:
+            startup_commands:
+              command: !Sub '/bin/bash -xe /tmp/spotty/instance/scripts/startup_commands.sh'
         docker_container_config:
           files:
             /tmp/spotty/instance/scripts/run_container.sh:
