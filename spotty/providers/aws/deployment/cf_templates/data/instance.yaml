@@ -303,9 +303,9 @@ Resources:
               group: ubuntu
               mode: '000644'
               content: '# no content'
-          # commands:
-          #   run_container:
-          #     command: '/bin/bash -xe /tmp/spotty/instance/scripts/run_container.sh'
+          commands:
+            run_container:
+              command: '/bin/bash -xe /tmp/spotty/instance/scripts/run_container.sh'
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
