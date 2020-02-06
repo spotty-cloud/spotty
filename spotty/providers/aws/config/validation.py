@@ -80,6 +80,6 @@ def is_nitro_instance(instance_type):
     # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances
     nitro_prefixes = ['a1', 'c5', 'c5d', 'c5n', 'i3en', 'm5', 'm5a', 'm5ad', 'm5d', 'r5', 'r5a', 'r5ad', 'r5d',
                          't3', 't3a', 'z1d']
-    nitro_types = ['p3dn.24xlarge', 'i3.metal', 'u-6tb1.metal', 'u-9tb1.metal', 'u-12tb1.metal']
+    nitro_types = ['i3.metal', 'u-6tb1.metal', 'u-9tb1.metal', 'u-12tb1.metal']
 
     return any(instance_type.startswith(prefix + '.') for prefix in nitro_prefixes) or instance_type in nitro_types
