@@ -203,7 +203,13 @@ Resources:
 
                 for i in ${!!MOUNT_DIRS[*]}
                 do
-                  DEVICE=/dev/xvd${!DEVICE_LETTERS[$i]}
+                if [ -e /dev/nvme1n1 ]
+                  then
+                    DEVICE=/dev/nvme1n1
+                  else
+                    DEVICE=/dev/xvd${!DEVICE_LETTERS[$i]}
+                fi
+                  
                   MOUNT_DIR=${!MOUNT_DIRS[$i]}
 
                   blkid -o value -s TYPE $DEVICE || mkfs -t ext4 $DEVICE
