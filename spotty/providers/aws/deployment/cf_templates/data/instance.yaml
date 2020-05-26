@@ -131,6 +131,7 @@ Resources:
               --stack ${AWS::StackName} \
               --region ${AWS::Region} \
               --resource DockerReadyWaitCondition
+
     Metadata:
       'AWS::CloudFormation::Init':
         configSets:
@@ -298,6 +299,7 @@ Resources:
                   docker exec $WORKING_DIR $CONTAINER_NAME /bin/bash -xe /tmp/scripts/startup_commands.sh \
                     > /var/log/spotty/container-startup-commands.log 2>&1
                 fi
+
             /tmp/spotty/container/scripts/startup_commands.sh:
               owner: ubuntu
               group: ubuntu

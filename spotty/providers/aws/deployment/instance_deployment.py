@@ -70,8 +70,11 @@ class InstanceDeployment(AbstractAwsDeployment):
         if not dry_run:
             instance_profile_stack = InstanceProfileStackResource(
                 self._project_name, self.instance_config.name, self.instance_config.region)
-            instance_profile_arn = instance_profile_stack.create_or_update_stack(
-                self.instance_config.managed_policy_arns, output=output)
+            if not self.instance_config.instance_profile_arn:
+                instance_profile_arn = instance_profile_stack.create_or_update_stack(
+                    self.instance_config.managed_policy_arns, output=output)
+            else:
+                instance_profile_arn = self.instance_config.instance_profile_arn
         else:
             instance_profile_arn = None
 
