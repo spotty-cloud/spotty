@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import List
 import yaml
 import os
 from argparse import Namespace, ArgumentParser
@@ -42,7 +43,8 @@ class AbstractConfigCommand(AbstractCommand):
         project_config = ProjectConfig(self._load_config(config_abs_path), project_dir)
 
         # get instance configuration
-        instance_config = self._get_instance_config(project_config, args.instance_name, output)
+        instance_id = self._get_instance_id(project_config.instances, args.instance_name, output)
+        instance_config = project_config.instances[instance_id]
 
         # create an instance manger
         instance_manager = InstanceManagerFactory.get_instance(project_config, instance_config)
@@ -64,13 +66,13 @@ class AbstractConfigCommand(AbstractCommand):
         return config
 
     @staticmethod
-    def _get_instance_config(project_config: ProjectConfig, instance_name: str, output: AbstractOutputWriter):
+    def _get_instance_id(instances: List[dict], instance_name: str, output: AbstractOutputWriter):
         if not instance_name:
-            if len(project_config.instances) > 1:
+            if len(instances) > 1:
                 # ask user to choose the instance
                 output.write('Select the instance:\n')
                 with output.prefix('  '):
-                    for i, instance_config in enumerate(project_config.instances):
+                    for i, instance_config in enumerate(instances):
                         output.write('[%d] %s' % (i + 1, instance_config['name']))
                 output.write()
 
@@ -80,18 +82,18 @@ class AbstractConfigCommand(AbstractCommand):
                 except ValueError:
                     num = 0
 
-                if num < 1 or num > len(project_config.instances):
-                    raise ValueError('The value from 1 to %d was expected.' % len(project_config.instances))
-            else:
-                num = 1
+                if num < 1 or num > len(instances):
+                    raise ValueError('The value from 1 to %d was expected.' % len(instances))
 
-            instance_config = project_config.instances[num - 1]
+                instance_id = num - 1
+            else:
+                instance_id = 0
         else:
-            # get the instance by name
-            instance_configs = filter_list(project_config.instances, 'name', instance_name)
-            if not instance_configs:
+            # get instance ID by name
+            instance_ids = [i for i, instance in enumerate(instances) if instance['name'] == instance_name]
+            if not instance_ids:
                 raise ValueError('Instance "%s" not found in the configuration file' % instance_name)
 
-            instance_config = instance_configs[0]
+            instance_id = instance_ids[0]
 
-        return instance_config
+        return instance_id

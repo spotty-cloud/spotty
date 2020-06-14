@@ -1,6 +1,6 @@
 from typing import List
+from spotty.config.abstract_instance_config import VolumeMount
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
-from spotty.deployment.container_deployment import VolumeMount
 from spotty.utils import render_table
 
 

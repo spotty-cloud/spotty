@@ -8,20 +8,14 @@ from spotty.providers.aws.deployment.project_resources.key_pair import KeyPairRe
 
 class AbstractAwsDeployment(ABC):
 
-    def __init__(self, project_name: str, instance_config: InstanceConfig):
-        self._project_name = project_name
+    def __init__(self, instance_config: InstanceConfig):
+        self._project_name = instance_config.project_config.project_name
         self._instance_config = instance_config
         self._ec2 = boto3.client('ec2', region_name=instance_config.region)
 
     @property
     def instance_config(self) -> InstanceConfig:
         return self._instance_config
-
-    @property
-    @abstractmethod
-    def ec2_instance_name(self) -> str:
-        """Name for EC2 instance."""
-        raise NotImplementedError
 
     @property
     def key_pair(self) -> KeyPairResource:

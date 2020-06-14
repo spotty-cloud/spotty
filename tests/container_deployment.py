@@ -1,6 +1,6 @@
 import unittest
-from spotty.config.container_config import ContainerConfig
-from spotty.deployment.container_deployment import ContainerDeployment, VolumeMount
+from spotty.config.container_config import ContainerConfig, VolumeMount
+from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.providers.test.deployment.test_volume import TestVolume
 
 

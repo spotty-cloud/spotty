@@ -4,7 +4,7 @@ from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.deployment.ami_deployment import AmiDeployment
 from spotty.providers.aws.deployment.instance_deployment import InstanceDeployment
 from spotty.providers.aws.helpers.download import download_from_s3_to_local, upload_from_instance_to_s3
-from spotty.providers.aws.helpers.sync import sync_project_with_s3, sync_instance_with_s3
+from spotty.providers.aws.helpers.sync import sync_project_with_s3, sync_instance_with_s3, get_project_s3_path
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 from spotty.utils import render_table
 
@@ -14,16 +14,16 @@ class InstanceManager(AbstractInstanceManager):
     @property
     def instance_deployment(self) -> InstanceDeployment:
         """Returns an instance deployment manager."""
-        return InstanceDeployment(self.project_config.project_name, self.instance_config)
+        return InstanceDeployment(self.instance_config)
 
     @property
     def ami_deployment(self) -> AmiDeployment:
         """Returns an AMI deployment manager."""
-        return AmiDeployment(self.project_config.project_name, self.instance_config)
+        return AmiDeployment(self.instance_config)
 
-    def _get_instance_config(self, config: dict) -> InstanceConfig:
+    def _get_instance_config(self, instance_config: dict) -> InstanceConfig:
         """Validates the instance config and returns an InstanceConfig object."""
-        return InstanceConfig(config)
+        return InstanceConfig(instance_config, self.project_config)
 
     @property
     def instance_config(self) -> InstanceConfig:
@@ -52,7 +52,7 @@ class InstanceManager(AbstractInstanceManager):
                 instance.wait_instance_terminated()
 
         # deploy the instance
-        deployment.deploy(self.project_config, output, dry_run=dry_run)
+        deployment.deploy(output, dry_run=dry_run)
 
     def stop(self, output: AbstractOutputWriter):
         # delete the stack and apply deletion policies
@@ -73,8 +73,10 @@ class InstanceManager(AbstractInstanceManager):
         if not dry_run:
             # sync S3 with the instance
             output.write('Syncing S3 bucket with the instance...')
-            sync_instance_with_s3(self.project_config.sync_filters, self.get_ip_address(), self.ssh_port, self.ssh_user,
-                                  self.ssh_key_path)
+            project_s3_path = get_project_s3_path(bucket_name)
+            instance_project_dir = self.instance_config.container_config.host_project_dir
+            sync_instance_with_s3(project_s3_path, instance_project_dir, self.project_config.sync_filters,
+                                  self.get_ip_address(), self.ssh_port, self.ssh_user, self.ssh_key_path)
 
     def download(self, download_filters: list, output: AbstractOutputWriter, dry_run=False):
         # create or get existing bucket for the project
@@ -82,7 +84,9 @@ class InstanceManager(AbstractInstanceManager):
 
         # sync files from the instance to a temporary S3 directory
         output.write('Uploading files from the instance to S3 bucket...')
-        upload_from_instance_to_s3(download_filters, self.get_ip_address(), self.ssh_port, self.ssh_user, self.ssh_key_path,
+        upload_from_instance_to_s3(self.instance_config.container_config.host_project_dir,
+                                   self.instance_deployment.instance_config.name, bucket_name, download_filters,
+                                   self.get_ip_address(), self.ssh_port, self.ssh_user, self.ssh_key_path,
                                    dry_run=dry_run)
 
         # sync the project with the S3 bucket

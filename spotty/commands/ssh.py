@@ -2,6 +2,7 @@ from argparse import ArgumentParser, Namespace
 import subprocess
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.deployment.file_structure import CONTAINER_BASH_SCRIPT_PATH
 from spotty.helpers.ssh import get_ssh_command
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
@@ -32,7 +33,7 @@ class SshCommand(AbstractConfigCommand):
             remote_cmd = ['tmux', 'new', '-s', session_name, '-A']
             if not args.host_os:
                 # connect to the container or keep the tmux window in case of a failure
-                container_cmd = subprocess.list2cmdline(['sudo', '/tmp/spotty/instance/scripts/container_bash.sh'])
+                container_cmd = subprocess.list2cmdline([CONTAINER_BASH_SCRIPT_PATH])
                 tmux_cmd = '%s || tmux set remain-on-exit on' % container_cmd
                 remote_cmd += [tmux_cmd]
 
@@ -40,5 +41,6 @@ class SshCommand(AbstractConfigCommand):
 
         # connect to the instance
         ssh_command = get_ssh_command(instance_manager.get_ip_address(), instance_manager.ssh_port,
-                                      instance_manager.ssh_user, instance_manager.ssh_key_path, remote_cmd)
+                                      instance_manager.ssh_user, instance_manager.ssh_key_path, remote_cmd,
+                                      env_vars=instance_manager.instance_config.env_vars)
         subprocess.call(ssh_command)

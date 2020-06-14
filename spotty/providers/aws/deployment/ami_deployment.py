@@ -2,7 +2,7 @@ from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.aws.aws_resources.image import Image
 from spotty.providers.aws.deployment.abstract_aws_deployment import AbstractAwsDeployment
 from spotty.providers.aws.aws_resources.instance import Instance
-from spotty.providers.aws.deployment.cf_templates.ami_template import prepare_ami_template
+from spotty.providers.aws.deployment.cf_templates.ami_template import prepare_ami_template, get_template_parameters
 from spotty.providers.aws.deployment.checks import check_az_and_subnet, check_max_price
 from spotty.providers.aws.deployment.project_resources.ami_stack import AmiStackResource
 from spotty.providers.aws.config.validation import is_gpu_instance
@@ -12,10 +12,6 @@ class AmiDeployment(AbstractAwsDeployment):
 
     # version of the AMI stack
     VERSION = '1.1.0'
-
-    @property
-    def ec2_instance_name(self) -> str:
-        return 'spotty-ami-%s' % self.instance_config.ami_name.lower()
 
     @property
     def stack(self):
@@ -51,27 +47,9 @@ class AmiDeployment(AbstractAwsDeployment):
         template = prepare_ami_template(availability_zone, subnet_id, debug_mode, on_demand)
 
         # create stack
-        parameters = self._get_template_parameters(debug_mode)
+        vpc_id = self.get_vpc_id()
+        parameters = get_template_parameters(self.instance_config, self.VERSION, vpc_id, self.key_pair, debug_mode)
         self.stack.create_stack(template, parameters, debug_mode, output)
-
-    def _get_template_parameters(self, debug_mode: bool = False):
-        parameters = {
-            'ImageVersion': self.VERSION,
-            'VpcId': self.get_vpc_id(),
-            'InstanceType': self.instance_config.instance_type,
-            'ImageName': self.instance_config.ami_name,
-            'InstanceNameTag': self.ec2_instance_name,
-            'NvidiaDriverVersion': '410',
-            'DockerCEVersion': '19.03.5',
-            'ContainerdIOVersion': '1.2.10-3',
-            'NvidiaContainerToolkitVersion': '1.0.5-1',
-        }
-
-        if debug_mode:
-            parameters['DebugMode'] = 'true'
-            parameters['KeyName'] = self.key_pair.get_or_create_key()  # get or create a key pair
-
-        return parameters
 
     def delete(self, output: AbstractOutputWriter):
         # check that the "amiId" parameter is not set

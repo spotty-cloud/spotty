@@ -1,24 +1,35 @@
+from subprocess import list2cmdline
 from typing import List
 import os
+import chevron
 import yaml
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.config.validation import is_subdir
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container_deployment import ContainerDeployment
+from spotty.deployment.file_structure import INSTANCE_SPOTTY_TMP_DIR, SPOTTY_LOGS_DIR, \
+    RUN_CMD_LOGS_DIR, CONTAINER_BASH_SCRIPT_PATH, INSTANCE_SCRIPTS_DIR, CONTAINER_SCRIPTS_DIR, \
+    INSTANCE_STARTUP_SCRIPTS_DIR
+from spotty.providers.aws.aws_resources.image import Image
+from spotty.providers.aws.aws_resources.snapshot import Snapshot
+from spotty.providers.aws.aws_resources.volume import Volume
 from spotty.providers.aws.config.instance_config import InstanceConfig
-from spotty.providers.aws.deployment.project_resources.ebs_volume import EbsVolume
+from spotty.providers.aws.config.ebs_volume import EbsVolume
+from spotty.providers.aws.deployment.project_resources.key_pair import KeyPairResource
+from spotty.providers.aws.helpers.sync import get_instance_sync_arguments, get_project_s3_path
 
 
-def prepare_instance_template(instance_config: InstanceConfig, volumes: List[AbstractInstanceVolume],
-                              availability_zone: str, container: ContainerDeployment, output: AbstractOutputWriter):
+def prepare_instance_template(ec2, instance_config: InstanceConfig, volumes: List[AbstractInstanceVolume],
+                              availability_zone: str,  output: AbstractOutputWriter):
     """Prepares CloudFormation template to run a Spot Instance."""
 
     # read and update CF template
-    with open(os.path.join(os.path.dirname(__file__), 'data', 'instance.yaml')) as f:
+    with open(os.path.join(os.path.dirname(__file__), 'data', 'instance', 'template.yaml')) as f:
         template = yaml.load(f, Loader=CfnYamlLoader)
 
     # get volume resources and updated availability zone
-    volume_resources = _get_volume_resources(volumes, output)
+    volume_resources = _get_volume_resources(ec2, volumes, output)
 
     # add volume resources to the template
     template['Resources'].update(volume_resources)
@@ -44,7 +55,7 @@ def prepare_instance_template(instance_config: InstanceConfig, volumes: List[Abs
         del template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData']['SecurityGroupIds']
 
     # add ports to the security group
-    for port in container.config.ports:
+    for port in instance_config.container_config.ports:
         if port != 22:
             template['Resources']['InstanceSecurityGroup']['Properties']['SecurityGroupIngress'] += [{
                 'CidrIp': '0.0.0.0/0',
@@ -72,19 +83,175 @@ def prepare_instance_template(instance_config: InstanceConfig, volumes: List[Abs
         output.write('- maximum Spot Instance price: %s'
                      % (('%.04f' % instance_config.max_price) if instance_config.max_price else 'on-demand'))
 
-    # set initial instance commands
-    if instance_config.commands:
-        template['Resources']['InstanceLaunchTemplate']['Metadata']['AWS::CloudFormation::Init'] \
-            ['startup_commands_config']['files']['/tmp/spotty/instance/scripts/startup_commands.sh']['content'] \
-            = instance_config.commands
+    # set the user data script
+    template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData']['UserData'] = {
+        'Fn::Base64': {
+            'Fn::Sub': _read_template_file(os.path.join('startup_scripts', 'user_data.sh')),
+        },
+    }
 
-    # set initial docker commands
-    if container.config.commands:
-        template['Resources']['InstanceLaunchTemplate']['Metadata']['AWS::CloudFormation::Init'] \
-            ['docker_container_config']['files']['/tmp/spotty/container/scripts/startup_commands.sh']['content'] \
-            = container.config.commands
+    # set CloudFormation configs
+    cfn_init_configs = [
+        {
+            'name': 'prepare_instance',
+            'files': {
+                INSTANCE_STARTUP_SCRIPTS_DIR + '/01_prepare_instance.sh': {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000755',
+                    'content': {
+                        'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '01_prepare_instance.sh'), {
+                            'HOST_CONTAINER_RUN_SCRIPTS_DIR': instance_config.host_run_scripts_dir,
+                            'INSTANCE_SPOTTY_TMP_DIR': INSTANCE_SPOTTY_TMP_DIR,
+                            'SPOTTY_LOGS_DIR': SPOTTY_LOGS_DIR,
+                            'RUN_CMD_LOGS_DIR': RUN_CMD_LOGS_DIR,
+                            'CONTAINER_BASH_SCRIPT_PATH': CONTAINER_BASH_SCRIPT_PATH,
+                        }),
+                    },
+                },
+                CONTAINER_BASH_SCRIPT_PATH: {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000755',
+                    'content': _read_template_file(os.path.join('files', 'container_bash.sh')),
+                },
+                '/home/ubuntu/.tmux.conf': {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000644',
+                    'content': {
+                        'Fn::Sub': _read_template_file(os.path.join('files', 'tmux.conf')),
+                    },
+                },
+            },
+            'command': INSTANCE_STARTUP_SCRIPTS_DIR + '/01_prepare_instance.sh',
+        },
+        {
+            'name': 'mount_volumes',
+            'files': {
+                INSTANCE_STARTUP_SCRIPTS_DIR + '/02_mount_volumes.sh': {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000755',
+                    'content': {
+                        'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '02_mount_volumes.sh')),
+                    },
+                },
+            },
+            'command': INSTANCE_STARTUP_SCRIPTS_DIR + '/02_mount_volumes.sh',
+        },
+        {
+            'name': 'set_docker_root',
+            'files': {
+                INSTANCE_STARTUP_SCRIPTS_DIR + '/03_set_docker_root.sh': {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000755',
+                    'content': {
+                        'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '03_set_docker_root.sh')),
+                    },
+                },
+            },
+            'command': INSTANCE_STARTUP_SCRIPTS_DIR + '/03_set_docker_root.sh',
+        },
+        {
+            'name': 'sync_project',
+            'files': {
+                INSTANCE_STARTUP_SCRIPTS_DIR + '/04_sync_project.sh': {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000755',
+                    'content': {
+                        'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '04_sync_project.sh')),
+                    },
+                },
+            },
+            'command': INSTANCE_STARTUP_SCRIPTS_DIR + '/04_sync_project.sh',
+        },
+        {
+            'name': 'run_instance_startup_commands',
+            'files': {
+                INSTANCE_STARTUP_SCRIPTS_DIR + '/05_run_instance_startup_commands.sh': {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000755',
+                    'content': {
+                        'Fn::Sub': _read_template_file(
+                            os.path.join('startup_scripts', '05_run_instance_startup_commands.sh'), {
+                                'INSTANCE_STARTUP_SCRIPTS_DIR': INSTANCE_STARTUP_SCRIPTS_DIR,
+                            }),
+                    },
+                },
+                INSTANCE_STARTUP_SCRIPTS_DIR + '/instance_startup_commands.sh': {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000644',
+                    'content': instance_config.commands or '#',
+                },
+            },
+            'command': INSTANCE_STARTUP_SCRIPTS_DIR + '/05_run_instance_startup_commands.sh',
+        },
+        {
+            'name': 'run_container',
+            'files': {
+                INSTANCE_STARTUP_SCRIPTS_DIR + '/06_run_container.sh': {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000755',
+                    'content': {
+                        'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '06_run_container.sh'), {
+                            'INSTANCE_SCRIPTS_DIR': INSTANCE_SCRIPTS_DIR,
+                            'CONTAINER_SCRIPTS_DIR': CONTAINER_SCRIPTS_DIR,
+                        }),
+                    },
+                },
+                INSTANCE_SCRIPTS_DIR + '/run_container.sh': {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000755',
+                    'content': {
+                        'Fn::Sub': _read_template_file(os.path.join('files', 'run_container.sh'), {
+                            'HOST_SCRIPTS_DIR': instance_config.host_scripts_dir,
+                            'CONTAINER_SCRIPTS_DIR': CONTAINER_SCRIPTS_DIR,
+                        }),
+                    },
+                },
+                instance_config.host_scripts_dir + '/container_startup_commands.sh': {
+                    'owner': 'ubuntu',
+                    'group': 'ubuntu',
+                    'mode': '000644',
+                    'content': instance_config.container_config.commands or '#',
+                },
+            },
+            'command': INSTANCE_STARTUP_SCRIPTS_DIR + '/06_run_container.sh',
+        },
+    ]
+
+    template['Resources']['InstanceLaunchTemplate']['Metadata']['AWS::CloudFormation::Init']['configSets'] = {
+        'init': [config['name'] for config in cfn_init_configs],
+    }
+
+    for config in cfn_init_configs:
+        template['Resources']['InstanceLaunchTemplate']['Metadata']['AWS::CloudFormation::Init'][config['name']] = {
+            'files': config.get('files', {}),
+            'commands': {
+                config['name']: {
+                    'command': config['command'],
+                }
+            },
+        }
 
     return yaml.dump(template, Dumper=CfnYamlDumper)
+
+
+def _read_template_file(filename: str, params: dict = None):
+    with open(os.path.join(os.path.dirname(__file__), 'data', 'instance', filename)) as f:
+        content = f.read()
+
+    if params:
+        content = chevron.render(content, params)
+
+    return content
 
 
 def _get_volume_attachment_resource(volume_id, device_name):
@@ -100,7 +267,7 @@ def _get_volume_attachment_resource(volume_id, device_name):
     return attachment_resource
 
 
-def _get_volume_resource(volume: EbsVolume, output: AbstractOutputWriter):
+def _get_volume_resource(ec2, volume: EbsVolume, output: AbstractOutputWriter):
     # new volume will be created
     volume_resource = {
         'Type': 'AWS::EC2::Volume',
@@ -116,7 +283,7 @@ def _get_volume_resource(volume: EbsVolume, output: AbstractOutputWriter):
     }
 
     # check if the snapshot exists and restore the volume from it
-    snapshot = volume.get_snapshot()
+    snapshot = Snapshot.get_by_name(ec2, volume.ec2_volume_name)
     if snapshot:
         # volume will be restored from the snapshot
         # check size of the volume
@@ -147,7 +314,7 @@ def _get_volume_resource(volume: EbsVolume, output: AbstractOutputWriter):
     return volume_resource
 
 
-def _get_volume_resources(volumes: List[AbstractInstanceVolume], output: AbstractOutputWriter):
+def _get_volume_resources(ec2, volumes: List[AbstractInstanceVolume], output: AbstractOutputWriter):
     resources = {}
 
     # ending letters for the devices (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html)
@@ -160,7 +327,7 @@ def _get_volume_resources(volumes: List[AbstractInstanceVolume], output: Abstrac
         if isinstance(volume, EbsVolume):
             device_letter = device_letters[i]
 
-            ec2_volume = volume.get_ec2_volume()
+            ec2_volume = Volume.get_by_name(ec2, volume.ec2_volume_name)
             if ec2_volume:
                 # check if the volume is available
                 if not ec2_volume.is_available():
@@ -178,7 +345,7 @@ def _get_volume_resources(volumes: List[AbstractInstanceVolume], output: Abstrac
             else:
                 # create Volume resource
                 vol_resource_name = 'Volume' + device_letter.upper()
-                vol_resource = _get_volume_resource(volume, output)
+                vol_resource = _get_volume_resource(ec2, volume, output)
                 resources[vol_resource_name] = vol_resource
 
                 volume_id = {'Ref': vol_resource_name}
@@ -190,3 +357,56 @@ def _get_volume_resources(volumes: List[AbstractInstanceVolume], output: Abstrac
             resources[vol_attachment_resource_name] = vol_attachment_resource
 
     return resources
+
+
+def get_template_parameters(instance_config: InstanceConfig, instance_profile_arn: str, bucket_name: str,
+                            vpc_id: str, ami: Image, key_pair: KeyPairResource,
+                            container_deployment: ContainerDeployment, output: AbstractOutputWriter, dry_run=False):
+    output.write('- AMI: "%s" (%s)' % (ami.name, ami.image_id))
+
+    # check root volume size
+    root_volume_size = instance_config.root_volume_size
+    if root_volume_size and root_volume_size < ami.size:
+        raise ValueError('Root volume size cannot be less than the size of AMI (%dGB).' % ami.size)
+    elif not root_volume_size:
+        # if a root volume size is not specified, make it 5GB larger than the AMI size
+        root_volume_size = ami.size + 5
+
+    # create key pair
+    key_name = key_pair.get_or_create_key(dry_run)
+
+    # get mount directories for the volumes
+    mount_dirs = [volume.mount_dir for volume in instance_config.volumes]
+
+    # get Docker runtime parameters
+    runtime_parameters = container_deployment.get_runtime_parameters()
+
+    # print info about the Docker data root
+    if instance_config.docker_data_root:
+        docker_data_volume_name = [volume.name for volume in instance_config.volumes
+                                   if is_subdir(instance_config.docker_data_root, volume.mount_dir)][0]
+        output.write('- Docker data will be stored on the "%s" volume' % docker_data_volume_name)
+
+    # create stack
+    parameters = {
+        'VpcId': vpc_id,
+        'InstanceProfileArn': instance_profile_arn,
+        'InstanceType': instance_config.instance_type,
+        'KeyName': key_name,
+        'ImageId': ami.image_id,
+        'RootVolumeSize': str(root_volume_size),
+        'VolumeMountDirectories': ('"%s"' % '" "'.join(mount_dirs)) if mount_dirs else '',
+        'DockerDataRootDirectory': instance_config.docker_data_root,
+        'ContainerName': instance_config.full_container_name,
+        'DockerImage': instance_config.container_config.image,
+        'DockerfilePath': instance_config.dockerfile_path,
+        'DockerBuildContextPath': instance_config.docker_context_path,
+        'DockerRuntimeParameters': runtime_parameters,
+        'DockerWorkingDirectory': instance_config.container_config.working_dir,
+        'InstanceNameTag': instance_config.ec2_instance_name,
+        'ProjectS3Path': get_project_s3_path(bucket_name),
+        'HostProjectDirectory': instance_config.host_project_dir,
+        'SyncCommandArgs': list2cmdline(get_instance_sync_arguments(instance_config.project_config.sync_filters)),
+    }
+
+    return parameters

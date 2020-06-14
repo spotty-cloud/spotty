@@ -53,6 +53,8 @@ class RunCommand(AbstractConfigCommand):
                    key_path=instance_manager.ssh_key_path,
                    script_name=script_name,
                    script_content=script_content,
+                   instance_run_scripts_dir=instance_manager.instance_config.host_run_scripts_dir,
                    tmux_session_name=session_name,
+                   env_vars=instance_manager.instance_config.env_vars,
                    restart=args.restart,
                    logging=args.logging)

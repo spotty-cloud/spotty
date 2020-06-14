@@ -1,6 +1,4 @@
-from spotty.config.container_config import ContainerConfig
 from spotty.config.validation import validate_basic_config
-from spotty.utils import filter_list
 
 
 class ProjectConfig(object):
@@ -11,7 +9,6 @@ class ProjectConfig(object):
 
         self._project_dir = project_dir
         self._config = config
-        self._container = ContainerConfig(config['container'])
 
     @property
     def project_dir(self) -> str:
@@ -26,13 +23,13 @@ class ProjectConfig(object):
         return self._config['project']['syncFilters']
 
     @property
-    def container(self) -> ContainerConfig:
-        return self._container
-
-    @property
-    def scripts(self) -> dict:
-        return self._config['scripts']
+    def containers(self) -> list:
+        return [self._config['container']] if self._config['container'] else self._config['containers']
 
     @property
     def instances(self) -> list:
         return self._config['instances']
+
+    @property
+    def scripts(self) -> dict:
+        return self._config['scripts']

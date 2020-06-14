@@ -1,6 +1,11 @@
+from collections import namedtuple
 from time import sleep
+from typing import List, Dict
 from botocore.exceptions import EndpointConnectionError, ClientError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+
+
+Task = namedtuple('Task', ['message', 'start_resource', 'finish_resource', 'enabled'])
 
 
 class Stack(object):
@@ -68,41 +73,61 @@ class Stack(object):
         waiter = self._cf.get_waiter('stack_delete_complete')
         waiter.wait(StackName=self.stack_id, WaiterConfig={'Delay': delay})
 
-    def wait_status_changed(self, waiting_status, resource_messages, resource_success_status,
-                            output: AbstractOutputWriter, delay=5):
-        current_status = waiting_status
+    def wait_status_changed(self, stack_waiting_status: str, output: AbstractOutputWriter, delay: int = 5):
         stack = None
-
-        resource_messages = iter(resource_messages) if resource_messages else None
-        resource_name = None
-
-        while current_status == waiting_status:
-            sleep(delay)
-
-            # display resource creation progress
-            if resource_messages:
-                try:
-                    stack_resources = self._cf.list_stack_resources(StackName=self.stack_id)
-                except EndpointConnectionError:
-                    output.write('Connection problem')
-                    continue
-
-                resource_statuses = dict([(row['LogicalResourceId'], row['ResourceStatus'])
-                                          for row in stack_resources['StackResourceSummaries']])
-
-                while (resource_name is None) or (resource_name and
-                                                  resource_statuses.get(resource_name, '') == resource_success_status):
-                    (resource_name, resource_msg) = next(resource_messages, (False, False))
-                    if resource_name:
-                        output.write('- %s...' % resource_msg)
-
+        while True:
             # get the latest status of the stack
             try:
                 stack = self.get_by_name(self._cf, self.stack_id)
-            except EndpointConnectionError:
-                output.write('Connection problem')
+            except EndpointConnectionError as e:
+                output.write(str(e))
                 continue
 
-            current_status = stack.status
+            if stack.status != stack_waiting_status:
+                break
+
+            sleep(delay)
 
         return stack
+
+    def wait_tasks(self, tasks: List[Task], resource_success_status: str, resource_fail_status: str,
+                   output: AbstractOutputWriter, delay: int = 5):
+        resource_statuses = self._get_resource_statuses()
+
+        for task in tasks:
+            if not task.enabled:
+                continue
+
+            task_started = task_finished = False
+            while not task_finished:
+                start_status = resource_statuses.get(task.start_resource)
+                finish_status = resource_statuses.get(task.finish_resource)
+
+                if not task_started and (not task.start_resource or (start_status == resource_success_status)):
+                    task_started = True
+                    output.write('- %s... ' % task.message, newline=False)
+                elif task_started and (finish_status == resource_success_status):
+                    task_finished = True
+                    output.write('DONE')
+                else:
+                    sleep(delay)
+                    try:
+                        resource_statuses = self._get_resource_statuses()
+                    except EndpointConnectionError as e:
+                        output.write(str(e))
+                        continue
+
+                    # check that the stack is not failed
+                    for status in resource_statuses.values():
+                        if status == resource_fail_status:
+                            if task_started and not task_finished:
+                                output.write('')
+                            return
+
+    def _get_resource_statuses(self) -> Dict[str, str]:
+        stack_resources = self._cf.list_stack_resources(StackName=self.stack_id)
+
+        resource_statuses = {row['LogicalResourceId']: row['ResourceStatus']
+                             for row in stack_resources['StackResourceSummaries']}
+
+        return resource_statuses

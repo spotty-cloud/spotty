@@ -1,6 +1,8 @@
 import os
 import yaml
 from cfn_tools import CfnYamlDumper, CfnYamlLoader
+from spotty.providers.aws.config.instance_config import InstanceConfig
+from spotty.providers.aws.deployment.project_resources.key_pair import KeyPairResource
 
 
 def prepare_ami_template(availability_zone: str, subnet_id: str, debug_mode: bool = False, on_demand: bool = False):
@@ -38,3 +40,24 @@ def prepare_ami_template(availability_zone: str, subnet_id: str, debug_mode: boo
             'InstanceMarketOptions']
 
     return yaml.dump(template, Dumper=CfnYamlDumper)
+
+
+def get_template_parameters(instance_config: InstanceConfig, image_version: str, vpc_id: str,
+                            key_pair: KeyPairResource, debug_mode: bool = False):
+    parameters = {
+        'ImageVersion': image_version,
+        'VpcId': vpc_id,
+        'InstanceType': instance_config.instance_type,
+        'ImageName': instance_config.ami_name,
+        'InstanceNameTag': 'spotty-ami-%s' % instance_config.ami_name.lower(),
+        'NvidiaDriverVersion': '410',
+        'DockerCEVersion': '19.03.5',
+        'ContainerdIOVersion': '1.2.10-3',
+        'NvidiaContainerToolkitVersion': '1.0.5-1',
+    }
+
+    if debug_mode:
+        parameters['DebugMode'] = 'true'
+        parameters['KeyName'] = key_pair.get_or_create_key()  # get or create a key pair
+
+    return parameters

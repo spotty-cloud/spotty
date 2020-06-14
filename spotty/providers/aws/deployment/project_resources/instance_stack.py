@@ -1,7 +1,8 @@
 import boto3
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.providers.aws.aws_resources.instance import Instance
-from spotty.providers.aws.aws_resources.stack import Stack
+from spotty.providers.aws.aws_resources.stack import Stack, Task
+from spotty.providers.aws.config.instance_config import InstanceConfig
 
 
 class InstanceStackResource(object):
@@ -19,7 +20,8 @@ class InstanceStackResource(object):
     def get_instance(self):
         return Instance.get_by_stack_name(self._ec2, self.name)
 
-    def create_or_update_stack(self, template: str, parameters: dict, output: AbstractOutputWriter):
+    def create_or_update_stack(self, template: str, parameters: dict, instance_config: InstanceConfig,
+                               output: AbstractOutputWriter):
         """Runs CloudFormation template."""
 
         # delete the stack if it exists
@@ -39,16 +41,68 @@ class InstanceStackResource(object):
 
         output.write('Waiting for the stack to be created...')
 
-        resource_messages = [
-            ('Instance', 'launching the instance'),
-            ('DockerReadyWaitCondition', 'waiting for the Docker container to be ready'),
+        tasks = [
+            Task(
+                message='launching the instance',
+                start_resource=None,
+                finish_resource='Instance',
+                enabled=True,
+            ),
+            Task(
+                message='preparing the instance',
+                start_resource='PreparingInstanceSignal',
+                finish_resource='MountingVolumesSignal',
+                enabled=True,
+            ),
+            Task(
+                message='mounting volumes',
+                start_resource='MountingVolumesSignal',
+                finish_resource='SettingDockerRootSignal',
+                enabled=bool(instance_config.volumes),
+            ),
+            Task(
+                message='setting Docker data root',
+                start_resource='SettingDockerRootSignal',
+                finish_resource='SyncingProjectSignal',
+                enabled=bool(instance_config.docker_data_root),
+            ),
+            Task(
+                message='syncing project files',
+                start_resource='SyncingProjectSignal',
+                finish_resource='RunningInstanceStartupCommandsSignal',
+                enabled=True,
+            ),
+            Task(
+                message='running instance startup commands',
+                start_resource='RunningInstanceStartupCommandsSignal',
+                finish_resource='BuildingDockerImageSignal',
+                enabled=bool(instance_config.commands),
+            ),
+            Task(
+                message='building Docker image',
+                start_resource='BuildingDockerImageSignal',
+                finish_resource='StartingContainerSignal',
+                enabled=bool(instance_config.dockerfile_path),
+            ),
+            Task(
+                message='starting container',
+                start_resource='StartingContainerSignal',
+                finish_resource='RunningContainerStartupCommandsSignal',
+                enabled=True,
+            ),
+            Task(
+                message='running container startup commands',
+                start_resource='RunningContainerStartupCommandsSignal',
+                finish_resource='DockerReadyWaitCondition',
+                enabled=bool(instance_config.container_config.commands),
+            ),
         ]
 
         # wait for the stack to be created
         with output.prefix('  '):
-            stack = stack.wait_status_changed(waiting_status='CREATE_IN_PROGRESS',
-                                              resource_messages=resource_messages,
-                                              resource_success_status='CREATE_COMPLETE', output=output)
+            stack.wait_tasks(tasks, resource_success_status='CREATE_COMPLETE', resource_fail_status='CREATE_FAILED',
+                             output=output)
+            stack = stack.wait_status_changed(stack_waiting_status='CREATE_IN_PROGRESS', output=output)
 
         if stack.status != 'CREATE_COMPLETE':
             raise ValueError('Stack "%s" was not created.\n'

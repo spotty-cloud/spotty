@@ -1,32 +1,24 @@
-from subprocess import list2cmdline
 from typing import List
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.config.project_config import ProjectConfig
-from spotty.config.validation import is_subdir
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.aws.aws_resources.image import Image
 from spotty.helpers.print_info import render_volumes_info_table
 from spotty.providers.aws.aws_resources.snapshot import Snapshot
 from spotty.providers.aws.aws_resources.volume import Volume
-from spotty.providers.aws.config.instance_config import VOLUME_TYPE_EBS
 from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.providers.aws.deployment.abstract_aws_deployment import AbstractAwsDeployment
 from spotty.providers.aws.deployment.checks import check_az_and_subnet, check_max_price
-from spotty.providers.aws.deployment.project_resources.ebs_volume import EbsVolume
-from spotty.providers.aws.deployment.cf_templates.instance_template import prepare_instance_template
+from spotty.providers.aws.config.ebs_volume import EbsVolume
+from spotty.providers.aws.deployment.cf_templates.instance_template import prepare_instance_template, \
+    get_template_parameters
 from spotty.providers.aws.deployment.project_resources.instance_profile_stack import InstanceProfileStackResource
-from spotty.providers.aws.helpers.download import get_tmp_instance_s3_path
-from spotty.providers.aws.helpers.sync import sync_project_with_s3, get_project_s3_path, get_instance_sync_arguments
+from spotty.providers.aws.helpers.sync import sync_project_with_s3
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
 from spotty.providers.aws.deployment.project_resources.instance_stack import InstanceStackResource
-from spotty.providers.aws.config.validation import is_nitro_instance, is_gpu_instance
+from spotty.providers.aws.config.validation import is_nitro_instance
 
 
 class InstanceDeployment(AbstractAwsDeployment):
-
-    @property
-    def ec2_instance_name(self) -> str:
-        return '%s-%s' % (self._project_name.lower(), self.instance_config.name.lower())
 
     @property
     def bucket(self) -> BucketResource:
@@ -39,17 +31,19 @@ class InstanceDeployment(AbstractAwsDeployment):
     def get_instance(self):
         return self.stack.get_instance()
 
-    def deploy(self, project_config: ProjectConfig, output: AbstractOutputWriter, dry_run=False):
+    def deploy(self, output: AbstractOutputWriter, dry_run=False):
         # check that it's not a Nitro-based instance
         if is_nitro_instance(self.instance_config.instance_type):
             raise ValueError('Currently Nitro-based instances are not supported.')
+
+        project_config = self.instance_config.project_config
 
         # check availability zone and subnet configuration
         check_az_and_subnet(self._ec2, self.instance_config.region, self.instance_config.availability_zone,
                             self.instance_config.subnet_id)
 
         # get volumes
-        volumes = self._get_volumes()
+        volumes = self.instance_config.volumes
 
         # get deployment availability zone
         availability_zone = self._get_availability_zone(volumes)
@@ -81,22 +75,22 @@ class InstanceDeployment(AbstractAwsDeployment):
         output.write('Preparing CloudFormation template...')
 
         # prepare CloudFormation template
-        container = ContainerDeployment(project_config.project_name, volumes, project_config.container)
+        container_deployment = ContainerDeployment(self.instance_config)
         with output.prefix('  '):
-            template = prepare_instance_template(self.instance_config, volumes, availability_zone, container,
-                                                 output)
+            template = prepare_instance_template(self._ec2, self.instance_config, volumes, availability_zone, output)
 
             # get parameters for the template
-            parameters = self._get_template_parameters(instance_profile_arn, self.instance_config.name, bucket_name,
-                                                       project_config.sync_filters, volumes, container, output,
-                                                       dry_run=dry_run)
+            vpc_id = self.get_vpc_id()
+            ami = self._get_ami()
+            parameters = get_template_parameters(self.instance_config, instance_profile_arn, bucket_name, vpc_id,
+                                                 ami, self.key_pair, container_deployment, output, dry_run=dry_run)
 
         # print information about the volumes
-        output.write('\nVolumes:\n%s\n' % render_volumes_info_table(container.volume_mounts, volumes))
+        output.write('\nVolumes:\n%s\n' % render_volumes_info_table(self.instance_config.volume_mounts, volumes))
 
         # create stack
         if not dry_run:
-            self.stack.create_or_update_stack(template, parameters, output)
+            self.stack.create_or_update_stack(template, parameters, self.instance_config, output)
 
     def delete(self, output: AbstractOutputWriter):
         # terminate the instance
@@ -135,7 +129,7 @@ class InstanceDeployment(AbstractAwsDeployment):
         availability_zone = self.instance_config.availability_zone
         for volume in volumes:
             if isinstance(volume, EbsVolume):
-                ec2_volume = volume.get_ec2_volume()
+                ec2_volume = Volume.get_by_name(self._ec2, volume.ec2_volume_name)
                 if ec2_volume:
                     if availability_zone and (availability_zone != ec2_volume.availability_zone):
                         raise ValueError(
@@ -147,74 +141,6 @@ class InstanceDeployment(AbstractAwsDeployment):
                     availability_zone = ec2_volume.availability_zone
 
         return availability_zone
-
-    def _get_volumes(self) -> List[AbstractInstanceVolume]:
-        volumes = []
-        for volume_config in self.instance_config.volumes:
-            volume_type = volume_config['type']
-            if volume_type == VOLUME_TYPE_EBS:
-                volumes.append(EbsVolume(self._ec2, volume_config, self._project_name, self.instance_config.name))
-            else:
-                raise ValueError('AWS volume type "%s" not supported.' % volume_type)
-
-        return volumes
-
-    def _get_template_parameters(self, instance_profile_arn: str, instance_name: str, bucket_name: str,
-                                 sync_filters: list, volumes: List[AbstractInstanceVolume],
-                                 container: ContainerDeployment, output: AbstractOutputWriter, dry_run=False):
-        # get VPC ID
-        vpc_id = self.get_vpc_id()
-
-        # get image info
-        ami = self._get_ami()
-        output.write('- AMI: "%s" (%s)' % (ami.name, ami.image_id))
-
-        # check root volume size
-        root_volume_size = self.instance_config.root_volume_size
-        if root_volume_size and root_volume_size < ami.size:
-            raise ValueError('Root volume size cannot be less than the size of AMI (%dGB).' % ami.size)
-        elif not root_volume_size:
-            # if a root volume size is not specified, make it 5GB larger than the AMI size
-            root_volume_size = ami.size + 5
-
-        # create key pair
-        key_name = self.key_pair.get_or_create_key(dry_run)
-
-        # get mount directories for the volumes
-        mount_dirs = [volume.mount_dir for volume in volumes]
-
-        # get Docker runtime parameters
-        runtime_parameters = container.get_runtime_parameters(is_gpu_instance(self.instance_config.instance_type))
-
-        # print info about the Docker data root
-        if self.instance_config.docker_data_root:
-            docker_data_volume_name = [volume.name for volume in volumes
-                                       if is_subdir(self.instance_config.docker_data_root, volume.mount_dir)][0]
-            output.write('- Docker data will be stored on the "%s" volume' % docker_data_volume_name)
-
-        # create stack
-        parameters = {
-            'VpcId': vpc_id,
-            'InstanceProfileArn': instance_profile_arn,
-            'InstanceType': self.instance_config.instance_type,
-            'KeyName': key_name,
-            'ImageId': ami.image_id,
-            'RootVolumeSize': str(root_volume_size),
-            'VolumeMountDirectories': ('"%s"' % '" "'.join(mount_dirs)) if mount_dirs else '',
-            'DockerDataRootDirectory': self.instance_config.docker_data_root,
-            'DockerImage': container.config.image,
-            'DockerfilePath': container.dockerfile_path,
-            'DockerBuildContextPath': container.docker_context_path,
-            'DockerRuntimeParameters': runtime_parameters,
-            'DockerWorkingDirectory': container.config.working_dir,
-            'InstanceNameTag': self.ec2_instance_name,
-            'ProjectS3Path': get_project_s3_path(bucket_name),
-            'HostProjectDirectory': container.host_project_dir,
-            'SyncCommandArgs': list2cmdline(get_instance_sync_arguments(sync_filters)),
-            'UploadS3Path': get_tmp_instance_s3_path(bucket_name, instance_name),
-        }
-
-        return parameters
 
     def _get_ami(self) -> Image:
         """Returns an AMI that should be used for deployment.
@@ -254,8 +180,7 @@ class InstanceDeployment(AbstractAwsDeployment):
         """Applies deletion policies to the EBS volumes."""
 
         # get volumes
-        volumes = self._get_volumes()
-        ebs_volumes = [volume for volume in volumes if isinstance(volume, EbsVolume)]
+        ebs_volumes = [volume for volume in self.instance_config.volumes if isinstance(volume, EbsVolume)]
 
         # no volumes
         if not ebs_volumes:
@@ -267,7 +192,7 @@ class InstanceDeployment(AbstractAwsDeployment):
         for volume in ebs_volumes:
             # get EC2 volume
             try:
-                ec2_volume = volume.get_ec2_volume()
+                ec2_volume = Volume.get_by_name(self._ec2, volume.ec2_volume_name)
             except Exception as e:
                 output.write('- volume "%s" not found. Error: %s' % (volume.ec2_volume_name, str(e)))
                 continue
@@ -294,7 +219,7 @@ class InstanceDeployment(AbstractAwsDeployment):
                     or volume.deletion_policy == EbsVolume.DP_UPDATE_SNAPSHOT:
                 try:
                     # rename a previous snapshot
-                    prev_snapshot = volume.get_snapshot()
+                    prev_snapshot = Snapshot.get_by_name(self._ec2, volume.ec2_volume_name)
                     if prev_snapshot:
                         prev_snapshot.rename('%s-%d' % (prev_snapshot.name, prev_snapshot.creation_time))
 

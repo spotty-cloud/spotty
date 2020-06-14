@@ -11,7 +11,7 @@ class AbstractInstanceManager(ABC):
         self._instance_config = self._get_instance_config(instance_config)
 
     @abstractmethod
-    def _get_instance_config(self, config: dict) -> AbstractInstanceConfig:
+    def _get_instance_config(self, instance_config: dict) -> AbstractInstanceConfig:
         """A factory method to create a provider's instance config."""
         raise NotImplementedError
 
