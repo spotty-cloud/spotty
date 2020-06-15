@@ -5,7 +5,7 @@ from spotty.utils import render_table
 
 
 def render_volumes_info_table(volume_mounts: List[VolumeMount], volumes: List[AbstractInstanceVolume]):
-    table = [('Name', 'Container Dir', 'Type', 'Deletion Policy')]
+    table = [('Name', 'Mount Dir', 'Type', 'Deletion Policy')]
 
     # add volume mounts to the info table
     volumes_dict = {volume.name: volume for volume in volumes}

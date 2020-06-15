@@ -2,6 +2,7 @@ from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.deployment.ami_deployment import AmiDeployment
+from spotty.providers.aws.deployment.container_start import start_container
 from spotty.providers.aws.deployment.instance_deployment import InstanceDeployment
 from spotty.providers.aws.helpers.download import download_from_s3_to_local, upload_from_instance_to_s3
 from spotty.providers.aws.helpers.sync import sync_project_with_s3, sync_instance_with_s3, get_project_s3_path
@@ -54,6 +55,13 @@ class InstanceManager(AbstractInstanceManager):
         # deploy the instance
         deployment.deploy(output, dry_run=dry_run)
 
+    def start_container(self, output: AbstractOutputWriter):
+        # syncing project files with S3
+        self.sync(output=output)
+
+        # start container
+        start_container(self.instance_config, self.get_ip_address(), self.ssh_port, self.ssh_user, self.ssh_key_path)
+
     def stop(self, output: AbstractOutputWriter):
         # delete the stack and apply deletion policies
         self.instance_deployment.delete(output)
@@ -74,7 +82,7 @@ class InstanceManager(AbstractInstanceManager):
             # sync S3 with the instance
             output.write('Syncing S3 bucket with the instance...')
             project_s3_path = get_project_s3_path(bucket_name)
-            instance_project_dir = self.instance_config.container_config.host_project_dir
+            instance_project_dir = self.instance_config.host_project_dir
             sync_instance_with_s3(project_s3_path, instance_project_dir, self.project_config.sync_filters,
                                   self.get_ip_address(), self.ssh_port, self.ssh_user, self.ssh_key_path)
 
@@ -84,7 +92,7 @@ class InstanceManager(AbstractInstanceManager):
 
         # sync files from the instance to a temporary S3 directory
         output.write('Uploading files from the instance to S3 bucket...')
-        upload_from_instance_to_s3(self.instance_config.container_config.host_project_dir,
+        upload_from_instance_to_s3(self.instance_config.host_project_dir,
                                    self.instance_deployment.instance_config.name, bucket_name, download_filters,
                                    self.get_ip_address(), self.ssh_port, self.ssh_user, self.ssh_key_path,
                                    dry_run=dry_run)
@@ -107,8 +115,6 @@ class InstanceManager(AbstractInstanceManager):
 
         if instance.public_ip_address:
             table.append(('Public IP Address', instance.public_ip_address))
-
-        table.append(('Launch Time', instance.launch_time.strftime('%Y-%m-%d %H:%M:%S')))
 
         if instance.lifecycle == 'spot':
             spot_price = instance.get_spot_price()

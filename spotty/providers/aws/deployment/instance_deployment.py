@@ -3,19 +3,17 @@ from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.aws.aws_resources.image import Image
 from spotty.helpers.print_info import render_volumes_info_table
-from spotty.providers.aws.aws_resources.snapshot import Snapshot
 from spotty.providers.aws.aws_resources.volume import Volume
-from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.providers.aws.deployment.abstract_aws_deployment import AbstractAwsDeployment
 from spotty.providers.aws.deployment.checks import check_az_and_subnet, check_max_price
 from spotty.providers.aws.config.ebs_volume import EbsVolume
 from spotty.providers.aws.deployment.cf_templates.instance_template import prepare_instance_template, \
     get_template_parameters
+from spotty.providers.aws.deployment.deletion_policies import apply_deletion_policies
 from spotty.providers.aws.deployment.project_resources.instance_profile_stack import InstanceProfileStackResource
 from spotty.providers.aws.helpers.sync import sync_project_with_s3
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
 from spotty.providers.aws.deployment.project_resources.instance_stack import InstanceStackResource
-from spotty.providers.aws.config.validation import is_nitro_instance
 
 
 class InstanceDeployment(AbstractAwsDeployment):
@@ -32,10 +30,6 @@ class InstanceDeployment(AbstractAwsDeployment):
         return self.stack.get_instance()
 
     def deploy(self, output: AbstractOutputWriter, dry_run=False):
-        # check that it's not a Nitro-based instance
-        if is_nitro_instance(self.instance_config.instance_type):
-            raise ValueError('Currently Nitro-based instances are not supported.')
-
         project_config = self.instance_config.project_config
 
         # check availability zone and subnet configuration
@@ -75,7 +69,6 @@ class InstanceDeployment(AbstractAwsDeployment):
         output.write('Preparing CloudFormation template...')
 
         # prepare CloudFormation template
-        container_deployment = ContainerDeployment(self.instance_config)
         with output.prefix('  '):
             template = prepare_instance_template(self._ec2, self.instance_config, volumes, availability_zone, output)
 
@@ -83,7 +76,7 @@ class InstanceDeployment(AbstractAwsDeployment):
             vpc_id = self.get_vpc_id()
             ami = self._get_ami()
             parameters = get_template_parameters(self.instance_config, instance_profile_arn, bucket_name, vpc_id,
-                                                 ami, self.key_pair, container_deployment, output, dry_run=dry_run)
+                                                 ami, self.key_pair, output, dry_run=dry_run)
 
         # print information about the volumes
         output.write('\nVolumes:\n%s\n' % render_volumes_info_table(self.instance_config.volume_mounts, volumes))
@@ -109,7 +102,7 @@ class InstanceDeployment(AbstractAwsDeployment):
 
         # apply deletion policies for the volumes
         with output.prefix('  '):
-            self._apply_deletion_policies(output)
+            apply_deletion_policies(self._ec2, self.instance_config.volumes, output)
 
     def _get_availability_zone(self, volumes: List[AbstractInstanceVolume]):
         """Checks that existing volumes located in the same AZ and the AZ from the
@@ -175,101 +168,3 @@ class InstanceDeployment(AbstractAwsDeployment):
                     image = Image(self._ec2, image_info)
 
         return image
-
-    def _apply_deletion_policies(self, output: AbstractOutputWriter):
-        """Applies deletion policies to the EBS volumes."""
-
-        # get volumes
-        ebs_volumes = [volume for volume in self.instance_config.volumes if isinstance(volume, EbsVolume)]
-
-        # no volumes
-        if not ebs_volumes:
-            output.write('- no EBS volumes configured')
-            return
-
-        # apply deletion policies
-        wait_snapshots = []
-        for volume in ebs_volumes:
-            # get EC2 volume
-            try:
-                ec2_volume = Volume.get_by_name(self._ec2, volume.ec2_volume_name)
-            except Exception as e:
-                output.write('- volume "%s" not found. Error: %s' % (volume.ec2_volume_name, str(e)))
-                continue
-
-            if not ec2_volume:
-                output.write('- volume "%s" not found' % volume.ec2_volume_name)
-                continue
-
-            if not ec2_volume.is_available():
-                output.write('- volume "%s" is not available (state: %s)'
-                             % (volume.ec2_volume_name, ec2_volume.state))
-                continue
-
-            # apply deletion policies
-            if volume.deletion_policy == EbsVolume.DP_RETAIN:
-                # do nothing
-                output.write('- volume "%s" is retained' % ec2_volume.name)
-
-            elif volume.deletion_policy == EbsVolume.DP_DELETE:
-                # delete EBS volume
-                self._delete_ec2_volume(ec2_volume, output)
-
-            elif volume.deletion_policy == EbsVolume.DP_CREATE_SNAPSHOT \
-                    or volume.deletion_policy == EbsVolume.DP_UPDATE_SNAPSHOT:
-                try:
-                    # rename a previous snapshot
-                    prev_snapshot = Snapshot.get_by_name(self._ec2, volume.ec2_volume_name)
-                    if prev_snapshot:
-                        prev_snapshot.rename('%s-%d' % (prev_snapshot.name, prev_snapshot.creation_time))
-
-                    output.write('- creating a snapshot for the volume "%s"...' % ec2_volume.name)
-
-                    # create a new snapshot
-                    new_snapshot = ec2_volume.create_snapshot()
-
-                    # delete the EBS volume and a previous snapshot only after a new snapshot will be created
-                    wait_snapshots.append({
-                        'new_snapshot': new_snapshot,
-                        'prev_snapshot': prev_snapshot,
-                        'ec2_volume': ec2_volume,
-                        'deletion_policy': volume.deletion_policy,
-                    })
-                except Exception as e:
-                    output.write('- snapshot for the volume "%s" was not created. Error: %s'
-                                 % (volume.ec2_volume_name, str(e)))
-
-            else:
-                raise ValueError('Unsupported deletion policy: "%s".' % volume.deletion_policy)
-
-        # wait until all snapshots will be created
-        for resources in wait_snapshots:
-            try:
-                resources['new_snapshot'].wait_snapshot_completed()
-                output.write('- snapshot for the volume "%s" was created' % resources['new_snapshot'].name)
-            except Exception as e:
-                output.write('- snapshot "%s" was not created. Error: %s' % (resources['new_snapshot'].name, str(e)))
-                continue
-
-            # delete a previous snapshot if it's the "update_snapshot" deletion policy
-            if (resources['deletion_policy'] == EbsVolume.DP_UPDATE_SNAPSHOT) and resources['prev_snapshot']:
-                self._delete_snapshot(resources['prev_snapshot'], output)
-
-            # delete the EBS volume
-            self._delete_ec2_volume(resources['ec2_volume'], output)
-
-    @staticmethod
-    def _delete_ec2_volume(ec2_volume: Volume, output: AbstractOutputWriter):
-        try:
-            ec2_volume.delete()
-            output.write('- volume "%s" was deleted' % ec2_volume.name)
-        except Exception as e:
-            output.write('- volume "%s" was not deleted. Error: %s' % (ec2_volume.name, str(e)))
-
-    @staticmethod
-    def _delete_snapshot(snapshot: Snapshot, output: AbstractOutputWriter):
-        try:
-            snapshot.delete()
-            output.write('- previous snapshot "%s" was deleted' % snapshot.name)
-        except Exception as e:
-            output.write('- previous snapshot "%s" was not deleted. Error: %s' % (snapshot.name, str(e)))

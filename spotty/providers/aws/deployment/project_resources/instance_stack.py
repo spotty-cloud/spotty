@@ -50,7 +50,7 @@ class InstanceStackResource(object):
             ),
             Task(
                 message='preparing the instance',
-                start_resource='PreparingInstanceSignal',
+                start_resource='Instance',
                 finish_resource='MountingVolumesSignal',
                 enabled=True,
             ),

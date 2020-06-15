@@ -131,6 +131,11 @@ class AbstractInstanceConfig(ABC):
         return self.host_container_dir + '/scripts'
 
     @property
+    def host_startup_script_path(self):
+        """A path to the container startup script on the host OS."""
+        return self.host_scripts_dir + '/container_startup_commands.sh'
+
+    @property
     def host_run_scripts_dir(self):
         """A directory with custom user scripts (the "spotty run" command)."""
         return self.host_scripts_dir + '/run'

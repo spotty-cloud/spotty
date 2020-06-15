@@ -1,6 +1,7 @@
 from argparse import Namespace, ArgumentParser
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
 
@@ -18,6 +19,10 @@ class DownloadCommand(AbstractConfigCommand):
         parser.add_argument('--dry-run', action='store_true', help='Show files to be downloaded')
 
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
+        # check that the instance is started
+        if not instance_manager.is_running():
+            raise InstanceNotRunningError(instance_manager.instance_config.name)
+
         filters = [
             {'exclude': ['*']},
             {'include': args.include}

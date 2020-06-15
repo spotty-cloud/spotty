@@ -10,7 +10,7 @@ from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.deployment.file_structure import INSTANCE_SPOTTY_TMP_DIR, SPOTTY_LOGS_DIR, \
     RUN_CMD_LOGS_DIR, CONTAINER_BASH_SCRIPT_PATH, INSTANCE_SCRIPTS_DIR, CONTAINER_SCRIPTS_DIR, \
-    INSTANCE_STARTUP_SCRIPTS_DIR
+    INSTANCE_STARTUP_SCRIPTS_DIR, RUN_CONTAINER_SCRIPT_PATH, CONTAINER_STARTUP_SCRIPT_PATH
 from spotty.providers.aws.aws_resources.image import Image
 from spotty.providers.aws.aws_resources.snapshot import Snapshot
 from spotty.providers.aws.aws_resources.volume import Volume
@@ -200,8 +200,8 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, volumes: Lis
                     'mode': '000755',
                     'content': {
                         'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '06_run_container.sh'), {
-                            'INSTANCE_SCRIPTS_DIR': INSTANCE_SCRIPTS_DIR,
-                            'CONTAINER_SCRIPTS_DIR': CONTAINER_SCRIPTS_DIR,
+                            'RUN_CONTAINER_SCRIPT_PATH': RUN_CONTAINER_SCRIPT_PATH,
+                            'CONTAINER_STARTUP_SCRIPT_PATH': CONTAINER_STARTUP_SCRIPT_PATH,
                         }),
                     },
                 },
@@ -216,7 +216,7 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, volumes: Lis
                         }),
                     },
                 },
-                instance_config.host_scripts_dir + '/container_startup_commands.sh': {
+                instance_config.host_startup_script_path: {
                     'owner': 'ubuntu',
                     'group': 'ubuntu',
                     'mode': '000644',
@@ -362,8 +362,8 @@ def _get_volume_resources(ec2, volumes: List[AbstractInstanceVolume], output: Ab
 
 
 def get_template_parameters(instance_config: InstanceConfig, instance_profile_arn: str, bucket_name: str,
-                            vpc_id: str, ami: Image, key_pair: KeyPairResource,
-                            container_deployment: ContainerDeployment, output: AbstractOutputWriter, dry_run=False):
+                            vpc_id: str, ami: Image, key_pair: KeyPairResource, output: AbstractOutputWriter,
+                            dry_run: bool = False):
     output.write('- AMI: "%s" (%s)' % (ami.name, ami.image_id))
 
     # check root volume size
@@ -381,7 +381,7 @@ def get_template_parameters(instance_config: InstanceConfig, instance_profile_ar
     mount_dirs = [volume.mount_dir for volume in instance_config.volumes]
 
     # get Docker runtime parameters
-    runtime_parameters = container_deployment.get_runtime_parameters()
+    runtime_parameters = ContainerDeployment(instance_config).get_runtime_parameters()
 
     # print info about the Docker data root
     if instance_config.docker_data_root:

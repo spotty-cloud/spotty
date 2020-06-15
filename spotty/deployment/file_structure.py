@@ -17,6 +17,9 @@ INSTANCE_STARTUP_SCRIPTS_DIR = INSTANCE_SCRIPTS_DIR + '/startup'
 # a path to the script that attaches user to the container
 CONTAINER_BASH_SCRIPT_PATH = INSTANCE_SCRIPTS_DIR + '/container_bash.sh'
 
+# a path to the script that starts or restarts container
+RUN_CONTAINER_SCRIPT_PATH = INSTANCE_SCRIPTS_DIR + '/run_container.sh'
+
 # a base directory for Spotty logs
 SPOTTY_LOGS_DIR = '/var/log/spotty'
 
@@ -36,3 +39,6 @@ CONTAINER_SCRIPTS_DIR = CONTAINER_TMP_DIR + '/scripts'
 
 # a temporary directory for custom user scripts ("spotty run" command)
 CONTAINER_RUN_SCRIPTS_DIR = CONTAINER_SCRIPTS_DIR + '/run'
+
+# a path to the container startup script
+CONTAINER_STARTUP_SCRIPT_PATH = CONTAINER_SCRIPTS_DIR + '/container_startup_commands.sh'

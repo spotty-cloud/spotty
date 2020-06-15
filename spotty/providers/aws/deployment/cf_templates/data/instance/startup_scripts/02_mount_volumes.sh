@@ -12,7 +12,7 @@ do
   DEVICE=/dev/xvd${!DEVICE_LETTERS[$i]}
 
   # NVMe EBS volume (see: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nvme-ebs-volumes.html)
-  if [ ! -f $DEVICE ]; then
+  if [ ! -b $DEVICE ]; then
     VOLUME_ID=$(cfn-get-metadata --stack spotty-instance-my-project-i1 --region us-east-2 --resource VolumeAttachment${!DEVICE_LETTERS[$i]^} -k VolumeId)
     DEVICE=$(lsblk -o NAME,SERIAL -dpJ | jq -rc ".blockdevices[] | select(.serial == \"${!VOLUME_ID//-}\") | .name")
     if [ -z "$DEVICE" ]; then
