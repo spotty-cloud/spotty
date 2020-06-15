@@ -260,7 +260,11 @@ def _get_volume_attachment_resource(volume_id, device_name):
         'Properties': {
             'Device': device_name,
             'InstanceId': {'Ref': 'Instance'},
-            'VolumeId': volume_id,
+            'VolumeId': volume_id if isinstance(volume_id, str) else dict(volume_id),  # avoid YAML aliases
+        },
+        'Metadata': {
+            'Device': device_name,
+            'VolumeId': volume_id if isinstance(volume_id, str) else dict(volume_id),  # avoid YAML aliases
         },
     }
 
@@ -317,9 +321,7 @@ def _get_volume_resource(ec2, volume: EbsVolume, output: AbstractOutputWriter):
 def _get_volume_resources(ec2, volumes: List[AbstractInstanceVolume], output: AbstractOutputWriter):
     resources = {}
 
-    # ending letters for the devices (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html)
-    # TODO: different device names on Nitro-based instances,
-    # see: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nvme-ebs-volumes.html
+    # ending letters for the devices (see: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/device_naming.html)
     device_letters = 'fghijklmnop'
 
     # create and attach volumes
