@@ -65,6 +65,10 @@ Parameters:
     Description: Arguments for the "aws s3 sync" command to synchronize instance with the S3 bucket
     Type: String
     Default: ''
+  LogsS3Path:
+    Description: An S3 path where logs will be uploaded in the case of a failure
+    Type: String
+    Default: ''
 Resources:
   Instance:
     Type: AWS::EC2::Instance

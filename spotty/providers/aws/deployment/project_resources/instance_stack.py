@@ -104,11 +104,6 @@ class InstanceStackResource(object):
                              output=output)
             stack = stack.wait_status_changed(stack_waiting_status='CREATE_IN_PROGRESS', output=output)
 
-        if stack.status != 'CREATE_COMPLETE':
-            raise ValueError('Stack "%s" was not created.\n'
-                             'Please, see CloudFormation logs for the details.'
-                             % self._stack_name)
-
         return stack
 
     def delete_stack(self, output: AbstractOutputWriter, no_wait=False):

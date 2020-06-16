@@ -17,6 +17,7 @@ from spotty.providers.aws.aws_resources.volume import Volume
 from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.config.ebs_volume import EbsVolume
 from spotty.providers.aws.deployment.project_resources.key_pair import KeyPairResource
+from spotty.providers.aws.helpers.logs import get_logs_s3_path
 from spotty.providers.aws.helpers.sync import get_instance_sync_arguments, get_project_s3_path
 
 
@@ -409,6 +410,7 @@ def get_template_parameters(instance_config: InstanceConfig, instance_profile_ar
         'ProjectS3Path': get_project_s3_path(bucket_name),
         'HostProjectDirectory': instance_config.host_project_dir,
         'SyncCommandArgs': list2cmdline(get_instance_sync_arguments(instance_config.project_config.sync_filters)),
+        'LogsS3Path': get_logs_s3_path(bucket_name, instance_config.name),
     }
 
     return parameters

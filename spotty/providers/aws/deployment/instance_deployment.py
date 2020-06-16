@@ -11,6 +11,7 @@ from spotty.providers.aws.deployment.cf_templates.instance_template import prepa
     get_template_parameters
 from spotty.providers.aws.deployment.deletion_policies import apply_deletion_policies
 from spotty.providers.aws.deployment.project_resources.instance_profile_stack import InstanceProfileStackResource
+from spotty.providers.aws.helpers.logs import download_logs
 from spotty.providers.aws.helpers.sync import sync_project_with_s3
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
 from spotty.providers.aws.deployment.project_resources.instance_stack import InstanceStackResource
@@ -83,7 +84,24 @@ class InstanceDeployment(AbstractAwsDeployment):
 
         # create stack
         if not dry_run:
-            self.stack.create_or_update_stack(template, parameters, self.instance_config, output)
+            stack = self.stack.create_or_update_stack(template, parameters, self.instance_config, output)
+
+            if stack.status != 'CREATE_COMPLETE':
+                logs_str = 'Please, see CloudFormation logs for the details.'
+
+                # download CloudFormation logs from the instance if it's running
+                if self.get_instance():
+                    log_paths = download_logs(
+                        bucket_name=bucket_name,
+                        instance_name=self.instance_config.name,
+                        stack_uuid=stack.stack_uuid,
+                        region=self.instance_config.region,
+                    )
+
+                    logs_str = 'Please, see the logs for the details:\n  '
+                    logs_str += '\n  '.join(log_paths)
+
+                raise ValueError('Stack "%s" was not created.\n%s' % (stack.name, logs_str))
 
     def delete(self, output: AbstractOutputWriter):
         # terminate the instance

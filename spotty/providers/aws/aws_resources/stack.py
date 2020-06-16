@@ -47,6 +47,10 @@ class Stack(object):
         return self._stack_info['StackId']
 
     @property
+    def stack_uuid(self) -> str:
+        return self.stack_id.rsplit('/', 1)[-1]
+
+    @property
     def name(self) -> str:
         return self._stack_info['StackName']
 

@@ -16,8 +16,11 @@ class AwsCli(object):
         self._region = region
 
     def s3_sync(self, from_path: str, to_path: str, filters: list = None, exact_timestamp: bool = False,
-                delete: bool = False, capture_output: bool = True, dry_run: bool = False) -> str:
+                delete: bool = False, capture_output: bool = True, quiet: bool = False, dry_run: bool = False) -> str:
         args = ['s3', 'sync', from_path, to_path]
+        if quiet:
+            args.append('--quiet')
+
         args += self.get_s3_sync_arguments(filters, exact_timestamp=exact_timestamp, delete=delete, dry_run=dry_run)
 
         return self._run(args, False, capture_output=capture_output)
