@@ -90,6 +90,7 @@ def validate_basic_config(data, project_dir):
                         And(str, Regex(r'^[\w]+$')): object,
                     }, error='Instance parameters are not specified')
                 }],
+                And(lambda x: len(x), error='At least one instance must be specified in the configuration file.'),
                 And(lambda x: is_unique_value(x, 'name'), error='Each instance must have a unique name.'),
             ),
             Optional('scripts', default={}): {

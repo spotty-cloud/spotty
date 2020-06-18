@@ -23,15 +23,17 @@ def get_ssh_command(host: str, port: int, user: str, key_path: str, remote_cmd: 
     return ssh_command
 
 
-def run_script(host: str, port: int, user: str, key_path: str, script_name: str, script_content: str,
-               instance_run_scripts_dir: str, tmux_session_name: str, env_vars: dict, restart: bool = False,
-               logging: bool = False):
+def run_script(host: str, port: int, user: str, key_path: str, container_name: str,
+               script_name: str, script_content: str, script_args: list,
+               tmp_instance_scripts_dir: str, tmp_container_scripts_dir: str,
+               tmux_session_name: str, container_working_dir: str = None,
+               instance_env_vars: dict = None, restart: bool = False, logging: bool = False):
     # encode the script content to base64
     script_base64 = base64.b64encode(script_content.encode('utf-8')).decode('utf-8')
 
     # a remote path where the script will be uploaded
-    instance_script_path = '%s/%s.sh' % (instance_run_scripts_dir, script_name)
-    container_script_path = '%s/%s.sh' % (CONTAINER_RUN_SCRIPTS_DIR, script_name)
+    instance_script_path = '%s/%s' % (tmp_instance_scripts_dir, script_name)
+    container_script_path = '%s/%s' % (tmp_container_scripts_dir, script_name)
 
     # command to attach user to existing tmux session
     attach_session_cmd = subprocess.list2cmdline(['tmux', 'attach', '-t', tmux_session_name, '>', '/dev/null',
@@ -42,13 +44,16 @@ def run_script(host: str, port: int, user: str, key_path: str, script_name: str,
                                                 '2>&1'])
 
     # command to upload user script to the instance
-    upload_script_cmd = subprocess.list2cmdline(['echo', script_base64, '|', 'base64', '-d', '>', instance_script_path])
+    upload_script_cmd = subprocess.list2cmdline(['echo', script_base64, '|', 'base64', '-d', '>', instance_script_path,
+                                                 '&&', 'chmod', '+x', instance_script_path])
 
     # log the script outputs to the file
     log_cmd = ['2>&1', '|', 'tee', RUN_CMD_LOGS_DIR + '/%s-`date +%%s`.log' % script_name] if logging else []
 
     # command to run user script inside the docker container
-    docker_cmd = subprocess.list2cmdline([CONTAINER_BASH_SCRIPT_PATH, '-xe', container_script_path] + log_cmd)
+    working_dir_params = ['-w', container_working_dir] if container_working_dir else []
+    docker_cmd = subprocess.list2cmdline(['docker', 'exec', '-it', *working_dir_params, container_name,
+                                          container_script_path] + script_args + log_cmd)
 
     # command to create new tmux session and run user script
     new_session_cmd = subprocess.list2cmdline(['tmux', 'new', '-s', tmux_session_name, '-n', script_name,
@@ -65,5 +70,5 @@ def run_script(host: str, port: int, user: str, key_path: str, script_name: str,
         remote_cmd = '%s || (%s && %s)' % (attach_session_cmd, upload_script_cmd, new_session_cmd)
 
     # connect to the instance and run the command
-    ssh_command = get_ssh_command(host, port, user, key_path, remote_cmd, env_vars=env_vars)
+    ssh_command = get_ssh_command(host, port, user, key_path, remote_cmd, env_vars=instance_env_vars)
     subprocess.call(ssh_command)

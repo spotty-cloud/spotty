@@ -35,8 +35,17 @@ commands = [
 # add commands to the parser
 add_subparsers(parser, commands)
 
+# separate Spotty arguments from custom arguments
+args = sys.argv[1:]
+custom_args = []
+if '--' in args:
+    dd_idx = args.index('--')
+    custom_args = args[(dd_idx + 1):]
+    args = args[:dd_idx]
+
 # parse arguments
-args = parser.parse_args()
+args = parser.parse_args(args)
+args.custom_args = custom_args
 output = OutputWriter()
 
 # display the version

@@ -1,6 +1,5 @@
 import re
 import chevron
-from chevron.tokenizer import tokenize
 
 
 def parse_parameters(script_params: str):
@@ -30,7 +29,7 @@ def render_script(template: str, params: dict):
     Raises an exception if one of the provided parameters doesn't
     exist in the template.
     """
-    tokens = list(tokenize(template))
+    tokens = list(chevron.tokenizer.tokenize(template))
     template_keys = set()
     for tag, key in tokens:
         if tag not in ['literal', 'no escape', 'variable', 'set delimiter']:
@@ -43,4 +42,9 @@ def render_script(template: str, params: dict):
         if key not in template_keys:
             raise ValueError('Parameter "%s" doesn\'t exist in the script.' % key)
 
-    return chevron.render(tokens, params)
+    content = chevron.render(tokens, params)
+
+    if content[:2] != '#!':
+        content = '#!/usr/bin/env bash\n\nset -xe\n\n' + content
+
+    return content

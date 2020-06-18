@@ -1,6 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.deployment.file_structure import CONTAINER_RUN_SCRIPTS_DIR
 from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.helpers.run import parse_parameters, render_script
 from spotty.helpers.ssh import run_script
@@ -15,7 +16,6 @@ class RunCommand(AbstractConfigCommand):
     def configure(self, parser: ArgumentParser):
         super().configure(parser)
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')
-        parser.add_argument('-S', '--sync', action='store_true', help='Sync the project before running the script')
         parser.add_argument('-l', '--logging', action='store_true', help='Log the script outputs to the file')
         parser.add_argument('-r', '--restart', action='store_true',
                             help='Restart the script (kills previous session if it exists)')
@@ -23,6 +23,7 @@ class RunCommand(AbstractConfigCommand):
         parser.add_argument('-p', '--parameter', metavar='PARAMETER=VALUE', action='append', type=str, default=[],
                             help='Set the value for a script parameter (you can use this argument multiple times '
                                  'to set several parameters)')
+        parser.add_argument('--no-sync', action='store_true', help='Don\'t sync the project before running the script')
 
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
         # check that the script exists
@@ -40,7 +41,7 @@ class RunCommand(AbstractConfigCommand):
             raise InstanceNotRunningError(instance_manager.instance_config.name)
 
         # sync the project with the instance
-        if args.sync:
+        if not args.no_sync:
             instance_manager.sync(output)
 
         # tmux session name
@@ -51,10 +52,14 @@ class RunCommand(AbstractConfigCommand):
                    port=instance_manager.ssh_port,
                    user=instance_manager.ssh_user,
                    key_path=instance_manager.ssh_key_path,
+                   container_name=instance_manager.instance_config.full_container_name,
                    script_name=script_name,
                    script_content=script_content,
-                   instance_run_scripts_dir=instance_manager.instance_config.host_run_scripts_dir,
+                   script_args=args.custom_args,
+                   tmp_instance_scripts_dir=instance_manager.instance_config.host_run_scripts_dir,
+                   tmp_container_scripts_dir=CONTAINER_RUN_SCRIPTS_DIR,
                    tmux_session_name=session_name,
-                   env_vars=instance_manager.instance_config.env_vars,
+                   container_working_dir=instance_manager.instance_config.container_config.working_dir,
+                   instance_env_vars=instance_manager.instance_config.env_vars,
                    restart=args.restart,
                    logging=args.logging)
