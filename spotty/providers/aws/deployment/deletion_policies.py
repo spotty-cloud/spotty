@@ -1,6 +1,6 @@
 from typing import List
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.aws.aws_resources.snapshot import Snapshot
 from spotty.providers.aws.aws_resources.volume import Volume
 from spotty.providers.aws.config.ebs_volume import EbsVolume

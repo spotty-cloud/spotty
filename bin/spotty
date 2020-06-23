@@ -8,7 +8,7 @@ from spotty.commands.aws import AwsCommand
 from spotty.commands.download import DownloadCommand
 from spotty.commands.gcp import GcpCommand
 from spotty.commands.run import RunCommand
-from spotty.commands.ssh import SshCommand
+from spotty.commands.sh import ShCommand
 from spotty.commands.status import StatusCommand
 from spotty.commands.stop import StopCommand
 from spotty.commands.sync import SyncCommand
@@ -24,7 +24,7 @@ commands = [
     StartCommand,
     StopCommand,
     StatusCommand,
-    SshCommand,
+    ShCommand,
     RunCommand,
     SyncCommand,
     DownloadCommand,

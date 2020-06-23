@@ -66,7 +66,7 @@ Read more: [How to cache a Docker image]({{ site.baseurl }}/docs/faq/#how-to-cac
         - __`mountDir`__ _(optional)_ - directory where the volume will be mounted on the instance. The default 
         directory is "/mnt/{ebs_volume_name}".
 
-- __`localSshPort`__ _(optional)_ - if the local SSH port is specified, the commands `spotty ssh`, `spotty run` 
+- __`localSshPort`__ _(optional)_ - if the local SSH port is specified, the commands `spotty sh`, `spotty run` 
 and `spotty sync` will do SSH connections to the instance using the IP address __127.0.0.1__ and the specified port. 
 It can be useful in case when the instance doesn't have a public IP address and SSH access is provided through a 
 tunnel to a local port.

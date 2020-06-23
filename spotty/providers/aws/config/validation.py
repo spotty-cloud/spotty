@@ -1,5 +1,6 @@
+import os
 from schema import Schema, Optional, And, Regex, Or, Use
-from spotty.config.validation import validate_config, get_instance_parameters_schema
+from spotty.config.validation import validate_config, get_instance_parameters_schema, has_prefix
 
 
 def validate_instance_parameters(params: dict):
@@ -10,7 +11,7 @@ def validate_instance_parameters(params: dict):
         Optional('availabilityZone', default=''): And(str, Regex(r'^[a-z0-9-]+$')),
         Optional('subnetId', default=''): And(str, Regex(r'^subnet-[a-z0-9]+$')),
         'instanceType': str,
-        Optional('onDemandInstance', default=False): bool,
+        Optional('spotInstance', default=False): bool,
         Optional('amiName', default=None): And(str, len, Regex(r'^[\w\(\)\[\]\s\.\/\'@-]{3,128}$')),
         Optional('amiId', default=None): And(str, len, Regex(r'^ami-[a-z0-9]+$')),
         Optional('rootVolumeSize', default=0): And(Or(int, str), Use(str),
@@ -32,11 +33,14 @@ def validate_instance_parameters(params: dict):
 
     volumes_checks = [
         And(lambda x: len(x) < 12, error='Maximum 11 volumes are supported at the moment.'),
+        And(lambda x: not has_prefix([(volume['parameters']['mountDir'] + '/') for volume in x
+                                      if volume['parameters'].get('mountDir')]),
+            error='Mount directories cannot be prefixes for each other.'),
     ]
 
     instance_checks = [
-        And(lambda x: not (x['onDemandInstance'] and x['maxPrice']),
-            error='"maxPrice" cannot be specified for on-demand instances.'),
+        And(lambda x: not (x['maxPrice'] and not x['spotInstance']),
+            error='"maxPrice" can be specified only for spot instances.'),
         And(lambda x: not (x['amiName'] and x['amiId']),
             error='"amiName" and "amiId" parameters cannot be used together.'),
     ]
@@ -49,9 +53,20 @@ def validate_instance_parameters(params: dict):
 def validate_ebs_volume_parameters(params: dict):
     from spotty.providers.aws.config.ebs_volume import EbsVolume
 
+    old_deletion_policies_map = {
+        'create_snapshot': EbsVolume.DP_CREATE_SNAPSHOT,
+        'update_snapshot': EbsVolume.DP_UPDATE_SNAPSHOT,
+        'retain': EbsVolume.DP_RETAIN,
+        'delete': EbsVolume.DP_DELETE,
+    }
+
     schema = Schema({
         Optional('volumeName', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
-        Optional('mountDir', default=''): str,  # all the checks happened in the base configuration
+        Optional('mountDir', default=''): And(
+            str,
+            And(os.path.isabs, error='Use absolute paths in the "mountDir" parameters'),
+            Use(lambda x: x.rstrip('/'))
+        ),
         Optional('size', default=0): And(int, lambda x: x > 0),
         # TODO: add the "iops" parameter to support the "io1" EBS volume type
         Optional('type', default='gp2'): lambda x: x in ['gp2', 'sc1', 'st1', 'standard'],
@@ -60,7 +75,9 @@ def validate_ebs_volume_parameters(params: dict):
             lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,
                             EbsVolume.DP_UPDATE_SNAPSHOT,
                             EbsVolume.DP_RETAIN,
-                            EbsVolume.DP_DELETE], error='Incorrect value for "deletionPolicy".'
+                            EbsVolume.DP_DELETE] + list(old_deletion_policies_map.keys()),
+            Use(lambda x: old_deletion_policies_map.get(x, x)),
+            error='Incorrect value for "deletionPolicy".',
         ),
     })
 

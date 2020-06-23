@@ -1,17 +1,31 @@
 from typing import List
-from spotty.config.abstract_instance_config import AbstractInstanceConfig
-from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.config.abstract_instance_config import AbstractInstanceConfig, VolumeMount
+from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.aws.config.validation import validate_instance_parameters
 from spotty.providers.aws.config.ebs_volume import EbsVolume
 
-VOLUME_TYPE_EBS = 'ebs'
+
+VOLUME_TYPE_EBS = 'EBS'
 DEFAULT_AMI_NAME = 'SpottyAMI'
 
 
 class InstanceConfig(AbstractInstanceConfig):
 
-    def _validate_instance_params(self, params: dict):
+    def _validate_instance_params(self, params: dict) -> dict:
         return validate_instance_parameters(params)
+
+    def _get_volume_mounts(self) -> (List[VolumeMount], str):
+        volume_mounts, host_project_dir = super()._get_volume_mounts()
+
+        volume_mounts.append(VolumeMount(
+            name=None,
+            host_path='/root/.aws',
+            mount_path='/root/.aws',
+            mode='ro',
+            hidden=True,
+        ))
+
+        return volume_mounts, host_project_dir
 
     @property
     def volumes(self) -> List[AbstractInstanceVolume]:
@@ -46,8 +60,8 @@ class InstanceConfig(AbstractInstanceConfig):
         return self._params['instanceType']
 
     @property
-    def on_demand(self) -> bool:
-        return self._params['onDemandInstance']
+    def is_spot_instance(self) -> bool:
+        return self._params['spotInstance']
 
     @property
     def ami_name(self) -> str:

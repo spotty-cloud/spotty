@@ -1,3 +1,5 @@
+import base64
+import subprocess
 from subprocess import list2cmdline
 from typing import List
 import os
@@ -6,11 +8,11 @@ import yaml
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.validation import is_subdir
-from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container_deployment import ContainerDeployment
-from spotty.deployment.file_structure import INSTANCE_SPOTTY_TMP_DIR, SPOTTY_LOGS_DIR, \
-    RUN_CMD_LOGS_DIR, CONTAINER_BASH_SCRIPT_PATH, INSTANCE_SCRIPTS_DIR, CONTAINER_SCRIPTS_DIR, \
-    INSTANCE_STARTUP_SCRIPTS_DIR, RUN_CONTAINER_SCRIPT_PATH, CONTAINER_STARTUP_SCRIPT_PATH
+from spotty.deployment.docker_commands import get_script_cmd, get_bash_cmd
+from spotty.deployment.file_structure import INSTANCE_SPOTTY_TMP_DIR, CONTAINER_BASH_SCRIPT_PATH, \
+    INSTANCE_STARTUP_SCRIPTS_DIR, RUN_CONTAINER_SCRIPT_PATH
 from spotty.providers.aws.aws_resources.image import Image
 from spotty.providers.aws.aws_resources.snapshot import Snapshot
 from spotty.providers.aws.aws_resources.volume import Volume
@@ -70,12 +72,7 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, volumes: Lis
                 'ToPort': port,
             }]
 
-    if instance_config.on_demand:
-        # run on-demand instance
-        del template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData'][
-            'InstanceMarketOptions']
-        output.write('- on-demand instance')
-    else:
+    if instance_config.is_spot_instance:
         # set maximum price
         if instance_config.max_price:
             template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData'] \
@@ -83,6 +80,11 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, volumes: Lis
 
         output.write('- maximum Spot Instance price: %s'
                      % (('%.04f' % instance_config.max_price) if instance_config.max_price else 'on-demand'))
+    else:
+        # run on-demand instance
+        del template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData'][
+            'InstanceMarketOptions']
+        output.write('- on-demand instance')
 
     # set the user data script
     template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData']['UserData'] = {
@@ -104,8 +106,6 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, volumes: Lis
                         'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '01_prepare_instance.sh'), {
                             'HOST_CONTAINER_RUN_SCRIPTS_DIR': instance_config.host_run_scripts_dir,
                             'INSTANCE_SPOTTY_TMP_DIR': INSTANCE_SPOTTY_TMP_DIR,
-                            'SPOTTY_LOGS_DIR': SPOTTY_LOGS_DIR,
-                            'RUN_CMD_LOGS_DIR': RUN_CMD_LOGS_DIR,
                             'CONTAINER_BASH_SCRIPT_PATH': CONTAINER_BASH_SCRIPT_PATH,
                         }),
                     },
@@ -114,7 +114,11 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, volumes: Lis
                     'owner': 'ubuntu',
                     'group': 'ubuntu',
                     'mode': '000755',
-                    'content': _read_template_file(os.path.join('files', 'container_bash.sh')),
+                    'content': _read_template_file(os.path.join('files', 'container_bash.sh'), {
+                        'DOCKER_EXEC_BASH': subprocess.list2cmdline(
+                            get_bash_cmd('$SPOTTY_CONTAINER_NAME', '$SPOTTY_CONTAINER_WORKING_DIR'),
+                        ),
+                    }),
                 },
                 '/home/ubuntu/.tmux.conf': {
                     'owner': 'ubuntu',
@@ -202,26 +206,26 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, volumes: Lis
                     'content': {
                         'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '06_run_container.sh'), {
                             'RUN_CONTAINER_SCRIPT_PATH': RUN_CONTAINER_SCRIPT_PATH,
-                            'CONTAINER_STARTUP_SCRIPT_PATH': CONTAINER_STARTUP_SCRIPT_PATH,
+                            'CONTAINER_STARTUP_SCRIPT_BASE64': base64.b64encode(
+                                instance_config.container_config.commands.encode('utf-8'),
+                            ).decode('utf-8'),
                         }),
                     },
                 },
-                INSTANCE_SCRIPTS_DIR + '/run_container.sh': {
+                RUN_CONTAINER_SCRIPT_PATH: {
                     'owner': 'ubuntu',
                     'group': 'ubuntu',
                     'mode': '000755',
                     'content': {
                         'Fn::Sub': _read_template_file(os.path.join('files', 'run_container.sh'), {
-                            'HOST_SCRIPTS_DIR': instance_config.host_scripts_dir,
-                            'CONTAINER_SCRIPTS_DIR': CONTAINER_SCRIPTS_DIR,
+                            'DOCKER_EXEC_STARTUP_SCRIPT_CMD': subprocess.list2cmdline(get_script_cmd(
+                                container_name='$CONTAINER_NAME',
+                                script_name='container_startup_commands',
+                                script_base64='$STARTUP_SCRIPT_BASE64',
+                                working_dir='$WORKING_DIR',
+                            )).replace('${', '${!'),
                         }),
                     },
-                },
-                instance_config.host_startup_script_path: {
-                    'owner': 'ubuntu',
-                    'group': 'ubuntu',
-                    'mode': '000644',
-                    'content': instance_config.container_config.commands or '#',
                 },
             },
             'command': INSTANCE_STARTUP_SCRIPTS_DIR + '/06_run_container.sh',
@@ -379,14 +383,15 @@ def get_template_parameters(instance_config: InstanceConfig, instance_profile_ar
     key_name = key_pair.get_or_create_key(dry_run)
 
     # get mount directories for the volumes
-    mount_dirs = [volume.mount_dir for volume in instance_config.volumes]
+    ebs_volumes = [volume for volume in instance_config.volumes if isinstance(volume, EbsVolume)]
+    mount_dirs = [volume.mount_dir for volume in ebs_volumes]
 
     # get Docker runtime parameters
     runtime_parameters = ContainerDeployment(instance_config).get_runtime_parameters()
 
     # print info about the Docker data root
     if instance_config.docker_data_root:
-        docker_data_volume_name = [volume.name for volume in instance_config.volumes
+        docker_data_volume_name = [volume.name for volume in ebs_volumes
                                    if is_subdir(instance_config.docker_data_root, volume.mount_dir)][0]
         output.write('- Docker data will be stored on the "%s" volume' % docker_data_volume_name)
 

@@ -1,5 +1,5 @@
 from datetime import datetime
-from spotty.providers.aws.helpers.spot_prices import get_current_spot_price
+from spotty.providers.aws.helpers.instance_prices import get_current_spot_price, get_on_demand_price
 
 
 class Instance(object):
@@ -64,3 +64,7 @@ class Instance(object):
     def get_spot_price(self):
         """Get current Spot Instance price for this instance."""
         return get_current_spot_price(self._ec2, self.instance_type, self.availability_zone)
+
+    def get_on_demand_price(self):
+        """Get On-demand Instance price for the same instance in the us-east-1 region."""
+        return get_on_demand_price(self.instance_type, 'us-east-1')

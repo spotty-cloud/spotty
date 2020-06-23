@@ -1,6 +1,6 @@
 from typing import List
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.aws.aws_resources.image import Image
 from spotty.helpers.print_info import render_volumes_info_table
 from spotty.providers.aws.aws_resources.volume import Volume
@@ -12,7 +12,7 @@ from spotty.providers.aws.deployment.cf_templates.instance_template import prepa
 from spotty.providers.aws.deployment.deletion_policies import apply_deletion_policies
 from spotty.providers.aws.deployment.project_resources.instance_profile_stack import InstanceProfileStackResource
 from spotty.providers.aws.helpers.logs import download_logs
-from spotty.providers.aws.helpers.sync import sync_project_with_s3
+from spotty.providers.aws.helpers.sync import sync_local_to_s3
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
 from spotty.providers.aws.deployment.project_resources.instance_stack import InstanceStackResource
 
@@ -44,7 +44,7 @@ class InstanceDeployment(AbstractAwsDeployment):
         availability_zone = self._get_availability_zone(volumes)
 
         # check the maximum price for a spot instance
-        check_max_price(self._ec2, self.instance_config.instance_type, self.instance_config.on_demand,
+        check_max_price(self._ec2, self.instance_config.instance_type, self.instance_config.is_spot_instance,
                         self.instance_config.max_price, availability_zone)
 
         # create or get existing bucket for the project
@@ -52,8 +52,8 @@ class InstanceDeployment(AbstractAwsDeployment):
 
         # sync the project with the bucket
         output.write('Syncing the project with S3 bucket...')
-        sync_project_with_s3(project_config.project_dir, bucket_name, self.instance_config.region,
-                             project_config.sync_filters, dry_run)
+        sync_local_to_s3(project_config.project_dir, bucket_name, self.instance_config.region,
+                         project_config.sync_filters, dry_run)
 
         # create or update instance profile
         if not dry_run:

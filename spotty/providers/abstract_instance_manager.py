@@ -31,6 +31,11 @@ class AbstractInstanceManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def exec(self, command: list):
+        """Executes a command on the host OS."""
+        raise NotImplementedError
+
+    @abstractmethod
     def clean(self, output: AbstractOutputWriter):
         """Deletes the stack."""
         raise NotImplementedError
@@ -53,39 +58,10 @@ class AbstractInstanceManager(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
-    def get_public_ip_address(self) -> str:
-        """Returns a public IP address of the running instance."""
-        raise NotImplementedError
-
-    def get_ip_address(self):
-        """Returns an IP address that will be used for SSH connections."""
-        if self._instance_config.local_ssh_port:
-            return '127.0.0.1'
-
-        public_ip_address = self.get_public_ip_address()
-        if not public_ip_address:
-            raise ValueError('The running instance doesn\'t have a public IP address.\n'
-                             'Use the "localSshPort" parameter if you want to create a tunnel to the instance.')
-
-        return public_ip_address
-
     @property
-    def ssh_port(self) -> int:
-        if self._instance_config.local_ssh_port:
-            return self._instance_config.local_ssh_port
-
-        return 22
-
-    @property
-    @abstractmethod
-    def ssh_user(self) -> str:
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def ssh_key_path(self) -> str:
-        raise NotImplementedError
+    def use_tmux(self) -> bool:
+        """Use tmux when running a custom script or connecting to the instance."""
+        return True
 
     @property
     def project_config(self) -> ProjectConfig:

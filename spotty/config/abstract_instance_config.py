@@ -5,12 +5,12 @@ from typing import List
 from spotty.config.container_config import ContainerConfig
 from spotty.config.project_config import ProjectConfig
 from spotty.config.validation import DEFAULT_CONTAINER_NAME, is_subdir
-from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.file_structure import INSTANCE_SPOTTY_TMP_DIR
 from spotty.utils import filter_list
 
 
-VolumeMount = namedtuple('VolumeMount', ['name', 'host_dir', 'container_dir'])
+VolumeMount = namedtuple('VolumeMount', ['name', 'host_path', 'mount_path', 'mode', 'hidden'])
 
 
 class AbstractInstanceConfig(ABC):
@@ -31,10 +31,11 @@ class AbstractInstanceConfig(ABC):
         self._container_config = ContainerConfig(container_configs[0])
 
         # get container volume mounts and a host project directory
-        self._volume_mounts, self._host_project_dir = self._get_volume_mounts(self.volumes)
+        self._volume_mounts, self._host_project_dir = self._get_volume_mounts()
 
     @abstractmethod
-    def _validate_instance_params(self, params: dict):
+    def _validate_instance_params(self, params: dict) -> dict:
+        """Validates instance parameters and fill missing ones with the default values."""
         raise NotImplementedError
 
     @property
@@ -131,9 +132,9 @@ class AbstractInstanceConfig(ABC):
         return self.host_container_dir + '/scripts'
 
     @property
-    def host_startup_script_path(self):
-        """A path to the container startup script on the host OS."""
-        return self.host_scripts_dir + '/container_startup_commands.sh'
+    def host_logs_dir(self):
+        """A directory mainly for the "spotty run" command logs."""
+        return self.host_container_dir + '/logs'
 
     @property
     def host_run_scripts_dir(self):
@@ -148,29 +149,32 @@ class AbstractInstanceConfig(ABC):
         """
         return self.host_container_dir + '/volumes'
 
-    def _get_volume_mounts(self, volumes: List[AbstractInstanceVolume]) -> (List[VolumeMount], str):
-        """Returns container volume mounts."""
+    def _get_volume_mounts(self) -> (List[VolumeMount], str):
+        """Returns container volume mounts and a path to the project directory on the host OS."""
         # get mount directories for the volumes
-        mount_dirs = OrderedDict([(volume.name, volume.mount_dir) for volume in volumes])
+        host_paths = OrderedDict([(volume.name, volume.host_path) for volume in self.volumes])
 
         # get container volumes mapping
         volume_mounts = []
         for container_volume in self.container_config.volume_mounts:
             volume_name = container_volume['name']
-            host_dir = mount_dirs.get(volume_name, '%s/%s' % (self.host_volumes_dir, volume_name))
+            host_path = host_paths.get(volume_name, '%s/%s' % (self.host_volumes_dir, volume_name))
 
             volume_mounts.append(VolumeMount(
                 name=volume_name,
-                host_dir=host_dir,
-                container_dir=container_volume['mountPath'],
+                host_path=host_path,
+                mount_path=container_volume['mountPath'],
+                mode='rw',
+                hidden=False,
             ))
 
         # get host project directory
         host_project_dir = None
-        for name, host_dir, container_dir in volume_mounts:
-            if is_subdir(self.container_config.project_dir, container_dir):
-                project_subdir = os.path.relpath(self.container_config.project_dir, container_dir)
-                host_project_dir = host_dir + '/' + project_subdir
+        for _, host_path, mount_path, _, _ in volume_mounts:
+            if is_subdir(self.container_config.project_dir, mount_path):
+                # the project directory is a subdirectory of a Volume Mount directory
+                project_subdir = os.path.relpath(self.container_config.project_dir, mount_path)
+                host_project_dir = os.path.normpath(host_path + '/' + project_subdir)
                 break
 
         if not host_project_dir:
@@ -178,8 +182,10 @@ class AbstractInstanceConfig(ABC):
             host_project_dir = self.host_volumes_dir + '/.project'
             volume_mounts.append(VolumeMount(
                 name=None,
-                host_dir=host_project_dir,
-                container_dir=self.container_config.project_dir,
+                host_path=host_project_dir,
+                mount_path=self.container_config.project_dir,
+                mode='rw',
+                hidden=False,
             ))
 
         return volume_mounts, host_project_dir

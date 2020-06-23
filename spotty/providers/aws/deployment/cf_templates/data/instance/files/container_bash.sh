@@ -10,4 +10,6 @@ if [[ $(docker ps -aq --filter "name=$SPOTTY_CONTAINER_NAME" | wc -c) -eq 0 ]]; 
   exit 1
 fi
 
-docker exec -it ${SPOTTY_CONTAINER_WORKING_DIR:+-w "$SPOTTY_CONTAINER_WORKING_DIR"} "$SPOTTY_CONTAINER_NAME" /bin/bash "$@"
+SPOTTY_CONTAINER_WORKING_DIR=${SPOTTY_CONTAINER_WORKING_DIR:-/}
+
+{{{ DOCKER_EXEC_BASH }}} "$@"

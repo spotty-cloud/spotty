@@ -1,5 +1,6 @@
+import os
 from schema import Schema, Optional, And, Regex, Or, Use
-from spotty.config.validation import validate_config, get_instance_parameters_schema
+from spotty.config.validation import validate_config, get_instance_parameters_schema, has_prefix
 from spotty.providers.gcp.config.image_url import IMAGE_URL_REGEX
 
 
@@ -13,7 +14,7 @@ def validate_instance_parameters(params: dict):
             'type': str,
             Optional('count', default=1): int,
         },
-        Optional('onDemandInstance', default=False): bool,
+        Optional('preemptibleInstance', default=False): bool,
         Optional('imageName', default=None): And(str, len, Regex(r'^[\w-]+$')),
         Optional('imageUrl', default=None): And(str, len, Regex(IMAGE_URL_REGEX)),
         Optional('bootDiskSize', default=0): And(Or(int, str), Use(str),
@@ -32,7 +33,13 @@ def validate_instance_parameters(params: dict):
             error='"imageName" and "imageUrl" parameters cannot be used together.'),
     ]
 
-    schema = get_instance_parameters_schema(instance_parameters, VOLUME_TYPE_DISK, instance_checks, [])
+    volume_checks = [
+        And(lambda x: not has_prefix([(volume['parameters']['mountDir'] + '/') for volume in x
+                                      if volume['parameters'].get('mountDir')]),
+            error='Mount directories cannot be prefixes for each other.'),
+    ]
+
+    schema = get_instance_parameters_schema(instance_parameters, VOLUME_TYPE_DISK, instance_checks, volume_checks)
 
     return validate_config(schema, params)
 
@@ -42,7 +49,11 @@ def validate_disk_volume_parameters(params: dict):
 
     schema = Schema({
         Optional('diskName', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
-        Optional('mountDir', default=''): str,  # all the checks happened in the base configuration
+        Optional('mountDir', default=''): And(
+            str,
+            And(os.path.isabs, error='Use absolute paths in the "mountDir" parameters'),
+            Use(lambda x: x.rstrip('/'))
+        ),
         Optional('size', default=0): And(int, lambda x: x > 0),
         Optional('deletionPolicy', default=DiskVolume.DP_CREATE_SNAPSHOT): And(
             str,

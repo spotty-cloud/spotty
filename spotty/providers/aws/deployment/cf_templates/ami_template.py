@@ -5,7 +5,8 @@ from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.deployment.project_resources.key_pair import KeyPairResource
 
 
-def prepare_ami_template(availability_zone: str, subnet_id: str, debug_mode: bool = False, on_demand: bool = False):
+def prepare_ami_template(availability_zone: str, subnet_id: str, debug_mode: bool = False,
+                         is_spot_instance: bool = False):
     """Prepares CloudFormation template to run a Spot Instance."""
 
     # read and update CF template
@@ -35,7 +36,7 @@ def prepare_ami_template(availability_zone: str, subnet_id: str, debug_mode: boo
         del template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData']['SecurityGroupIds']
 
     # run on-demand instance
-    if on_demand:
+    if not is_spot_instance:
         del template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData'][
             'InstanceMarketOptions']
 

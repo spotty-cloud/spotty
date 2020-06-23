@@ -1,5 +1,3 @@
-import subprocess
-from spotty.helpers.ssh import get_ssh_command
 from spotty.providers.aws.helpers.aws_cli import AwsCli
 
 
@@ -7,8 +5,8 @@ def get_tmp_instance_s3_path(bucket_name, instance_name):
     return 's3://%s/download/instance-%s' % (bucket_name, instance_name)
 
 
-def upload_from_instance_to_s3(instance_project_dir: str, instance_name: str, bucket_name: str, download_filters: list,
-                               host: str, port: int, user: str, key_path: str, dry_run: bool = False):
+def get_upload_instance_to_s3_cmd(instance_project_dir: str, instance_name: str, bucket_name: str,
+                                  download_filters: list, dry_run: bool = False):
     """Uploads files from the running instance to the S3 bucket.
 
     It uses a temporary S3 directory that is unique for the instance. This
@@ -19,17 +17,10 @@ def upload_from_instance_to_s3(instance_project_dir: str, instance_name: str, bu
     # "sudo" should be called with the "-i" flag to use the root environment, so aws-cli will read
     # the config file from the root home directory
     upload_s3_path = get_tmp_instance_s3_path(bucket_name, instance_name),
-    args = ['sudo', '-i', 'aws', 's3', 'sync', instance_project_dir, upload_s3_path]
-    args += AwsCli.get_s3_sync_arguments(filters=download_filters, delete=True, quote=True, dry_run=dry_run)
+    upload_cmd = ['sudo', '-i', 'aws', 's3', 'sync', instance_project_dir, upload_s3_path]
+    upload_cmd += AwsCli.get_s3_sync_arguments(filters=download_filters, delete=True, quote=True, dry_run=dry_run)
 
-    if not dry_run:
-        args += ['>', '/dev/null']
-
-    remote_cmd = subprocess.list2cmdline(args)
-
-    # connect to the instance and run the remote command
-    ssh_command = get_ssh_command(host, port, user, key_path, remote_cmd, quiet=not dry_run)
-    subprocess.call(ssh_command)
+    return upload_cmd
 
 
 def download_from_s3_to_local(bucket_name: str, instance_name: str, local_project_dir: str, region: str,

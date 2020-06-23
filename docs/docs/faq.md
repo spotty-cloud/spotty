@@ -67,7 +67,7 @@ type of the instance, or run an On-demand Instance by setting the `onDemandInsta
 but the container is failed to start. So you can connect to the host OS using the following command:
 
     ```bash
-    spotty ssh -H
+    spotty sh -H
     ```
     
     Then you can check the `cfn-init` logs to find out why the container is failed:
@@ -82,7 +82,7 @@ but the container is failed to start. So you can connect to the host OS using th
 
 When you start an instance, Spotty creates an EC2 Key Pair and downloads a private key to the 
 `~/.spotty/keys/aws` directory. If you want to have access to the instance from a different machine using 
-the `spotty ssh` or the `spotty run` commands, you need to copy the private key to that machine to the same directory.
+the `spotty sh` or the `spotty run` commands, you need to copy the private key to that machine to the same directory.
 
 __Note:__ if you already have an EC2 Key Pair created for the project and the private key was 
 saved on the machine A (where from an instance was launched the first time) and then you're running

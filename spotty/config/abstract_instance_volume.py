@@ -11,8 +11,8 @@ class AbstractInstanceVolume(ABC):
 
     @property
     @abstractmethod
-    def mount_dir(self) -> str:
-        """A directory where the volume should be mounted on the host OS."""
+    def host_path(self) -> str:
+        """A path on the host OS that will be mounted to the container."""
         raise NotImplementedError
 
     @property

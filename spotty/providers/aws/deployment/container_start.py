@@ -1,7 +1,7 @@
 import base64
 import subprocess
 from spotty.deployment.container_deployment import ContainerDeployment
-from spotty.deployment.file_structure import RUN_CONTAINER_SCRIPT_PATH, CONTAINER_STARTUP_SCRIPT_PATH
+from spotty.deployment.file_structure import RUN_CONTAINER_SCRIPT_PATH
 from spotty.helpers.ssh import get_ssh_command
 from spotty.providers.aws.config.instance_config import InstanceConfig
 
@@ -24,10 +24,10 @@ def start_container(instance_config: InstanceConfig, host: str, port: int, user:
         '--docker-context-path=' + instance_config.docker_context_path,
         '--docker-runtime-params=' + ContainerDeployment(instance_config).get_runtime_parameters(),
         '--working-dir=' + instance_config.container_config.working_dir,
-        '--startup-script-path=' + CONTAINER_STARTUP_SCRIPT_PATH,
+        '--startup-script-base64=' + CONTAINER_STARTUP_SCRIPT_PATH,
     ])
 
-    remote_cmd = '%s & %s' % (upload_script_cmd, run_container_cmd)
+    remote_cmd = '%s && %s' % (upload_script_cmd, run_container_cmd)
 
     # connect to the instance and run remote command
     ssh_command = get_ssh_command(host, port, user, key_path, remote_cmd, quiet=True)

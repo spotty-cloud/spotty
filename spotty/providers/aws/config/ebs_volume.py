@@ -1,13 +1,13 @@
-from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.aws.config.validation import validate_ebs_volume_parameters
 
 
 class EbsVolume(AbstractInstanceVolume):
 
-    DP_CREATE_SNAPSHOT = 'create_snapshot'
-    DP_UPDATE_SNAPSHOT = 'update_snapshot'
-    DP_RETAIN = 'retain'
-    DP_DELETE = 'delete'
+    DP_CREATE_SNAPSHOT = 'CreateSnapshot'
+    DP_UPDATE_SNAPSHOT = 'UpdateSnapshot'
+    DP_RETAIN = 'Retain'
+    DP_DELETE = 'Delete'
 
     def __init__(self, volume_config: dict, project_name: str, instance_name: str):
         self._name = volume_config['name']
@@ -56,9 +56,15 @@ class EbsVolume(AbstractInstanceVolume):
 
     @property
     def mount_dir(self) -> str:
+        """A directory where the volume should be mounted on the host OS."""
         if self._params['mountDir']:
             mount_dir = self._params['mountDir']
         else:
             mount_dir = '/mnt/%s' % self.ec2_volume_name
 
         return mount_dir
+
+    @property
+    def host_path(self) -> str:
+        """A path on the host OS that will be mounted to the container."""
+        return self.mount_dir

@@ -28,7 +28,7 @@ permalink: /docs/commands/
 - __Connect to an instance__:
 
   ```
-  spotty ssh [-h] [-d] [-c CONFIG] [-H] [-s SESSION_NAME] [-l]
+  spotty sh [-h] [-d] [-c CONFIG] [-H] [-s SESSION_NAME] [-l]
              [INSTANCE_NAME]
   ```
 
@@ -79,8 +79,8 @@ permalink: /docs/commands/
   To synchronize the project with the instance before running a script, use the `-S` flag.
   
   Scripts can be parametrized. Parameters in a script are indicated by double braces. For example, 
-  {% raw %}`echo {{msg1}} {{msg2}}`{% endraw %}. Use the `-p` parameter to replace script parameters with real values: 
-  `-p msg1=deep -p msg2=learning`. If some script parameters were not provided, they will be replaced with
+  {% raw %}`echo {{MSG_1}} {{MSG_2}}`{% endraw %}. Use the `-p` parameter to replace script parameters with real values: 
+  `-pMSG_1=deep -pMSG_2=learning`. If some script parameters were not provided, they will be replaced with
   empty strings.
 
 All the commands have the `-c` parameter to specify a path to the configuration file. By default, Spotty is looking for 

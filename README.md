@@ -56,12 +56,12 @@ Use [pip](http://www.pip-installer.org/en/latest/) to install or upgrade Spotty:
     To connect to the running container via SSH, use the following command:
 
     ```bash
-    $ spotty ssh
+    $ spotty sh
     ```
 
     It runs a [tmux](https://github.com/tmux/tmux/wiki) session, so you can always detach this session using
     __`Ctrl + b`__, then __`d`__ combination of keys. To be attached to that session later, just use the
-    `spotty ssh` command again.
+    `spotty sh` command again.
 
     Also, you can run your custom scripts inside the Docker container using the `spotty run <SCRIPT_NAME>` command. Read more
     about custom scripts in the documentation: 

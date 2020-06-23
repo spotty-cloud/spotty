@@ -1,4 +1,4 @@
-from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.gcp.config.validation import validate_disk_volume_parameters
 from spotty.providers.gcp.gcp_resources.disk import Disk
 from spotty.providers.gcp.gcp_resources.snapshot import Snapshot

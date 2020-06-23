@@ -1,4 +1,4 @@
-from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 
 
 class TestVolume(AbstractInstanceVolume):

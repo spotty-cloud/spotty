@@ -1,10 +1,13 @@
+import base64
+import subprocess
+import time
 from argparse import ArgumentParser, Namespace
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.deployment.file_structure import CONTAINER_RUN_SCRIPTS_DIR
+from spotty.deployment.docker_commands import get_script_cmd, get_bash_cmd
+from spotty.deployment.tmux_commands import get_session_cmd
 from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.helpers.run import parse_parameters, render_script
-from spotty.helpers.ssh import run_script
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
 
@@ -36,6 +39,9 @@ class RunCommand(AbstractConfigCommand):
         params = parse_parameters(args.parameter)
         script_content = render_script(scripts[script_name], params)
 
+        # encode the script content to base64
+        script_base64 = base64.b64encode(script_content.encode('utf-8')).decode('utf-8')
+
         # check that the instance is started
         if not instance_manager.is_running():
             raise InstanceNotRunningError(instance_manager.instance_config.name)
@@ -47,19 +53,26 @@ class RunCommand(AbstractConfigCommand):
         # tmux session name
         session_name = args.session_name if args.session_name else 'spotty-script-%s' % script_name
 
-        # run the script on the instance
-        run_script(host=instance_manager.get_ip_address(),
-                   port=instance_manager.ssh_port,
-                   user=instance_manager.ssh_user,
-                   key_path=instance_manager.ssh_key_path,
-                   container_name=instance_manager.instance_config.full_container_name,
-                   script_name=script_name,
-                   script_content=script_content,
-                   script_args=args.custom_args,
-                   tmp_instance_scripts_dir=instance_manager.instance_config.host_run_scripts_dir,
-                   tmp_container_scripts_dir=CONTAINER_RUN_SCRIPTS_DIR,
-                   tmux_session_name=session_name,
-                   container_working_dir=instance_manager.instance_config.container_config.working_dir,
-                   instance_env_vars=instance_manager.instance_config.env_vars,
-                   restart=args.restart,
-                   logging=args.logging)
+        # get a command to run the script with "docker exec"
+        container_name = instance_manager.instance_config.full_container_name
+        working_dir = instance_manager.instance_config.container_config.working_dir
+        log_file_path = instance_manager.instance_config.host_logs_dir + '/run/%s-%d.log' % (script_name, time.time()) \
+            if args.logging else None
+
+        command = get_script_cmd(
+            container_name=container_name,
+            script_name=script_name,
+            script_base64=script_base64,
+            script_args=args.custom_args,
+            working_dir=working_dir,
+            log_file_path=log_file_path,
+        )
+
+        # wrap the command with the tmux session
+        if instance_manager.use_tmux:
+            default_command = subprocess.list2cmdline(get_bash_cmd(container_name, working_dir))
+            command = get_session_cmd(command, session_name, script_name, default_command=default_command,
+                                      keep_pane=True)
+
+        # execute command on the host OS
+        instance_manager.exec(command)

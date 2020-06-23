@@ -57,7 +57,8 @@ def validate_basic_config(data, project_dir):
                                                     ),
             Optional('commands', default=''): str,
             Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
-            Optional('runtimeParameters', default=[]): [str],
+            # TODO: allow to use only certain runtime parameters
+            Optional('runtimeParameters', default=[]): And([str], Use(lambda x: [p.strip() for p in x])),
         },
         And(lambda x: x['image'] or x['file'], error='Either "image" or "file" should be specified.'),
         And(lambda x: not (x['image'] and x['file']), error='"image" and "file" cannot be specified together.'),
@@ -86,9 +87,9 @@ def validate_basic_config(data, project_dir):
                 [{
                     'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
                     'provider': str,
-                    'parameters': And({
+                    Optional('parameters', default={}): {
                         And(str, Regex(r'^[\w]+$')): object,
-                    }, error='Instance parameters are not specified')
+                    }
                 }],
                 And(lambda x: len(x), error='At least one instance must be specified in the configuration file.'),
                 And(lambda x: is_unique_value(x, 'name'), error='Each instance must have a unique name.'),
@@ -126,18 +127,10 @@ def get_instance_parameters_schema(instance_parameters: dict, default_volume_typ
                     'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
                     Optional('type', default=default_volume_type): str,
                     Optional('parameters', default={}): {
-                        Optional('mountDir', default=''): And(
-                            str,
-                            And(os.path.isabs, error='Use absolute paths in the "mountDir" parameters'),
-                            Use(lambda x: x.rstrip('/'))
-                        ),
                         And(str, Regex(r'^[\w]+$')): object,
                     },
                 }],
                 And(lambda x: is_unique_value(x, 'name'), error='Each instance volume must have a unique name.'),
-                And(lambda x: not has_prefix([(volume['parameters']['mountDir'] + '/') for volume in x
-                                              if volume['parameters']['mountDir']]),
-                    error='Mount directories cannot be prefixes for each other.'),
                 *volumes_checks,
             ),
             Optional('localSshPort', default=None): Or(None, And(int, lambda x: 0 <= x <= 65535)),

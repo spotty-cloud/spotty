@@ -4,7 +4,7 @@ from typing import List
 import chevron
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.validation import is_subdir
-from spotty.deployment.abstract_instance_volume import AbstractInstanceVolume
+from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.providers.gcp.config.instance_config import InstanceConfig
 from spotty.providers.gcp.deployment.project_resources.disk_volume import DiskVolume

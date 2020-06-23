@@ -38,13 +38,13 @@ class AmiDeployment(AbstractAwsDeployment):
 
         # check the maximum price for a spot instance
         availability_zone = self.instance_config.availability_zone
-        check_max_price(self._ec2, self.instance_config.instance_type, self.instance_config.on_demand,
+        check_max_price(self._ec2, self.instance_config.instance_type, self.instance_config.is_spot_instance,
                         self.instance_config.max_price, availability_zone)
 
         # prepare CF template
         subnet_id = self.instance_config.subnet_id
-        on_demand = self.instance_config.on_demand
-        template = prepare_ami_template(availability_zone, subnet_id, debug_mode, on_demand)
+        is_spot_instance = self.instance_config.is_spot_instance
+        template = prepare_ami_template(availability_zone, subnet_id, debug_mode, is_spot_instance)
 
         # create stack
         vpc_id = self.get_vpc_id()

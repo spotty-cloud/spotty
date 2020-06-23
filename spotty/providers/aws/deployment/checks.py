@@ -1,5 +1,5 @@
 from spotty.providers.aws.aws_resources.subnet import Subnet
-from spotty.providers.aws.helpers.spot_prices import get_current_spot_price
+from spotty.providers.aws.helpers.instance_prices import get_current_spot_price
 
 
 def check_az_and_subnet(ec2, region: str, availability_zone: str, subnet_id: str):
@@ -41,7 +41,7 @@ def check_az_and_subnet(ec2, region: str, availability_zone: str, subnet_id: str
                                  'subnets.' % ', '.join(zones_wo_subnet))
 
 
-def check_max_price(ec2, instance_type: str, on_demand: bool, max_price: float, availability_zone: str = ''):
+def check_max_price(ec2, instance_type: str, is_spot_instance: bool, max_price: float, availability_zone: str = ''):
     """Checks that the specified maximum Spot price is less than the
     current Spot price.
 
@@ -57,7 +57,7 @@ def check_max_price(ec2, instance_type: str, on_demand: bool, max_price: float, 
         ValueError: Current price for the instance is higher than the
             maximum price in the configuration file.
     """
-    if not on_demand and max_price:
+    if is_spot_instance and max_price:
         current_price = get_current_spot_price(ec2, instance_type, availability_zone)
         if current_price > max_price:
             raise ValueError('Current price for the instance (%.04f) is higher than the maximum price in the '

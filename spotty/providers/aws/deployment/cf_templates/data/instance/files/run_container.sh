@@ -20,15 +20,15 @@ while [ $# -gt 0 ]; do
     --working-dir=*)
       WORKING_DIR="${!1#*=}"
       ;;
-    --startup-script-path=*)
-      STARTUP_SCRIPT_PATH="${!1#*=}"
+    --startup-script-base64=*)
+      STARTUP_SCRIPT_BASE64="${!1#*=}"
       ;;
     --send-resource-signals=*)
       SEND_RESOURCE_SIGNALS="${!1#*=}"
       ;;
     *)
       printf "***************************\n"
-      printf "* Error: Invalid argument.*\n"
+      printf "* Error: Invalid argument *\n"
       printf "***************************\n"
       exit 1
   esac
@@ -37,8 +37,9 @@ done
 
 # remove container with this name if it exists
 if [[ $(docker ps -aq --filter "name=$CONTAINER_NAME" | wc -c) -ne 0 ]]; then
-  echo 'Removing running container...'
+  printf 'Removing running container... '
   docker rm -f "$CONTAINER_NAME" > /dev/null
+  echo 'DONE'
 fi
 
 # build docker image
@@ -58,7 +59,7 @@ if [ -n "$SEND_RESOURCE_SIGNALS" ]; then
 fi
 
 if [ -n "$IMAGE_NAME" ]; then
-  echo 'Starting container...'
+  printf 'Starting container... '
 
   NVIDIA_RUNTIME=""
   if nvidia-smi > /dev/null; then
@@ -66,10 +67,10 @@ if [ -n "$IMAGE_NAME" ]; then
   fi
 
   docker run -td --net=host $NVIDIA_RUNTIME $DOCKER_RUNTIME_PARAMS \
-    -v /root/.aws:/root/.aws \
-    -v {{HOST_SCRIPTS_DIR}}:{{CONTAINER_SCRIPTS_DIR}} \
     --name "$CONTAINER_NAME" "$IMAGE_NAME" /bin/sh \
     > /dev/null
+
+  echo 'DONE'
 fi
 
 # run custom user commands
@@ -77,7 +78,8 @@ if [ -n "$SEND_RESOURCE_SIGNALS" ]; then
   cfn-signal -e 0 --stack ${AWS::StackName} --region ${AWS::Region} --resource RunningContainerStartupCommandsSignal
 fi
 
-if [ -n "$IMAGE_NAME" ] && [ -n "$STARTUP_SCRIPT_PATH" ]; then
+if [ -n "$IMAGE_NAME" ] && [ -n "$STARTUP_SCRIPT_BASE64" ]; then
   echo 'Running startup commands...'
-  docker exec ${!WORKING_DIR:+-w "$WORKING_DIR"} "$CONTAINER_NAME" /bin/bash -xe "$STARTUP_SCRIPT_PATH"
+  WORKING_DIR=${!WORKING_DIR:-/}
+  {{{ DOCKER_EXEC_STARTUP_SCRIPT_CMD }}}
 fi
