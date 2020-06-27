@@ -12,7 +12,7 @@ from spotty.commands.sh import ShCommand
 from spotty.commands.status import StatusCommand
 from spotty.commands.stop import StopCommand
 from spotty.commands.sync import SyncCommand
-from spotty.helpers.commands import add_subparsers, get_custom_commands
+from spotty.helpers.spotty_commands import add_subparsers, get_custom_commands
 from spotty.commands.start import StartCommand
 from spotty.commands.writers.output_writrer import OutputWriter
 
@@ -35,8 +35,15 @@ commands = [
 # add commands to the parser
 add_subparsers(parser, commands)
 
-# separate Spotty arguments from custom arguments
 args = sys.argv[1:]
+output = OutputWriter()
+
+# display the version
+if '-V' in args:
+    output.write(spotty.__version__)
+    sys.exit(0)
+
+# separate Spotty arguments from custom arguments
 custom_args = []
 if '--' in args:
     dd_idx = args.index('--')
@@ -46,13 +53,6 @@ if '--' in args:
 # parse arguments
 args = parser.parse_args(args)
 args.custom_args = custom_args
-output = OutputWriter()
-
-# display the version
-display_version = args.version
-if display_version:
-    output.write(spotty.__version__)
-    sys.exit(0)
 
 # logging
 logging_level = logging.DEBUG if 'debug' in args and args.debug else logging.WARNING

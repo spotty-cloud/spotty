@@ -3,7 +3,7 @@ from argparse import Namespace, ArgumentParser
 import sys
 from spotty.commands.abstract_command import AbstractCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.helpers.commands import add_subparsers
+from spotty.helpers.spotty_commands import add_subparsers
 
 
 class AbstractProviderCommand(AbstractCommand):

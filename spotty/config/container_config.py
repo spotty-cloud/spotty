@@ -44,5 +44,9 @@ class ContainerConfig(object):
         return working_dir
 
     @property
+    def env(self):
+        return self._config['env']
+
+    @property
     def runtime_parameters(self) -> list:
         return self._config['runtimeParameters']

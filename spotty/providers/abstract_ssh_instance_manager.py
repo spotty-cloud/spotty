@@ -1,16 +1,18 @@
 from abc import abstractmethod
-from spotty.helpers.ssh import get_ssh_command
+from spotty.deployment.commands import get_ssh_command
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
-import subprocess
 
 
 class AbstractSshInstanceManager(AbstractInstanceManager):
 
-    def exec(self, command: list):
+    def exec(self, command: str) -> int:
         """Executes a command on the host OS."""
+        # print(command)
+        # exit()
         ssh_command = get_ssh_command(self.get_ip_address(), self.ssh_port, self.ssh_user, self.ssh_key_path,
-                                      command, env_vars=self.instance_config.env_vars)
-        subprocess.call(ssh_command)
+                                      command, env_vars=self.ssh_env_vars)
+
+        return super().exec(ssh_command)
 
     @abstractmethod
     def get_public_ip_address(self) -> str:
@@ -45,3 +47,15 @@ class AbstractSshInstanceManager(AbstractInstanceManager):
     @abstractmethod
     def ssh_key_path(self) -> str:
         raise NotImplementedError
+
+    @property
+    def ssh_env_vars(self) -> dict:
+        """Environmental variables that will be set when ssh to the instance."""
+        return {
+            'SPOTTY_CONTAINER_NAME': self.instance_config.full_container_name,
+            'SPOTTY_CONTAINER_WORKING_DIR': self.instance_config.container_config.working_dir,
+        }
+
+    @property
+    def use_tmux(self) -> bool:
+        return True

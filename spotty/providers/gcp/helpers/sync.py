@@ -1,5 +1,4 @@
 import subprocess
-from spotty.helpers.ssh import get_ssh_command
 from spotty.providers.gcp.helpers.gsutil import GSUtil
 
 

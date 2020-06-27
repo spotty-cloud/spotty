@@ -1,7 +1,9 @@
+import subprocess
 from abc import ABC, abstractmethod
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.abstract_instance_config import AbstractInstanceConfig
 from spotty.config.project_config import ProjectConfig
+from spotty.deployment.container_commands.abstract_container_commands import AbstractContainerCommands
 
 
 class AbstractInstanceManager(ABC):
@@ -15,6 +17,12 @@ class AbstractInstanceManager(ABC):
         """A factory method to create a provider's instance config."""
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def container_commands(self) -> AbstractContainerCommands:
+        """A collection of commands to manage a container from the host OS."""
+        raise NotImplementedError
+
     @abstractmethod
     def is_running(self):
         """Checks if the instance is running."""
@@ -26,14 +34,18 @@ class AbstractInstanceManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def start_container(self, output: AbstractOutputWriter, dry_run=False):
+        """Starts or restarts container on the host OS."""
+        raise NotImplementedError
+
+    @abstractmethod
     def stop(self, output: AbstractOutputWriter):
         """Deletes the stack."""
         raise NotImplementedError
 
-    @abstractmethod
-    def exec(self, command: list):
+    def exec(self, command: str) -> int:
         """Executes a command on the host OS."""
-        raise NotImplementedError
+        return subprocess.call(command, shell=True)
 
     @abstractmethod
     def clean(self, output: AbstractOutputWriter):
@@ -61,7 +73,7 @@ class AbstractInstanceManager(ABC):
     @property
     def use_tmux(self) -> bool:
         """Use tmux when running a custom script or connecting to the instance."""
-        return True
+        return False
 
     @property
     def project_config(self) -> ProjectConfig:

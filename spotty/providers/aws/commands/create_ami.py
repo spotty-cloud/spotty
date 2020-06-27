@@ -2,7 +2,6 @@ from argparse import Namespace, ArgumentParser
 import subprocess
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.helpers.ssh import get_ssh_command
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 from spotty.providers.aws.instance_manager import InstanceManager
 

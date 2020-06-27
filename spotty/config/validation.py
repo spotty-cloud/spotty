@@ -55,6 +55,9 @@ def validate_basic_config(data, project_dir):
                                                               'working directory'),
                                                     Use(lambda x: x.rstrip('/'))
                                                     ),
+            Optional('env', default={}): {
+                And(str, Regex(r'^[a-zA-Z_]+[a-zA-Z0-9_]*$')): str,
+            },
             Optional('commands', default=''): str,
             Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
             # TODO: allow to use only certain runtime parameters

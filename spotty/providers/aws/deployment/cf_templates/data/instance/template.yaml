@@ -26,43 +26,12 @@ Parameters:
     Description: Docker data root directory
     Type: String
     Default: ''
-  ContainerName:
-    Description: Container name
-    Type: String
-  DockerImage:
-    Description: Docker image to run
-    Type: String
-    Default: ''
-  DockerfilePath:
-    Description: Dockerfile to build and to use instead of the image
-    Type: String
-    Default: ''
-  DockerBuildContextPath:
-    Description: Docker build's context path for the Dockerfile
-    Type: String
-    Default: ''
-  DockerRuntimeParameters:
-    Description: Parameters for the "docker run" command
-    Type: String
-    Default: ''
-  DockerWorkingDirectory:
-    Description: Working directory inside Docker container
-    Type: String
-    Default: ''
   InstanceNameTag:
     Description: Name for the instance
     Type: String
     Default: ''
   HostProjectDirectory:
     Description: Destination directory for the project
-    Type: String
-    Default: ''
-  ProjectS3Path:
-    Description: An S3 path where the project files are located
-    Type: String
-    Default: ''
-  SyncCommandArgs:
-    Description: Arguments for the "aws s3 sync" command to synchronize instance with the S3 bucket
     Type: String
     Default: ''
   LogsS3Path:

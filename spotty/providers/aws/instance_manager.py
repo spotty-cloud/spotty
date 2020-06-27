@@ -1,12 +1,17 @@
+import logging
+import subprocess
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.deployment.commands import get_script_command
+from spotty.deployment.container_commands.docker_commands import DockerCommands
+from spotty.deployment.container_scripts.docker.start_container_script import StartContainerScript
 from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.deployment.ami_deployment import AmiDeployment
-from spotty.providers.aws.deployment.container_start import start_container
 from spotty.providers.aws.deployment.instance_deployment import InstanceDeployment
-from spotty.providers.aws.helpers.download import download_from_s3_to_local, get_upload_instance_to_s3_cmd
-from spotty.providers.aws.helpers.sync import sync_local_to_s3, get_sync_s3_to_instance_cmd, get_project_s3_path
+from spotty.providers.aws.helpers.s3_sync import check_aws_installed
+from spotty.providers.aws.helpers.spotty_download import get_instance_to_s3_command, get_s3_to_local_command
 from spotty.providers.abstract_ssh_instance_manager import AbstractSshInstanceManager
+from spotty.providers.aws.helpers.spotty_sync import get_local_to_s3_command, get_s3_to_instance_command
 from spotty.utils import render_table
 
 
@@ -31,6 +36,11 @@ class InstanceManager(AbstractSshInstanceManager):
         """This property is redefined just for a correct type hinting."""
         return self._instance_config
 
+    @property
+    def container_commands(self) -> DockerCommands:
+        """A collection of commands to manage a container from the host OS."""
+        return DockerCommands(self.instance_config)
+
     def is_running(self):
         """Checks if the instance is running."""
         return bool(self.instance_deployment.get_instance())
@@ -48,19 +58,22 @@ class InstanceManager(AbstractSshInstanceManager):
                     raise ValueError('The operation was cancelled.')
 
                 # terminating the instance to make EBS volumes available
-                output.write('Terminating the instance...')
+                output.write('Terminating the instance... ', newline=False)
                 instance.terminate()
                 instance.wait_instance_terminated()
+                output.write('DONE')
 
         # deploy the instance
-        deployment.deploy(output, dry_run=dry_run)
+        deployment.deploy(self.container_commands, output, dry_run=dry_run)
 
-    def start_container(self, output: AbstractOutputWriter):
-        # syncing project files with S3
-        self.sync(output=output)
+    def start_container(self, output: AbstractOutputWriter, dry_run=False):
+        """Starts or restarts container on the host OS."""
+        start_container_script = StartContainerScript(self.container_commands).render()
+        start_container_command = get_script_command('start-container', start_container_script)
 
-        # start container
-        start_container(self.instance_config, self.get_ip_address(), self.ssh_port, self.ssh_user, self.ssh_key_path)
+        exit_code = self.exec(start_container_command)
+        if exit_code != 0:
+            raise ValueError('Failed to start the container')
 
     def stop(self, output: AbstractOutputWriter):
         # delete the stack and apply deletion policies
@@ -70,41 +83,68 @@ class InstanceManager(AbstractSshInstanceManager):
         pass
 
     def sync(self, output: AbstractOutputWriter, dry_run=False):
-        # create or get existing bucket for the project
-        bucket_name = self.instance_deployment.bucket.get_or_create_bucket(output, dry_run)
+        # get the project bucket
+        bucket_name = self.instance_deployment.bucket.get_bucket()
 
-        # sync the project with S3 bucket
-        output.write('Syncing the project with S3 bucket...')
-        sync_local_to_s3(self.project_config.project_dir, bucket_name, self.instance_config.region,
-                         self.project_config.sync_filters, dry_run=dry_run)
+        # sync the project with the S3 bucket
+        self.instance_deployment.upload_project_to_s3(bucket_name, output, dry_run=dry_run)
 
         if not dry_run:
-            # sync S3 with the instance
+            # sync the S3 bucket with the instance
             output.write('Syncing S3 bucket with the instance...')
-            project_s3_path = get_project_s3_path(bucket_name)
-            sync_cmd = get_sync_s3_to_instance_cmd(project_s3_path, self.instance_config.host_project_dir,
-                                                   self.project_config.sync_filters)
+            remote_cmd = get_s3_to_instance_command(
+                bucket_name=bucket_name,
+                instance_project_dir=self.instance_config.host_project_dir,
+                region=self.instance_config.region,
+                sync_filters=self.project_config.sync_filters,
+            )
+            logging.debug('Remote sync command: ' + remote_cmd)
 
             # execute the command on the host OS
-            self.exec(sync_cmd)
+            exit_code = self.exec(remote_cmd)
+            if exit_code != 0:
+                raise ValueError('Failed to upload files from the S3 bucket to the instance')
 
     def download(self, download_filters: list, output: AbstractOutputWriter, dry_run=False):
-        # create or get existing bucket for the project
-        bucket_name = self.instance_deployment.bucket.get_or_create_bucket(output, dry_run)
+        # check AWS CLI is installed
+        check_aws_installed()
+
+        # get the project bucket
+        bucket_name = self.instance_deployment.bucket.get_bucket()
 
         # sync files from the instance to a temporary S3 directory
         output.write('Uploading files from the instance to S3 bucket...')
-        upload_cmd = get_upload_instance_to_s3_cmd(self.instance_config.host_project_dir, self.instance_config.name,
-                                                   bucket_name, download_filters, dry_run=dry_run)
+        remote_cmd = get_instance_to_s3_command(
+            instance_project_dir=self.instance_config.host_project_dir,
+            bucket_name=bucket_name,
+            instance_name=self.instance_config.name,
+            region=self.instance_config.region,
+            download_filters=download_filters,
+            dry_run=dry_run,
+        )
+        logging.debug('Remote sync command: ' + remote_cmd)
 
         # execute the command on the host OS
-        self.exec(upload_cmd)
+        exit_code = self.exec(remote_cmd)
+        if exit_code != 0:
+            raise ValueError('Failed to upload files from the instance to the S3 bucket')
 
         if not dry_run:
             # sync the project with the S3 bucket
             output.write('Downloading files from S3 bucket to local...')
-            download_from_s3_to_local(bucket_name, self.instance_config.name, self.project_config.project_dir,
-                                      self.instance_config.region, download_filters)
+            local_cmd = get_s3_to_local_command(
+                bucket_name=bucket_name,
+                instance_name=self.instance_config.name,
+                local_project_dir=self.project_config.project_dir,
+                region=self.instance_config.region,
+                download_filters=download_filters,
+            )
+            logging.debug('Local sync command: ' + local_cmd)
+
+            # execute the command locally
+            exit_code = subprocess.call(local_cmd, shell=True)
+            if exit_code != 0:
+                raise ValueError('Failed to download files from the S3 bucket to local')
 
     def get_status_text(self):
         instance = self.instance_deployment.get_instance()

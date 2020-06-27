@@ -2,6 +2,7 @@ from argparse import Namespace, ArgumentParser
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.errors.instance_not_running import InstanceNotRunningError
+from spotty.errors.nothing_to_do import NothingToDoError
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
 
@@ -21,6 +22,10 @@ class SyncCommand(AbstractConfigCommand):
 
         dry_run = args.dry_run
         with output.prefix('[dry-run] ' if dry_run else ''):
-            instance_manager.sync(output, dry_run)
+            try:
+                instance_manager.sync(output, dry_run)
+            except NothingToDoError as e:
+                output.write(str(e))
+                return
 
         output.write('Done')

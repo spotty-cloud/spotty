@@ -8,4 +8,4 @@ if [ -n "${HostProjectDirectory}" ]; then
 fi
 
 # sync project files from S3 bucket to the instance
-aws s3 sync ${ProjectS3Path} ${HostProjectDirectory} ${SyncCommandArgs}
+{{{SYNC_PROJECT_CMD}}}

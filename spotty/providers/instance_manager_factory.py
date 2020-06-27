@@ -5,7 +5,7 @@ from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
 class InstanceManagerFactory(object):
 
-    SUPPORTED_PROVIDERS = ['aws', 'gcp']
+    SUPPORTED_PROVIDERS = ['aws', 'gcp', 'local']
 
     @classmethod
     def get_instance(cls, project_config: ProjectConfig, instance_config: dict) -> AbstractInstanceManager:

@@ -4,7 +4,6 @@ from spotty.config.project_config import ProjectConfig
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.helpers.print_info import render_volumes_info_table
 from spotty.providers.gcp.config.instance_config import VOLUME_TYPE_DISK
-from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.providers.gcp.deployment.abstract_gcp_deployment import AbstractGcpDeployment
 from spotty.providers.gcp.deployment.project_resources.bucket import BucketResource
 from spotty.providers.gcp.deployment.project_resources.disk_volume import DiskVolume

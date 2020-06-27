@@ -1,6 +1,9 @@
+import logging
+import subprocess
 from typing import List
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
+from spotty.deployment.container_commands.docker_commands import DockerCommands
 from spotty.providers.aws.aws_resources.image import Image
 from spotty.helpers.print_info import render_volumes_info_table
 from spotty.providers.aws.aws_resources.volume import Volume
@@ -11,10 +14,12 @@ from spotty.providers.aws.deployment.cf_templates.instance_template import prepa
     get_template_parameters
 from spotty.providers.aws.deployment.deletion_policies import apply_deletion_policies
 from spotty.providers.aws.deployment.project_resources.instance_profile_stack import InstanceProfileStackResource
+from spotty.providers.aws.errors.bucket_not_found import BucketNotFoundError
 from spotty.providers.aws.helpers.logs import download_logs
-from spotty.providers.aws.helpers.sync import sync_local_to_s3
 from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
 from spotty.providers.aws.deployment.project_resources.instance_stack import InstanceStackResource
+from spotty.providers.aws.helpers.s3_sync import check_aws_installed
+from spotty.providers.aws.helpers.spotty_sync import get_local_to_s3_command
 
 
 class InstanceDeployment(AbstractAwsDeployment):
@@ -30,7 +35,7 @@ class InstanceDeployment(AbstractAwsDeployment):
     def get_instance(self):
         return self.stack.get_instance()
 
-    def deploy(self, output: AbstractOutputWriter, dry_run=False):
+    def deploy(self, docker_commands: DockerCommands, output: AbstractOutputWriter, dry_run=False):
         project_config = self.instance_config.project_config
 
         # check availability zone and subnet configuration
@@ -48,12 +53,18 @@ class InstanceDeployment(AbstractAwsDeployment):
                         self.instance_config.max_price, availability_zone)
 
         # create or get existing bucket for the project
-        bucket_name = self.bucket.get_or_create_bucket(output, dry_run)
+        try:
+            bucket_name = self.bucket.get_bucket()
+        except BucketNotFoundError:
+            if not dry_run:
+                bucket_name = self.bucket.create_bucket()
+                output.write('Bucket "%s" was created.' % bucket_name)
+            else:
+                bucket_name = None
 
-        # sync the project with the bucket
-        output.write('Syncing the project with S3 bucket...')
-        sync_local_to_s3(project_config.project_dir, bucket_name, self.instance_config.region,
-                         project_config.sync_filters, dry_run)
+        # sync the project with the S3 bucket
+        if bucket_name is not None:
+            self.upload_project_to_s3(bucket_name, output, dry_run=dry_run)
 
         # create or update instance profile
         if not dry_run:
@@ -71,13 +82,29 @@ class InstanceDeployment(AbstractAwsDeployment):
 
         # prepare CloudFormation template
         with output.prefix('  '):
-            template = prepare_instance_template(self._ec2, self.instance_config, volumes, availability_zone, output)
+            template = prepare_instance_template(
+                ec2=self._ec2,
+                instance_config=self.instance_config,
+                docker_commands=docker_commands,
+                volumes=volumes,
+                availability_zone=availability_zone,
+                bucket_name=bucket_name,
+                output=output,
+            )
 
             # get parameters for the template
             vpc_id = self.get_vpc_id()
             ami = self._get_ami()
-            parameters = get_template_parameters(self.instance_config, instance_profile_arn, bucket_name, vpc_id,
-                                                 ami, self.key_pair, output, dry_run=dry_run)
+            parameters = get_template_parameters(
+                instance_config=self.instance_config,
+                instance_profile_arn=instance_profile_arn,
+                bucket_name=bucket_name,
+                vpc_id=vpc_id,
+                ami=ami,
+                key_pair=self.key_pair,
+                output=output,
+                dry_run=dry_run,
+            )
 
         # print information about the volumes
         output.write('\nVolumes:\n%s\n' % render_volumes_info_table(self.instance_config.volume_mounts, volumes))
@@ -107,11 +134,12 @@ class InstanceDeployment(AbstractAwsDeployment):
         # terminate the instance
         instance = self.get_instance()
         if instance:
-            output.write('Terminating the instance...')
+            output.write('Terminating the instance... ', newline=False)
             instance.terminate()
             instance.wait_instance_terminated()
+            output.write('DONE')
         else:
-            output.write('The instance is already terminated.')
+            output.write('The instance was already terminated.')
 
         # delete the stack in background if it exists
         self.stack.delete_stack(output, no_wait=True)
@@ -121,6 +149,26 @@ class InstanceDeployment(AbstractAwsDeployment):
         # apply deletion policies for the volumes
         with output.prefix('  '):
             apply_deletion_policies(self._ec2, self.instance_config.volumes, output)
+
+    def upload_project_to_s3(self, bucket_name: str, output: AbstractOutputWriter, dry_run=False):
+        # check AWS CLI is installed
+        check_aws_installed()
+
+        # sync the project with the S3 bucket
+        output.write('Syncing the project with S3 bucket...')
+        local_cmd = get_local_to_s3_command(
+            local_project_dir=self.instance_config.project_config.project_dir,
+            bucket_name=bucket_name,
+            region=self.instance_config.region,
+            sync_filters=self.instance_config.project_config.sync_filters,
+            dry_run=dry_run,
+        )
+        logging.debug('Local sync command: ' + local_cmd)
+
+        # execute the command locally
+        exit_code = subprocess.call(local_cmd, shell=True)
+        if exit_code != 0:
+            raise ValueError('Failed to upload the project files to the S3 bucket.')
 
     def _get_availability_zone(self, volumes: List[AbstractInstanceVolume]):
         """Checks that existing volumes located in the same AZ and the AZ from the

@@ -1,6 +1,6 @@
 import boto3
 import re
-from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.providers.aws.errors.bucket_not_found import BucketNotFoundError
 from spotty.utils import random_string
 
 
@@ -11,7 +11,7 @@ class BucketResource(object):
         self._region = region
         self._bucket_prefix = 'spotty-%s' % project_name.lower()
 
-    def _find_bucket(self):
+    def get_bucket(self) -> str:
         res = self._s3.list_buckets()
         regex = re.compile('-'.join([self._bucket_prefix, '[a-z0-9]{12}', self._region]))
         buckets = [bucket['Name'] for bucket in res['Buckets'] if regex.match(bucket['Name']) is not None]
@@ -19,23 +19,22 @@ class BucketResource(object):
         if len(buckets) > 1:
             raise ValueError('Found several buckets in the same region: %s.' % ', '.join(buckets))
 
-        bucket_name = buckets[0] if len(buckets) else False
+        if not len(buckets):
+            raise BucketNotFoundError
+
+        bucket_name = buckets[0]
 
         return bucket_name
 
-    def get_or_create_bucket(self, output: AbstractOutputWriter, dry_run=False):
-        bucket_name = self._find_bucket()
-        if not bucket_name:
-            bucket_name = '-'.join([self._bucket_prefix, random_string(12), self._region])
-            if not dry_run:
-                # a fix for the boto3 issue: https://github.com/boto/boto3/issues/125
-                if self._region == 'us-east-1':
-                    self._s3.create_bucket(ACL='private', Bucket=bucket_name)
-                else:
-                    self._s3.create_bucket(ACL='private', Bucket=bucket_name,
-                                           CreateBucketConfiguration={'LocationConstraint': self._region})
+    def create_bucket(self) -> str:
+        bucket_name = '-'.join([self._bucket_prefix, random_string(12), self._region])
 
-            output.write('Bucket "%s" was created.' % bucket_name)
+        # a fix for the boto3 issue: https://github.com/boto/boto3/issues/125
+        if self._region == 'us-east-1':
+            self._s3.create_bucket(ACL='private', Bucket=bucket_name)
+        else:
+            self._s3.create_bucket(ACL='private', Bucket=bucket_name,
+                                   CreateBucketConfiguration={'LocationConstraint': self._region})
 
         return bucket_name
 

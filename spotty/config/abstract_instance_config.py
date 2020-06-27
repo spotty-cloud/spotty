@@ -87,14 +87,6 @@ class AbstractInstanceConfig(ABC):
         return self._params['commands']
 
     @property
-    def env_vars(self) -> dict:
-        """Environmental variables that will be set when ssh to the instance."""
-        return {
-            'SPOTTY_CONTAINER_NAME': self.full_container_name if self.container_config else '',
-            'SPOTTY_CONTAINER_WORKING_DIR': self.container_config.working_dir if self.container_config else '',
-        }
-
-    @property
     def host_project_dir(self):
         """Project directory on the host OS."""
         return self._host_project_dir

@@ -5,14 +5,13 @@ import chevron
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.validation import is_subdir
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
-from spotty.deployment.container_deployment import ContainerDeployment
 from spotty.providers.gcp.config.instance_config import InstanceConfig
 from spotty.providers.gcp.deployment.project_resources.disk_volume import DiskVolume
 from spotty.providers.gcp.helpers.sync import BUCKET_SYNC_DIR, get_instance_sync_arguments
 from spotty.utils import fix_indents_for_lines
 
 
-def prepare_instance_template(instance_config: InstanceConfig, container: ContainerDeployment, sync_filters: list,
+def prepare_instance_template(instance_config: InstanceConfig, container, sync_filters: list,
                               volumes: List[AbstractInstanceVolume], machine_name: str, image_link: str,
                               bucket_name: str, public_key_value: str, service_account_email: str,
                               output: AbstractOutputWriter):
