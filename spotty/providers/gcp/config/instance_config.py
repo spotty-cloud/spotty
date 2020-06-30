@@ -1,5 +1,7 @@
+from typing import List
 from spotty.config.abstract_instance_config import AbstractInstanceConfig
 from spotty.providers.gcp.config.validation import validate_instance_parameters
+
 
 VOLUME_TYPE_DISK = 'disk'
 DEFAULT_IMAGE_NAME = 'spotty'
@@ -35,6 +37,10 @@ class InstanceConfig(AbstractInstanceConfig):
     @property
     def boot_disk_size(self) -> int:
         return self._params['bootDiskSize']
+
+    @property
+    def ports(self) -> List[int]:
+        return list(set(self._params['ports']))
 
     @property
     def image_name(self) -> str:

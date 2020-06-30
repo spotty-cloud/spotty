@@ -65,11 +65,7 @@ class InstanceConfig(AbstractInstanceConfig):
 
     @property
     def ami_name(self) -> str:
-        return self._params['amiName'] if self._params['amiName'] else DEFAULT_AMI_NAME
-
-    @property
-    def has_ami_name(self) -> bool:
-        return bool(self._params['amiName'])
+        return self._params['amiName']
 
     @property
     def ami_id(self) -> str:
@@ -78,6 +74,10 @@ class InstanceConfig(AbstractInstanceConfig):
     @property
     def root_volume_size(self) -> int:
         return self._params['rootVolumeSize']
+
+    @property
+    def ports(self) -> List[int]:
+        return list(set(self._params['ports']))
 
     @property
     def max_price(self) -> float:

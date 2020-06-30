@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.abstract_instance_config import AbstractInstanceConfig
 from spotty.config.project_config import ProjectConfig
-from spotty.deployment.container_commands.abstract_container_commands import AbstractContainerCommands
+from spotty.deployment.abstract_container_commands import AbstractContainerCommands
 
 
 class AbstractInstanceManager(ABC):
@@ -24,7 +24,7 @@ class AbstractInstanceManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def is_running(self):
+    def is_running(self) -> bool:
         """Checks if the instance is running."""
         raise NotImplementedError
 
@@ -39,7 +39,7 @@ class AbstractInstanceManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def stop(self, output: AbstractOutputWriter):
+    def stop(self, only_shutdown: bool, output: AbstractOutputWriter):
         """Deletes the stack."""
         raise NotImplementedError
 

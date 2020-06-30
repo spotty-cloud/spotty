@@ -3,9 +3,18 @@ from spotty.config.project_config import ProjectConfig
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
 
+PROVIDER_AWS = 'aws'
+PROVIDER_GCP = 'gcp'
+PROVIDER_LOCAL = 'local'
+
+
 class InstanceManagerFactory(object):
 
-    SUPPORTED_PROVIDERS = ['aws', 'gcp', 'local']
+    SUPPORTED_PROVIDERS = [
+        PROVIDER_AWS,
+        PROVIDER_GCP,
+        PROVIDER_LOCAL,
+    ]
 
     @classmethod
     def get_instance(cls, project_config: ProjectConfig, instance_config: dict) -> AbstractInstanceManager:

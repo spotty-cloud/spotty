@@ -24,6 +24,7 @@ def validate_instance_parameters(params: dict):
                                                      error='"rootVolumeSize" should be greater than 0 or should '
                                                            'not be specified.'),
                                                  ),
+        Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
     }
 
     instance_checks = [
@@ -55,7 +56,7 @@ def validate_disk_volume_parameters(params: dict):
             Use(lambda x: x.rstrip('/'))
         ),
         Optional('size', default=0): And(int, lambda x: x > 0),
-        Optional('deletionPolicy', default=DiskVolume.DP_CREATE_SNAPSHOT): And(
+        Optional('deletionPolicy', default=DiskVolume.DP_RETAIN): And(
             str,
             lambda x: x in [DiskVolume.DP_CREATE_SNAPSHOT,
                             DiskVolume.DP_UPDATE_SNAPSHOT,

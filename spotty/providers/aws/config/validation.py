@@ -21,6 +21,7 @@ def validate_instance_parameters(params: dict):
                                                        error='"rootVolumeSize" should be greater than 0 or should '
                                                              'not be specified.'),
                                                    ),
+        Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
         Optional('maxPrice', default=0): And(Or(float, int, str), Use(str),
                                              Regex(r'^\d+(\.\d{1,6})?$', error='Incorrect value for "maxPrice".'),
                                              Use(float),
@@ -70,7 +71,7 @@ def validate_ebs_volume_parameters(params: dict):
         Optional('size', default=0): And(int, lambda x: x > 0),
         # TODO: add the "iops" parameter to support the "io1" EBS volume type
         Optional('type', default='gp2'): lambda x: x in ['gp2', 'sc1', 'st1', 'standard'],
-        Optional('deletionPolicy', default=EbsVolume.DP_CREATE_SNAPSHOT): And(
+        Optional('deletionPolicy', default=EbsVolume.DP_RETAIN): And(
             str,
             lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,
                             EbsVolume.DP_UPDATE_SNAPSHOT,

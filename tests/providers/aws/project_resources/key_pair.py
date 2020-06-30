@@ -2,7 +2,7 @@ import unittest
 import boto3
 import os
 from moto import mock_ec2
-from spotty.providers.aws.deployment.project_resources.key_pair import KeyPairResource
+from spotty.providers.aws.resource_managers.key_pair_manager import KeyPairManager
 
 
 class TestKeyPairResource(unittest.TestCase):
@@ -11,7 +11,7 @@ class TestKeyPairResource(unittest.TestCase):
         region = 'eu-central-1'
         project_name = 'TEST_PROJECT'
         provider_name = 'aws'
-        key_resource = KeyPairResource(project_name, region, provider_name)
+        key_resource = KeyPairManager(project_name, region, provider_name)
 
         # check key path
         key_name = 'spotty-key-%s-%s' % (project_name.lower(), region)
@@ -24,7 +24,7 @@ class TestKeyPairResource(unittest.TestCase):
         project_name = 'TEST_PROJECT'
         provider_name = 'aws'
         ec2 = boto3.client('ec2', region_name=region)
-        key_resource = KeyPairResource(project_name, region, provider_name)
+        key_resource = KeyPairManager(project_name, region, provider_name)
 
         # key doesn't exist
         self.assertFalse(key_resource._ec2_key_exists())

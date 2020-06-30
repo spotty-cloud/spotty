@@ -73,3 +73,26 @@ def _get_region_name(region: str):
 
     return region_name
 
+
+def check_max_spot_price(ec2, instance_type: str, is_spot_instance: bool, max_price: float,
+                         availability_zone: str = ''):
+    """Checks that the specified maximum Spot price is less than the
+    current Spot price.
+
+    Args:
+        ec2: EC2 client
+        instance_type (str): Instance Type
+        is_spot_instance (bool): True if it's a spot instance
+        max_price (float): requested maximum price for the instance
+        availability_zone (str): Availability zone to check. If it's an empty string,
+            checks the cheapest AZ.
+
+    Raises:
+        ValueError: Current price for the instance is higher than the
+            maximum price in the configuration file.
+    """
+    if is_spot_instance and max_price:
+        current_price = get_current_spot_price(ec2, instance_type, availability_zone)
+        if current_price > max_price:
+            raise ValueError('Current price for the instance (%.04f) is higher than the maximum price in the '
+                             'configuration file (%.04f).' % (current_price, max_price))

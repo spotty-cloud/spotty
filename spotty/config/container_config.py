@@ -1,6 +1,3 @@
-from typing import List
-
-
 class ContainerConfig(object):
 
     def __init__(self, container_config: dict):
@@ -25,10 +22,6 @@ class ContainerConfig(object):
     @property
     def volume_mounts(self) -> list:
         return self._config['volumeMounts']
-
-    @property
-    def ports(self) -> List[int]:
-        return list(set(self._config['ports']))
 
     @property
     def commands(self) -> str:

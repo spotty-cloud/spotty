@@ -1,14 +1,29 @@
 from abc import abstractmethod
-from spotty.deployment.commands import get_ssh_command
+from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.deployment.commands import get_ssh_command, get_script_command
+from spotty.deployment.docker.docker_commands import DockerCommands
+from spotty.deployment.docker.scripts.start_container_script import StartContainerScript
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
 
 class AbstractSshInstanceManager(AbstractInstanceManager):
 
+    @property
+    def container_commands(self) -> DockerCommands:
+        """A collection of commands to manage a container from the host OS."""
+        return DockerCommands(self.instance_config)
+
+    def start_container(self, output: AbstractOutputWriter, dry_run=False):
+        """Starts or restarts container on the host OS."""
+        start_container_script = StartContainerScript(self.container_commands).render()
+        start_container_command = get_script_command('start-container', start_container_script)
+
+        exit_code = self.exec(start_container_command)
+        if exit_code != 0:
+            raise ValueError('Failed to start the container')
+
     def exec(self, command: str) -> int:
         """Executes a command on the host OS."""
-        # print(command)
-        # exit()
         ssh_command = get_ssh_command(self.get_ip_address(), self.ssh_port, self.ssh_user, self.ssh_key_path,
                                       command, env_vars=self.ssh_env_vars)
 

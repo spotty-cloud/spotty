@@ -7,8 +7,8 @@ from spotty.providers.gcp.helpers.ce_client import CEClient
 
 class AbstractGcpDeployment(ABC):
 
-    def __init__(self, project_name: str, instance_config: InstanceConfig):
-        self._project_name = project_name
+    def __init__(self, instance_config: InstanceConfig):
+        self._project_name = instance_config.project_config.project_name
         self._instance_config = instance_config
         self._credentials = GcpCredentials()
         self._ce = CEClient(self._credentials.project_id, instance_config.zone)

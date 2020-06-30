@@ -1,7 +1,7 @@
 import unittest
 import boto3
 from spotty.commands.writers.null_output_writrer import NullOutputWriter
-from spotty.providers.aws.deployment.project_resources.bucket import BucketResource
+from spotty.providers.aws.resource_managers.bucket_manager import BucketResource
 from moto import mock_s3
 
 

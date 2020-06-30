@@ -1,8 +1,8 @@
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.deployment.commands import get_script_command
-from spotty.deployment.container_commands.docker_commands import DockerCommands
-from spotty.deployment.container_scripts.docker.start_container_script import StartContainerScript
-from spotty.deployment.container_scripts.docker.stop_container_script import StopContainerScript
+from spotty.deployment.docker.docker_commands import DockerCommands
+from spotty.deployment.docker.scripts.start_container_script import StartContainerScript
+from spotty.deployment.docker.scripts.stop_container_script import StopContainerScript
 from spotty.errors.nothing_to_do import NothingToDoError
 from spotty.providers.local.config.instance_config import InstanceConfig
 from spotty.providers.abstract_instance_manager import AbstractInstanceManager
@@ -10,14 +10,11 @@ from spotty.providers.abstract_instance_manager import AbstractInstanceManager
 
 class InstanceManager(AbstractInstanceManager):
 
+    instance_config: InstanceConfig
+
     def _get_instance_config(self, instance_config: dict) -> InstanceConfig:
         """Validates the instance config and returns an InstanceConfig object."""
         return InstanceConfig(instance_config, self.project_config)
-
-    @property
-    def instance_config(self) -> InstanceConfig:
-        """This property is redefined just for a correct type hinting."""
-        return self._instance_config
 
     @property
     def container_commands(self) -> DockerCommands:
@@ -41,7 +38,7 @@ class InstanceManager(AbstractInstanceManager):
         if exit_code != 0:
             raise ValueError('Failed to start the container')
 
-    def stop(self, output: AbstractOutputWriter):
+    def stop(self, only_shutdown: bool, output: AbstractOutputWriter):
         # stop container
         stop_container_script = StopContainerScript(self.container_commands).render()
         stop_container_command = get_script_command('stop-container', stop_container_script)
