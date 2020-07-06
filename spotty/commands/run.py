@@ -48,7 +48,7 @@ class RunCommand(AbstractConfigCommand):
 
         # get a command to run the script with "docker exec"
         script_command = get_script_command(script_name, script_content, script_args=args.custom_args)
-        command = instance_manager.container_commands.exec(script_command)
+        command = instance_manager.container_commands.exec(script_command, interactive=True, tty=True)
 
         # wrap the command with logging
         if args.logging:
@@ -59,7 +59,7 @@ class RunCommand(AbstractConfigCommand):
         # wrap the command with the tmux session
         if instance_manager.use_tmux:
             session_name = args.session_name if args.session_name else 'spotty-script-%s' % script_name
-            default_command = instance_manager.container_commands.exec(get_bash_command())
+            default_command = instance_manager.container_commands.exec(get_bash_command(), interactive=True, tty=True)
             command = get_tmux_session_command(command, session_name, script_name, default_command=default_command,
                                                keep_pane=True)
 

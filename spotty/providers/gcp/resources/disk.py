@@ -24,7 +24,7 @@ class Disk(object):
                 'status': 'READY',
                 'type': 'https://www.googleapis.com/compute/v1/projects/spotty-221422/zones/us-east1-b/diskTypes/pd-standard',
                 'users': ['https://www.googleapis.com/compute/v1/projects/spotty-221422/zones/us-east1-b/instances/instance-1'],
-                'zone': 'https://www.googleapis.com/compute/v1/projects/spotty-221422/zones/us-east1-b'}]
+                'zone': 'https://www.googleapis.com/compute/v1/projects/spotty-221422/zones/us-east1-b'}
         """
         self._ce = ce
         self._data = data

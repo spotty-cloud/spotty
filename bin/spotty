@@ -6,7 +6,6 @@ import logging
 import spotty
 from spotty.commands.aws import AwsCommand
 from spotty.commands.download import DownloadCommand
-from spotty.commands.gcp import GcpCommand
 from spotty.commands.run import RunCommand
 from spotty.commands.sh import ShCommand
 from spotty.commands.status import StatusCommand
@@ -29,7 +28,6 @@ commands = [
     SyncCommand,
     DownloadCommand,
     AwsCommand,
-    GcpCommand,
 ] + get_custom_commands()
 
 # add commands to the parser

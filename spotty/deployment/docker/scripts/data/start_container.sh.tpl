@@ -17,8 +17,30 @@ echo 'Building Docker image...'
 
 {{> before_container_run}}
 
-printf 'Starting container... '
-{{{start_container_cmd}}}
+i=0
+until [ "$i" -ge 3 ]
+do
+  if [ "$i" -eq 0 ]; then
+    printf 'Starting container... '
+  else
+    echo "Retrying to start the container $i..."
+  fi
+
+  RUN_EXIT_CODE=0
+  {{{start_container_cmd}}} || RUN_EXIT_CODE=$?
+
+  if [ "$RUN_EXIT_CODE" -ne 125 ]; then
+    break
+  fi
+
+  i=$((i+1))
+  sleep 10
+done
+
+if [ "$RUN_EXIT_CODE" -ne 0 ]; then
+  exit $RUN_EXIT_CODE
+fi
+
 echo 'DONE'
 
 {{> before_startup_commands}}

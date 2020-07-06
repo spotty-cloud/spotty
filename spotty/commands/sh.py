@@ -39,7 +39,7 @@ class ShCommand(AbstractConfigCommand):
                     if instance_manager.use_tmux else ''
             else:
                 # get a command to run bash inside the docker container
-                command = instance_manager.container_commands.exec(get_bash_command())
+                command = instance_manager.container_commands.exec(get_bash_command(), interactive=True, tty=True)
 
                 # wrap the command with the tmux session
                 if instance_manager.use_tmux:

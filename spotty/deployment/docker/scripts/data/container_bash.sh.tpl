@@ -7,4 +7,4 @@ fi
 
 SPOTTY_CONTAINER_WORKING_DIR=${SPOTTY_CONTAINER_WORKING_DIR:-/}
 
-{{{DOCKER_EXEC_BASH}}}
+{{{docker_exec_bash}}}

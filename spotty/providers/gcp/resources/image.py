@@ -1,4 +1,4 @@
-from spotty.providers.gcp.config.image_url import ImageUrl
+from spotty.providers.gcp.config.image_uri import ImageUri
 from spotty.providers.gcp.helpers.ce_client import CEClient
 
 
@@ -37,12 +37,12 @@ class Image(object):
         return Image(res[0])
 
     @staticmethod
-    def get_by_url(ce: CEClient, image_url: str):
-        image_url = ImageUrl(image_url)
-        if image_url.is_family:
-            image_data = ce.get_image_from_family(family_name=image_url.name, project_id=image_url.project_id)
+    def get_by_uri(ce: CEClient, image_uri: str):
+        image_uri = ImageUri(image_uri)
+        if image_uri.is_family:
+            image_data = ce.get_image_from_family(family_name=image_uri.name, project_id=image_uri.project_id)
         else:
-            res = ce.list_images(image_name=image_url.name, project_id=image_url.project_id)
+            res = ce.list_images(image_name=image_uri.name, project_id=image_uri.project_id)
             image_data = res[0] if res else None
 
         if not image_data:

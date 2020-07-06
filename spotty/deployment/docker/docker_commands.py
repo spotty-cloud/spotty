@@ -47,11 +47,19 @@ class DockerCommands(AbstractContainerCommands):
     def remove(self):
         return 'docker rm -f "%s" > /dev/null' % self._instance_config.full_container_name
 
-    def exec(self, command: str, container_name: str = None, working_dir: str = None) -> str:
+    def exec(self, command: str, interactive: bool = False, tty: bool = False, container_name: str = None,
+             working_dir: str = None) -> str:
         container_name = container_name if container_name else self._instance_config.full_container_name
         working_dir = working_dir if working_dir else self._instance_config.container_config.working_dir
 
-        exec_cmd = 'docker exec -it'
+        exec_cmd = 'docker exec'
+
+        if interactive:
+            exec_cmd += ' -i'
+
+        if tty:
+            exec_cmd += ' -t'
+
         if working_dir:
             exec_cmd += ' -w ' + working_dir
 

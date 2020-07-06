@@ -1,8 +1,9 @@
 from datetime import datetime
+from spotty.deployment.abstract_cloud.resources.abstract_instance import AbstractInstance
 from spotty.providers.gcp.helpers.ce_client import CEClient
 
 
-class Instance(object):
+class Instance(AbstractInstance):
 
     def __init__(self, ce: CEClient, data: dict):
         """
@@ -79,7 +80,7 @@ class Instance(object):
         return self.status == 'RUNNING'
 
     @property
-    def is_terminated(self) -> bool:
+    def is_stopped(self) -> bool:
         # see Instance Life Cycle: https://cloud.google.com/compute/docs/instances/instance-life-cycle
         return self.status == 'TERMINATED'
 
@@ -100,7 +101,7 @@ class Instance(object):
         return self._data['zone'].split('/')[-1]
 
     @property
-    def creation_timestamp(self) -> str:
+    def creation_timestamp(self) -> datetime:
         # fix the format: '2019-04-20T16:21:49.536-07:00' -> '2019-04-20T16:21:49-0700'
         time_str = self._data['creationTimestamp'][:-10] + \
                    self._data['creationTimestamp'][-6:-3] + \
@@ -110,3 +111,9 @@ class Instance(object):
     @property
     def is_preemtible(self) -> bool:
         return self._data['scheduling']['preemptible']
+
+    def terminate(self, wait: bool = True):
+        self._ce.delete_instance(self.name, wait)
+
+    def stop(self, wait: bool = True):
+        self._ce.stop_instance(self.name, wait)

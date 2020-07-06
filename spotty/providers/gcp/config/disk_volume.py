@@ -1,32 +1,20 @@
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.providers.gcp.config.validation import validate_disk_volume_parameters
-from spotty.providers.gcp.gcp_resources.disk import Disk
-from spotty.providers.gcp.gcp_resources.snapshot import Snapshot
-from spotty.providers.gcp.helpers.ce_client import CEClient
 
 
 class DiskVolume(AbstractInstanceVolume):
 
-    DP_CREATE_SNAPSHOT = 'create_snapshot'
-    DP_UPDATE_SNAPSHOT = 'update_snapshot'
-    DP_RETAIN = 'retain'
-    DP_DELETE = 'delete'
+    DP_CREATE_SNAPSHOT = 'CreateSnapshot'
+    DP_UPDATE_SNAPSHOT = 'UpdateSnapshot'
+    DP_RETAIN = 'Retain'
+    DP_DELETE = 'Delete'
 
-    def __init__(self, ce: CEClient, volume_config: dict, project_name: str, instance_name: str):
-        self._ce = ce
-        self._name = volume_config['name']
-        self._params = validate_disk_volume_parameters(volume_config['parameters'])
-
-        self._project_name = project_name
-        self._instance_name = instance_name
+    def _validate_volume_parameters(self, params: dict) -> dict:
+        return validate_disk_volume_parameters(params)
 
     @property
     def title(self):
         return 'Disk'
-
-    @property
-    def name(self):
-        return self._name
 
     @property
     def size(self) -> int:
@@ -56,6 +44,7 @@ class DiskVolume(AbstractInstanceVolume):
 
     @property
     def mount_dir(self) -> str:
+        """A directory where the volume will be mounted on the host OS."""
         if self._params['mountDir']:
             mount_dir = self._params['mountDir']
         else:
@@ -63,8 +52,7 @@ class DiskVolume(AbstractInstanceVolume):
 
         return mount_dir
 
-    def get_disk(self) -> Disk:
-        return Disk.get_by_name(self._ce, self.disk_name)
-
-    def get_snapshot(self) -> Snapshot:
-        return Snapshot.get_by_name(self._ce, self.disk_name)
+    @property
+    def host_path(self) -> str:
+        """A path on the host OS that will be mounted to the container."""
+        return self.mount_dir

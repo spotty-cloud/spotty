@@ -119,19 +119,9 @@ class AbstractInstanceConfig(ABC):
         return '%s/containers/%s' % (INSTANCE_SPOTTY_TMP_DIR, self.full_container_name)
 
     @property
-    def host_scripts_dir(self):
-        """A directory with scripts that will be run inside a container."""
-        return self.host_container_dir + '/scripts'
-
-    @property
     def host_logs_dir(self):
         """A directory mainly for the "spotty run" command logs."""
         return self.host_container_dir + '/logs'
-
-    @property
-    def host_run_scripts_dir(self):
-        """A directory with custom user scripts (the "spotty run" command)."""
-        return self.host_scripts_dir + '/run'
 
     @property
     def host_volumes_dir(self):

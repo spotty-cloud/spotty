@@ -3,18 +3,28 @@ from abc import ABC, abstractmethod
 
 class AbstractDataTransfer(ABC):
 
+    def __init__(self, local_project_dir: str, host_project_dir: str, sync_filters: list, instance_name: str):
+        self._instance_name = instance_name
+        self._local_project_dir = local_project_dir
+        self._host_project_dir = host_project_dir
+        self._sync_filters = sync_filters
+
+    @property
+    def instance_name(self):
+        return self._instance_name
+
     @property
     @abstractmethod
-    def instance_name(self) -> str:
+    def scheme_name(self) -> str:
         raise NotImplementedError
 
     def _get_bucket_project_path(self, bucket_name: str) -> str:
         """A bucket path where the project files are located."""
-        return bucket_name + '/project'
+        return '%s://%s/project' % (self.scheme_name, bucket_name)
 
     def _get_bucket_downloads_path(self, bucket_name: str) -> str:
         """A bucket path where the downloaded files are located."""
-        return bucket_name + '/download/instance-' + self.instance_name
+        return '%s://%s/download/instance-%s' % (self.scheme_name, bucket_name, self.instance_name)
 
     @abstractmethod
     def upload_local_to_bucket(self, bucket_name: str, dry_run: bool = False):

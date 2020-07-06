@@ -15,6 +15,7 @@ class AbstractInstanceDeployment(ABC):
     def instance_config(self) -> AbstractInstanceConfig:
         return self._instance_config
 
+    @abstractmethod
     def get_instance(self) -> AbstractInstance:
         """Returns information about the instance it it exists."""
         raise NotImplementedError

@@ -50,9 +50,9 @@ resources:
           - key: 'ssh-keys'
             value: |
               ubuntu:ssh-rsa {{{PUB_KEY_VALUE}}} ubuntu
-          - key: 'user-data'
+          - key: 'startup-script'
             value: |
-              {{{STARTUP_SCRIPT}}}
+              {{> STARTUP_SCRIPT}}
 
   - name: {{MACHINE_NAME}}-firewall-rule
     type: compute.v1.firewall

@@ -1,18 +1,48 @@
 from typing import List
-from spotty.config.abstract_instance_config import AbstractInstanceConfig
+from spotty.config.abstract_instance_config import AbstractInstanceConfig, VolumeMount
+from spotty.config.abstract_instance_volume import AbstractInstanceVolume
+from spotty.providers.gcp.config.disk_volume import DiskVolume
 from spotty.providers.gcp.config.validation import validate_instance_parameters
 
 
-VOLUME_TYPE_DISK = 'disk'
+VOLUME_TYPE_DISK = 'Disk'
 DEFAULT_IMAGE_NAME = 'spotty'
 
 
 class InstanceConfig(AbstractInstanceConfig):
 
-    def __init__(self, config: dict):
-        super().__init__(config)
+    def _validate_instance_params(self, params: dict) -> dict:
+        return validate_instance_parameters(params)
 
-        self._params = validate_instance_parameters(self._params)
+    def _get_volume_mounts(self) -> (List[VolumeMount], str):
+        volume_mounts, host_project_dir = super()._get_volume_mounts()
+
+        volume_mounts.append(VolumeMount(
+            name=None,
+            host_path='/root/.config',
+            mount_path='/root/.config',
+            mode='ro',
+            hidden=True,
+        ))
+
+        return volume_mounts, host_project_dir
+
+    @property
+    def volumes(self) -> List[AbstractInstanceVolume]:
+        volumes = []
+        for volume_config in self._params['volumes']:
+            volume_type = volume_config['type']
+            if volume_type == VOLUME_TYPE_DISK:
+                volumes.append(DiskVolume(volume_config, self.project_config.project_name, self.name))
+            else:
+                raise ValueError('GCP volume type "%s" not supported.' % volume_type)
+
+        return volumes
+
+    @property
+    def machine_name(self) -> str:
+        """Name of the Compute Engine instance."""
+        return '%s-%s' % (self.project_config.project_name.lower(), self.name.lower())
 
     @property
     def project_id(self) -> str:
@@ -31,8 +61,8 @@ class InstanceConfig(AbstractInstanceConfig):
         return self._params['gpu']
 
     @property
-    def on_demand(self) -> bool:
-        return self._params['onDemandInstance']
+    def is_preemptible_instance(self) -> bool:
+        return self._params['preemptibleInstance']
 
     @property
     def boot_disk_size(self) -> int:
@@ -44,12 +74,12 @@ class InstanceConfig(AbstractInstanceConfig):
 
     @property
     def image_name(self) -> str:
-        return self._params['imageName'] if self._params['imageName'] else DEFAULT_IMAGE_NAME
+        return self._params['imageName']
 
     @property
     def has_image_name(self) -> bool:
         return bool(self._params['imageName'])
 
     @property
-    def image_url(self) -> str:
-        return self._params['imageUrl']
+    def image_uri(self) -> str:
+        return self._params['imageUri']

@@ -8,6 +8,7 @@ from spotty.config.validation import is_subdir
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.commands import get_bash_command
 from spotty.deployment.docker.docker_commands import DockerCommands
+from spotty.deployment.docker.scripts.container_bash_script import ContainerBashScript
 from spotty.deployment.file_structure import INSTANCE_SPOTTY_TMP_DIR, CONTAINER_BASH_SCRIPT_PATH, \
     INSTANCE_STARTUP_SCRIPTS_DIR
 from spotty.providers.aws.cfn_templates.instance.start_container_script import StartContainerScriptWithCfnSignals
@@ -101,7 +102,6 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, docker_comma
                     'mode': '000755',
                     'content': {
                         'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '01_prepare_instance.sh'), {
-                            'HOST_CONTAINER_RUN_SCRIPTS_DIR': instance_config.host_run_scripts_dir,
                             'INSTANCE_SPOTTY_TMP_DIR': INSTANCE_SPOTTY_TMP_DIR,
                             'CONTAINER_BASH_SCRIPT_PATH': CONTAINER_BASH_SCRIPT_PATH,
                         }),
@@ -111,11 +111,7 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, docker_comma
                     'owner': 'ubuntu',
                     'group': 'ubuntu',
                     'mode': '000755',
-                    'content': _read_template_file(os.path.join('files', 'container_bash.sh'), {
-                        'DOCKER_EXEC_BASH': docker_commands.exec(
-                            get_bash_command(), '$SPOTTY_CONTAINER_NAME', '$SPOTTY_CONTAINER_WORKING_DIR'
-                        ),
-                    }),
+                    'content': ContainerBashScript(docker_commands).render(),
                 },
                 '/home/ubuntu/.tmux.conf': {
                     'owner': 'ubuntu',

@@ -9,20 +9,12 @@ class EbsVolume(AbstractInstanceVolume):
     DP_RETAIN = 'Retain'
     DP_DELETE = 'Delete'
 
-    def __init__(self, volume_config: dict, project_name: str, instance_name: str):
-        self._name = volume_config['name']
-        self._params = validate_ebs_volume_parameters(volume_config['parameters'])
-
-        self._project_name = project_name
-        self._instance_name = instance_name
+    def _validate_volume_parameters(self, params: dict) -> dict:
+        return validate_ebs_volume_parameters(params)
 
     @property
     def title(self):
         return 'EBS volume'
-
-    @property
-    def name(self):
-        return self._name
 
     @property
     def size(self) -> int:
@@ -56,7 +48,7 @@ class EbsVolume(AbstractInstanceVolume):
 
     @property
     def mount_dir(self) -> str:
-        """A directory where the volume should be mounted on the host OS."""
+        """A directory where the volume will be mounted on the host OS."""
         if self._params['mountDir']:
             mount_dir = self._params['mountDir']
         else:

@@ -1,5 +1,5 @@
 from spotty.errors.instance_not_running import InstanceNotRunningError
-from spotty.providers.abstract_cloud_instance_manager import AbstractCloudInstanceManager
+from spotty.deployment.abstract_cloud.abstract_cloud_instance_manager import AbstractCloudInstanceManager
 from spotty.providers.aws.resource_managers.bucket_manager import BucketManager
 from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.data_transfer import DataTransfer
@@ -25,10 +25,10 @@ class InstanceManager(AbstractCloudInstanceManager):
     def _get_data_transfer(self) -> DataTransfer:
         """Returns a data transfer object."""
         return DataTransfer(
-            instance_name=self.instance_config.name,
             local_project_dir=self.project_config.project_dir,
-            instance_project_dir=self.instance_config.host_project_dir,
+            host_project_dir=self.instance_config.host_project_dir,
             sync_filters=self.project_config.sync_filters,
+            instance_name=self.instance_config.name,
             region=self.instance_config.region,
         )
 

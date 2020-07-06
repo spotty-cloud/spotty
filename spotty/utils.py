@@ -49,11 +49,3 @@ def render_table(table: list, separate_title=False):
         lines.append(title_separator if separate_title and not i else row_separator)
 
     return '\n'.join(lines)
-
-
-def fix_indents_for_lines(text: str, document: str, tag: str):
-    """Fixes indents in the multi-line text that will be inserted to a YAML document."""
-    indent_size = len(re.search(r'( *)' + tag, document).group(1))
-    text = text.replace('\n', '\n' + ' ' * indent_size)
-
-    return text

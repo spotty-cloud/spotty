@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.gcp.gcp_resources.stack import Stack
+from spotty.providers.gcp.resources.stack import Stack
 from spotty.providers.gcp.helpers.ce_client import CEClient
 from spotty.providers.gcp.helpers.deployment import wait_resources
 from spotty.providers.gcp.helpers.dm_client import DMClient
@@ -8,7 +8,7 @@ from spotty.providers.gcp.helpers.dm_resource import DMResource
 from spotty.providers.gcp.helpers.rtc_client import RtcClient
 
 
-class InstanceStackResource(object):
+class InstanceStackManager(object):
 
     def __init__(self, machine_name: str, project_id: str, zone: str):
         self._dm = DMClient(project_id, zone)
@@ -30,7 +30,9 @@ class InstanceStackResource(object):
         """Deploys a Deployment Manager template."""
 
         # create a stack
-        Stack.create(self._dm, self._stack_name, template)
+        res = Stack.create(self._dm, self._stack_name, template)
+        # print(res)
+        # exit()
 
         output.write('Waiting for the stack to be created...')
 

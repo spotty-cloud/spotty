@@ -1,5 +1,5 @@
 import unittest
-from spotty.providers.gcp.config.image_url import ImageUrl
+from spotty.providers.gcp.config.image_uri import ImageUri
 
 
 class TestImageUrl(unittest.TestCase):
@@ -7,26 +7,26 @@ class TestImageUrl(unittest.TestCase):
     def test_image_url_parsing(self):
         pos_tests = [
             {
-                'url': 'projects/debian-cloud/global/images/family/debian-9',
+                'uri': 'projects/debian-cloud/global/images/family/debian-9',
                 'expected': ('debian-cloud', True, 'debian-9'),
             },
             {
-                'url': 'projects/debian-cloud/global/images/debian-9-stretch',
+                'uri': 'projects/debian-cloud/global/images/debian-9-stretch',
                 'expected': ('debian-cloud', False, 'debian-9-stretch'),
             },
             {
-                'url': 'global/images/family/my-image-family',
+                'uri': 'global/images/family/my-image-family',
                 'expected': (None, True, 'my-image-family'),
             },
             {
-                'url': 'global/images/my-custom-image',
+                'uri': 'global/images/my-custom-image',
                 'expected': (None, False, 'my-custom-image'),
             }
         ]
 
         for pos_test in pos_tests:
-            image_url = ImageUrl(pos_test['url'])
-            self.assertEqual(pos_test['expected'], (image_url.project_id, image_url.is_family, image_url.name))
+            image_uri = ImageUri(pos_test['uri'])
+            self.assertEqual(pos_test['expected'], (image_uri.project_id, image_uri.is_family, image_uri.name))
 
         neg_tests = [
             'projects//global/images/family/debian-9',  # no project
@@ -42,4 +42,4 @@ class TestImageUrl(unittest.TestCase):
 
         for neg_test in neg_tests:
             with self.assertRaises(ValueError):
-                ImageUrl(neg_test)
+                ImageUri(neg_test)

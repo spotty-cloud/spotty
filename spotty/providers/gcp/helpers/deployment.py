@@ -3,8 +3,8 @@ from collections import OrderedDict
 from time import sleep
 from httplib2 import ServerNotFoundError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.gcp.gcp_resources.instance import Instance
-from spotty.providers.gcp.gcp_resources.stack import Stack
+from spotty.providers.gcp.resources.instance import Instance
+from spotty.providers.gcp.resources.stack import Stack
 from spotty.providers.gcp.helpers.ce_client import CEClient
 from spotty.providers.gcp.helpers.dm_client import DMClient
 from spotty.providers.gcp.helpers.dm_resource import DMResource
@@ -34,7 +34,7 @@ def wait_resources(dm: DMClient, ce: CEClient, deployment_name: str, resource_me
                 # check if the instance was preempted, terminated or deleted right after creation
                 if instance_resource_name in created_resources:
                     instance = Instance.get_by_name(ce, machine_name)
-                    if not instance or instance.is_terminated:
+                    if not instance or instance.is_stopped:
                         raise ValueError('Error: the instance was unexpectedly terminated. Please, check out the '
                                          'instance logs to find out the reason.\n')
 

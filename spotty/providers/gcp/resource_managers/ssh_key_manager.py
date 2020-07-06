@@ -2,13 +2,14 @@ import os
 import subprocess
 from spotty.configuration import get_spotty_keys_dir
 from shutil import which
+from spotty.providers.instance_manager_factory import PROVIDER_GCP
 
 
-class SshKey(object):
+class SshKeyManager(object):
 
     def __init__(self, project_name: str, zone: str, provider_name: str):
         self._key_name = 'spotty-key-%s-%s' % (project_name.lower(), zone)
-        self._keys_dir = os.path.join(get_spotty_keys_dir(), provider_name)
+        self._keys_dir = os.path.join(get_spotty_keys_dir(PROVIDER_GCP), provider_name)
 
     @property
     def private_key_file(self):
@@ -19,7 +20,7 @@ class SshKey(object):
         return os.path.join(self._keys_dir, self._key_name + '.pub')
 
     def get_public_key_value(self):
-        # generate a key pair if it doesn't exist
+        # generate a key if it doesn't exist
         if not os.path.isfile(self.private_key_file) or not os.path.isfile(self.public_key_file):
             self._generate_ssh_key()
 
