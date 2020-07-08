@@ -1,7 +1,7 @@
 import re
 
 
-IMAGE_URI_REGEX = '^(?:projects/([a-z](?:[-a-z0-9]*[a-z0-9])?)/)?' \
+IMAGE_URI_REGEX = '^(?:(?:https://compute.googleapis.com/compute/v1/)?projects/([a-z](?:[-a-z0-9]*[a-z0-9])?)/)?' \
                   'global/images/(family/)?([a-z](?:[-a-z0-9]*[a-z0-9])?)$'
 
 

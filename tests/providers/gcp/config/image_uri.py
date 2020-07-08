@@ -21,7 +21,11 @@ class TestImageUrl(unittest.TestCase):
             {
                 'uri': 'global/images/my-custom-image',
                 'expected': (None, False, 'my-custom-image'),
-            }
+            },
+            {
+                'uri': 'https://compute.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-9-stretch',
+                'expected': ('debian-cloud', False, 'debian-9-stretch'),
+            },
         ]
 
         for pos_test in pos_tests:
@@ -38,8 +42,13 @@ class TestImageUrl(unittest.TestCase):
             'global/images/family/debian-9/',  # ends with a slash
             'global/images/-my-custom-image',  # image name starts with a dash
             'global/images/my-custom-image-',  # image name ends with a dash
+            'https://compute.googleapis.com/compute/v1/global/images/debian-9-stretch',  # no project name
         ]
 
         for neg_test in neg_tests:
             with self.assertRaises(ValueError):
                 ImageUri(neg_test)
+
+
+if __name__ == '__main__':
+    unittest.main()

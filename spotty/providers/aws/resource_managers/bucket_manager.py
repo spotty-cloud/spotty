@@ -21,7 +21,8 @@ class BucketManager(AbstractBucketManager):
         buckets = [bucket for bucket in res['Buckets'] if regex.match(bucket['Name']) is not None]
 
         if len(buckets) > 1:
-            raise ValueError('Found several buckets in the same region: %s.' % ', '.join(buckets))
+            raise ValueError('Found several buckets in the same region: %s.'
+                             % ', '.join(bucket['Name'] for bucket in buckets))
 
         if not len(buckets):
             raise BucketNotFoundError

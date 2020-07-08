@@ -4,12 +4,8 @@ from spotty.providers.local.config.validation import validate_host_path_volume_p
 
 class HostPathVolume(AbstractInstanceVolume):
 
-    def __init__(self, volume_config: dict, project_name: str, instance_name: str):
-        self._name = volume_config['name']
-        self._params = validate_host_path_volume_parameters(volume_config['parameters'])
-
-        self._project_name = project_name
-        self._instance_name = instance_name
+    def _validate_volume_parameters(self, params: dict) -> dict:
+        return validate_host_path_volume_parameters(params)
 
     @property
     def title(self):

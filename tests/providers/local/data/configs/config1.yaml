@@ -1,0 +1,25 @@
+project:
+  name: my-project
+  syncFilters:
+    - exclude:
+        - .git/*
+        - .idea/*
+        - '*/__pycache__/*'
+
+container:
+  projectDir: /workspace/project
+  file: docker/Dockerfile
+  volumeMounts:
+    - name: workspace
+      mountPath: /workspace
+  commands: |
+    echo test
+
+instances:
+  - name: local-1
+    provider: local
+    parameters:
+      volumes:
+        - name: workspace
+          parameters:
+            path: /mnt/test
