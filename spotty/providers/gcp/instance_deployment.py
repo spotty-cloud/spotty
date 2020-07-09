@@ -34,6 +34,10 @@ class InstanceDeployment(AbstractInstanceDeployment):
     def ssh_key_manager(self) -> SshKeyManager:
         return SshKeyManager(self._project_name, self.instance_config.zone, self.instance_config.provider_name)
 
+    @property
+    def ssh_username(self) -> str:
+        return 'spotty'
+
     def get_instance(self) -> Instance:
         return Instance.get_by_name(self._ce, self.instance_config.machine_name)
 
@@ -81,6 +85,7 @@ class InstanceDeployment(AbstractInstanceDeployment):
                 image_link=image_link,
                 bucket_name=bucket_name,
                 sync_project_cmd=sync_project_cmd,
+                ssh_username=self.ssh_username,
                 public_key_value=public_key_value,
                 service_account_email=self._credentials.service_account_email,
                 output=output,

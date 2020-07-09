@@ -13,8 +13,8 @@ from spotty.providers.gcp.config.instance_config import InstanceConfig
 
 
 def prepare_instance_template(instance_config: InstanceConfig, docker_commands: DockerCommands, image_link: str,
-                              bucket_name: str, sync_project_cmd: str, public_key_value: str, service_account_email: str,
-                              output: AbstractOutputWriter):
+                              bucket_name: str, sync_project_cmd: str, ssh_username: str, public_key_value: str,
+                              service_account_email: str, output: AbstractOutputWriter):
     """Prepares deployment template to run an instance."""
 
     # get disk attachments
@@ -28,7 +28,8 @@ def prepare_instance_template(instance_config: InstanceConfig, docker_commands: 
                 'CONTAINER_BASH_SCRIPT_PATH': CONTAINER_BASH_SCRIPT_PATH,
                 'CONTAINER_BASH_SCRIPT': ContainerBashScript(docker_commands).render(),
                 'IS_GPU_INSTANCE': bool(instance_config.gpu),
-            }
+                'SSH_USERNAME': ssh_username,
+            },
         },
         {
             'filename': '02_mount_volumes.sh',
@@ -100,6 +101,7 @@ def prepare_instance_template(instance_config: InstanceConfig, docker_commands: 
         'GPU_TYPE': instance_config.gpu['type'] if instance_config.gpu else '',
         'GPU_COUNT': instance_config.gpu['count'] if instance_config.gpu else 0,
         'DISK_ATTACHMENTS': disk_attachments,
+        'SSH_USERNAME': ssh_username,
         'PUB_KEY_VALUE': public_key_value,
         'PORTS': ', '.join([str(port) for port in set([22] + instance_config.ports)]),
     }, partials_dict={

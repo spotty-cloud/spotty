@@ -49,7 +49,7 @@ resources:
         items:
           - key: 'ssh-keys'
             value: |
-              ubuntu:ssh-rsa {{{PUB_KEY_VALUE}}} ubuntu
+              {{SSH_USERNAME}}:ssh-rsa {{{PUB_KEY_VALUE}}} {{SSH_USERNAME}}
           - key: 'startup-script'
             value: |
               {{> STARTUP_SCRIPT}}

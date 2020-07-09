@@ -14,19 +14,6 @@ class InstanceConfig(AbstractInstanceConfig):
     def _validate_instance_params(self, params: dict) -> dict:
         return validate_instance_parameters(params)
 
-    def _get_volume_mounts(self) -> (List[VolumeMount], str):
-        volume_mounts, host_project_dir = super()._get_volume_mounts()
-
-        volume_mounts.append(VolumeMount(
-            name=None,
-            host_path='/root/.config',
-            mount_path='/root/.config',
-            mode='ro',
-            hidden=True,
-        ))
-
-        return volume_mounts, host_project_dir
-
     @property
     def volumes(self) -> List[AbstractInstanceVolume]:
         volumes = []

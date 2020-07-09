@@ -4,7 +4,7 @@
 apt-get install -y jq
 
 # create tmux config
-echo "bind-key x kill-pane" > /home/ubuntu/.tmux.conf
+echo "bind-key x kill-pane" > /home/{{SSH_USERNAME}}/.tmux.conf
 
 # create the "container bash" script
 mkdir -p "$(dirname '{{CONTAINER_BASH_SCRIPT_PATH}}')"
@@ -15,7 +15,7 @@ chmod +x "{{CONTAINER_BASH_SCRIPT_PATH}}"
 
 # create an alias to connect to the docker container
 CONTAINER_BASH_ALIAS=container
-echo "alias $CONTAINER_BASH_ALIAS=\"{{CONTAINER_BASH_SCRIPT_PATH}}\"" >> /home/ubuntu/.bashrc
+echo "alias $CONTAINER_BASH_ALIAS=\"{{CONTAINER_BASH_SCRIPT_PATH}}\"" >> /home/{{SSH_USERNAME}}/.bashrc
 echo "alias $CONTAINER_BASH_ALIAS=\"{{CONTAINER_BASH_SCRIPT_PATH}}\"" >> /root/.bashrc
 
 {{#IS_GPU_INSTANCE}}

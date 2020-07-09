@@ -59,7 +59,7 @@ class InstanceManager(AbstractCloudInstanceManager):
 
     @property
     def ssh_user(self):
-        return 'ubuntu'
+        return self.instance_deployment.ssh_username
 
     @property
     def ssh_key_path(self):
