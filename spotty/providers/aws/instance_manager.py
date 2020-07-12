@@ -1,5 +1,5 @@
 from spotty.errors.instance_not_running import InstanceNotRunningError
-from spotty.deployment.abstract_cloud.abstract_cloud_instance_manager import AbstractCloudInstanceManager
+from spotty.deployment.abstract_cloud_instance.abstract_cloud_instance_manager import AbstractCloudInstanceManager
 from spotty.providers.aws.resource_managers.bucket_manager import BucketManager
 from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.data_transfer import DataTransfer

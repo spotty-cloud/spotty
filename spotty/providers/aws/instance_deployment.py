@@ -1,14 +1,14 @@
 import boto3
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.deployment.abstract_cloud.abstract_instance_deployment import AbstractInstanceDeployment
-from spotty.deployment.docker.docker_commands import DockerCommands
+from spotty.deployment.abstract_cloud_instance.abstract_instance_deployment import AbstractInstanceDeployment
+from spotty.deployment.container.docker.docker_commands import DockerCommands
 from spotty.providers.aws.cfn_templates.instance.template import prepare_instance_template, get_template_parameters
 from spotty.providers.aws.data_transfer import DataTransfer
 from spotty.providers.aws.helpers.availability_zone import update_availability_zone
 from spotty.providers.aws.helpers.instance_prices import check_max_spot_price
 from spotty.providers.aws.helpers.subnet import check_az_and_subnet
 from spotty.providers.aws.resource_managers.key_pair_manager import KeyPairManager
-from spotty.helpers.print_info import render_volumes_info_table
+from spotty.deployment.utils.print_info import render_volumes_info_table
 from spotty.providers.aws.resources.instance import Instance
 from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.deletion_policies import apply_deletion_policies

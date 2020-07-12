@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from spotty.deployment.abstract_container_commands import AbstractContainerCommands
+from spotty.deployment.container.abstract_container_commands import AbstractContainerCommands
 
 
 class AbstractContainerScript(ABC):

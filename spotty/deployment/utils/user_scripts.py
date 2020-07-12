@@ -1,12 +1,13 @@
 import re
 import chevron
+from spotty.deployment.utils.commands import get_bash_command
 
 
-def parse_parameters(script_params: str):
+def parse_script_parameters(script_params: str):
     """Parses script parameters."""
     params = {}
     for param in script_params:
-        match = re.match('(\w+)=(.*)', param)
+        match = re.match('(\\w+)=(.*)', param)
         if not match:
             raise ValueError('Invalid format for the script parameter: "%s" (the "PARAMETER=VALUE" format is expected).'
                              % param)
@@ -45,6 +46,6 @@ def render_script(template: str, params: dict):
     content = chevron.render(tokens, params)
 
     if content[:2] != '#!':
-        content = '#!/usr/bin/env bash\n\nset -xe\n\n' + content
+        content = ('#!%s\n\nset -xe\n\n' % get_bash_command()) + content
 
     return content

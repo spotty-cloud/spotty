@@ -1,9 +1,9 @@
 from abc import abstractmethod, ABC
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.abstract_instance_config import AbstractInstanceConfig
-from spotty.deployment.abstract_cloud.abstract_data_transfer import AbstractDataTransfer
-from spotty.deployment.abstract_cloud.resources.abstract_instance import AbstractInstance
-from spotty.deployment.abstract_container_commands import AbstractContainerCommands
+from spotty.deployment.abstract_cloud_instance.abstract_data_transfer import AbstractDataTransfer
+from spotty.deployment.abstract_cloud_instance.resources.abstract_instance import AbstractInstance
+from spotty.deployment.container.abstract_container_commands import AbstractContainerCommands
 
 
 class AbstractInstanceDeployment(ABC):

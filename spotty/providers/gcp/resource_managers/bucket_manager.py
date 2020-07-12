@@ -1,6 +1,6 @@
 import re
-from spotty.deployment.abstract_cloud.abstract_bucket_manager import AbstractBucketManager
-from spotty.deployment.abstract_cloud.errors.bucket_not_found import BucketNotFoundError
+from spotty.deployment.abstract_cloud_instance.abstract_bucket_manager import AbstractBucketManager
+from spotty.deployment.abstract_cloud_instance.errors.bucket_not_found import BucketNotFoundError
 from spotty.providers.gcp.helpers.gs_client import GSClient
 from spotty.providers.gcp.resources.bucket import Bucket
 from spotty.utils import random_string

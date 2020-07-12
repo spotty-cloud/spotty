@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.abstract_instance_config import AbstractInstanceConfig
 from spotty.config.project_config import ProjectConfig
-from spotty.deployment.abstract_container_commands import AbstractContainerCommands
+from spotty.deployment.container.abstract_container_commands import AbstractContainerCommands
 
 
 class AbstractInstanceManager(ABC):
@@ -11,6 +11,14 @@ class AbstractInstanceManager(ABC):
     def __init__(self, project_config: ProjectConfig, instance_config: dict):
         self._project_config = project_config
         self._instance_config = self._get_instance_config(instance_config)
+
+    @property
+    def project_config(self) -> ProjectConfig:
+        return self._project_config
+
+    @property
+    def instance_config(self) -> AbstractInstanceConfig:
+        return self._instance_config
 
     @abstractmethod
     def _get_instance_config(self, instance_config: dict) -> AbstractInstanceConfig:
@@ -74,11 +82,3 @@ class AbstractInstanceManager(ABC):
     def use_tmux(self) -> bool:
         """Use tmux when running a custom script or connecting to the instance."""
         return False
-
-    @property
-    def project_config(self) -> ProjectConfig:
-        return self._project_config
-
-    @property
-    def instance_config(self) -> AbstractInstanceConfig:
-        return self._instance_config

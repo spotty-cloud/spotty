@@ -4,6 +4,8 @@ from spotty.providers.gcp.config.validation import validate_disk_volume_paramete
 
 class DiskVolume(AbstractInstanceVolume):
 
+    TYPE_NAME = 'Disk'
+
     DP_CREATE_SNAPSHOT = 'CreateSnapshot'
     DP_UPDATE_SNAPSHOT = 'UpdateSnapshot'
     DP_RETAIN = 'Retain'

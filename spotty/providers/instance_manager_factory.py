@@ -1,11 +1,12 @@
 from importlib import import_module
 from spotty.config.project_config import ProjectConfig
-from spotty.providers.abstract_instance_manager import AbstractInstanceManager
+from spotty.deployment.abstract_instance_manager import AbstractInstanceManager
 
 
 PROVIDER_AWS = 'aws'
 PROVIDER_GCP = 'gcp'
 PROVIDER_LOCAL = 'local'
+PROVIDER_REMOTE = 'remote'
 
 
 class InstanceManagerFactory(object):
@@ -14,6 +15,7 @@ class InstanceManagerFactory(object):
         PROVIDER_AWS,
         PROVIDER_GCP,
         PROVIDER_LOCAL,
+        PROVIDER_REMOTE,
     ]
 
     @classmethod

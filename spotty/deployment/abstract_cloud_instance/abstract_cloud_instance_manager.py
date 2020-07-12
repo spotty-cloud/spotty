@@ -2,12 +2,12 @@ import logging
 from abc import ABC, abstractmethod
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.project_config import ProjectConfig
-from spotty.deployment.abstract_cloud.abstract_data_transfer import AbstractDataTransfer
-from spotty.deployment.abstract_cloud.abstract_instance_deployment import AbstractInstanceDeployment
-from spotty.deployment.abstract_cloud.abstract_bucket_manager import AbstractBucketManager
-from spotty.deployment.abstract_cloud.errors.bucket_not_found import BucketNotFoundError
+from spotty.deployment.abstract_cloud_instance.abstract_data_transfer import AbstractDataTransfer
+from spotty.deployment.abstract_cloud_instance.abstract_instance_deployment import AbstractInstanceDeployment
+from spotty.deployment.abstract_cloud_instance.abstract_bucket_manager import AbstractBucketManager
+from spotty.deployment.abstract_cloud_instance.errors.bucket_not_found import BucketNotFoundError
 from spotty.errors.instance_not_running import InstanceNotRunningError
-from spotty.providers.abstract_ssh_instance_manager import AbstractSshInstanceManager
+from spotty.deployment.abstract_ssh_instance_manager import AbstractSshInstanceManager
 
 
 class AbstractCloudInstanceManager(AbstractSshInstanceManager, ABC):
@@ -129,7 +129,9 @@ class AbstractCloudInstanceManager(AbstractSshInstanceManager, ABC):
 
         # sync files from the instance to a temporary S3 directory
         output.write('Uploading files from the instance to the bucket...')
-        remote_cmd = self.data_transfer.get_upload_instance_to_bucket_command(bucket_name=bucket_name, dry_run=dry_run)
+        remote_cmd = self.data_transfer.get_upload_instance_to_bucket_command(bucket_name=bucket_name,
+                                                                              download_filters=download_filters,
+                                                                              dry_run=dry_run)
         logging.debug('Remote sync command: ' + remote_cmd)
 
         # execute the command on the host OS
@@ -142,10 +144,31 @@ class AbstractCloudInstanceManager(AbstractSshInstanceManager, ABC):
             output.write('Downloading files from the bucket to local...')
             self.data_transfer.download_bucket_to_local(bucket_name=bucket_name, download_filters=download_filters)
 
-    def get_public_ip_address(self):
-        """Returns a public IP address of the running instance."""
+    @property
+    def ssh_hostname(self):
+        """Returns an IP address that will be used for SSH connections."""
+        if self._instance_config.local_ssh_port:
+            return '127.0.0.1'
+
+        # get a public IP address of the running instance
         instance = self.instance_deployment.get_instance()
         if not instance or not instance.is_running:
             raise InstanceNotRunningError(self.instance_config.name)
 
-        return instance.public_ip_address
+        public_ip_address = instance.public_ip_address
+        if not public_ip_address:
+            raise ValueError('The running instance doesn\'t have a public IP address.\n'
+                             'Use the "localSshPort" parameter if you want to create a tunnel to the instance.')
+
+        return public_ip_address
+
+    @property
+    def ssh_port(self) -> int:
+        if self._instance_config.local_ssh_port:
+            return self._instance_config.local_ssh_port
+
+        return 22
+
+    @property
+    def use_tmux(self) -> bool:
+        return True

@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import List
 from schema import Schema, And, Use, Optional, Or, Regex, SchemaError
@@ -8,12 +7,6 @@ DEFAULT_CONTAINER_NAME = 'default'
 
 
 def validate_basic_config(data, project_dir):
-    is_old_config = 'instance' in data and 'container' not in data
-    if is_old_config:
-        logging.warning('The format of the configuration file that you\'re using is deprecated and won\'t be '
-                        'supported in the future versions of Spotty.')
-
-        data = convert_old_config(validate_old_config(data, project_dir))
 
     container = And(
         {
@@ -72,12 +65,14 @@ def validate_basic_config(data, project_dir):
                 'name': And(str, Regex(r'^[a-zA-Z0-9][a-zA-Z0-9-]{,26}[a-zA-Z0-9]$')),
                 Optional('syncFilters', default=[]): [And(
                     {
-                        Optional('exclude'): [And(str, len)],
-                        Optional('include'): [And(str, len)],
+                        Optional('exclude'): [And(str, len, And(lambda x: '**' not in x,
+                                                                error='Use single asterisks ("*") in sync filters'))],
+                        Optional('include'): [And(str, len, And(lambda x: '**' not in x,
+                                                                error='Use single asterisks ("*") in sync filters'))],
                     },
                     And(lambda x: x, error='Either "exclude" or "include" filter should be specified.'),
-                    And(lambda x: not ('exclude' in x and 'include' in x), error='"exclude" and "include" filters should '
-                                                                                 'be specified as different list items.'),
+                    And(lambda x: not ('exclude' in x and 'include' in x),
+                        error='"exclude" and "include" filters should be specified as different list items.'),
                 )]
             },
             Optional('container', default=None): container,
@@ -105,6 +100,18 @@ def validate_basic_config(data, project_dir):
     ))
 
     return validate_config(schema, data)
+
+
+def validate_host_path_volume_parameters(params: dict):
+    schema = Schema({
+        'path': And(
+            str,
+            And(os.path.isabs, error='Use absolute path in the "path" parameter'),
+            Use(lambda x: x.rstrip('/')),
+        ),
+    })
+
+    return validate_config(schema, params)
 
 
 def get_instance_parameters_schema(instance_parameters: dict, default_volume_type: str,
@@ -145,164 +152,6 @@ def get_instance_parameters_schema(instance_parameters: dict, default_volume_typ
     ))
 
     return schema
-
-
-def validate_old_config(data, project_dir):
-    schema = Schema({
-        'project': {
-            'name': And(str, Regex(r'^[a-zA-Z0-9][a-zA-Z0-9-]{,26}[a-zA-Z0-9]$')),
-            'remoteDir': And(str,
-                             And(os.path.isabs,
-                                 error='Use an absolute path when specifying a remote directory'),
-                             Use(lambda x: x.rstrip('/'))
-                             ),
-            Optional('syncFilters', default=[]): [And(
-                {
-                    Optional('exclude'): [And(str, len)],
-                    Optional('include'): [And(str, len)],
-                },
-                And(lambda x: x, error='Either "exclude" or "include" filter should be specified.'),
-                And(lambda x: not ('exclude' in x and 'include' in x), error='"exclude" and "include" filters should '
-                                                                             'be specified as different list items.'),
-            )]
-        },
-        'instance': {
-            'region': And(str, len),
-            Optional('availabilityZone', default=''): str,
-            Optional('subnetId', default=''): str,
-            'instanceType': str,
-            Optional('onDemandInstance', default=False): bool,
-            Optional('amiName', default='SpottyAMI'): str,
-            Optional('keyName', default=''): str,
-            Optional('rootVolumeSize', default=0): And(Or(int, str), Use(str),
-                                                       Regex(r'^\d+$', error='Incorrect value for "rootVolumeSize".'),
-                                                       Use(int),
-                                                       And(lambda x: x > 0,
-                                                           error='"rootVolumeSize" should be greater than 0 or should '
-                                                                 ' not be specified.'),
-                                                       ),
-            Optional('maxPrice', default=0): And(Or(float, int, str), Use(str),
-                                                 Regex(r'^\d+(\.\d{1,6})?$', error='Incorrect value for "maxPrice".'),
-                                                 Use(float),
-                                                 And(lambda x: x > 0, error='"maxPrice" should be greater than 0 or '
-                                                                            'should  not be specified.'),
-                                                 ),
-            Optional('volumes', default=[]): And(
-                [{
-                    Optional('name', default=''): And(str, Regex(r'^[\w-]{1,255}$')),
-                    'directory': And(str, lambda x: x.startswith('/'), Use(lambda x: x.rstrip('/'))),
-                    Optional('size', default=0): And(int, lambda x: x > 0),
-                    Optional('deletionPolicy',
-                             default='create_snapshot'): And(str, lambda x: x in ['create_snapshot', 'update_snapshot',
-                                                                                  'retain', 'delete'],
-                                                             error='Incorrect value for "deletionPolicy".'
-                                                             ),
-                }],
-                And(lambda x: len(x) < 12, error='Maximum 11 volumes are supported at the moment.'),
-            ),
-            'docker': And(
-                {
-                    Optional('image', default=''): str,
-                    Optional('file', default=''): And(str,  # TODO: a proper regex that the filename is valid
-                                                      Regex(r'^[\w\.\/@-]*$',
-                                                            error='Invalid name for a Dockerfile'),
-                                                      And(lambda x: not x.endswith('/'),
-                                                          error='Invalid name for a Dockerfile'),
-                                                      And(lambda x: not os.path.isabs(x),
-                                                          error='Path to the Dockerfile should be relative to the '
-                                                                'project\'s root directory.'),
-                                                      And(lambda x: os.path.isfile(os.path.join(project_dir, x)),
-                                                          error='Dockerfile not found.'),
-                                                      ),
-                    Optional('workingDir', default=''): And(str,
-                                                            And(os.path.isabs,
-                                                                error='Use an absolute path when specifying a '
-                                                                      'working directory'),
-                                                            ),
-                    Optional('dataRoot', default=''): And(str,
-                                                          And(os.path.isabs,
-                                                              error='Use an absolute path when specifying a Docker '
-                                                                    'data root directory'),
-                                                          Use(lambda x: x.rstrip('/')),
-                                                          ),
-                    Optional('commands', default=''): str,
-                    Optional('runtimeParameters', default=[]): [str],
-                },
-                And(lambda x: x['image'] or x['file'], error='Either "image" or "file" should be specified.'),
-                And(lambda x: not (x['image'] and x['file']), error='"image" and "file" cannot be specified together.'),
-            ),
-            Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
-            Optional('localSshPort', default=None): And(int, lambda x: 0 <= x <= 65535),
-        },
-        Optional('scripts', default={}): {
-            And(str, Regex(r'^[\w-]+$')): And(str, len),
-        },
-    })
-
-    return validate_config(schema, data)
-
-
-def convert_old_config(config):
-    from spotty.providers.aws.config.instance_config import VOLUME_TYPE_EBS
-
-    new_config = {
-        'project': {
-            'name': config['project']['name'],
-            'syncFilters': config['project']['syncFilters'],
-        },
-        'container': {
-            'projectDir': config['project']['remoteDir'],
-            'image': config['instance']['docker']['image'],
-            'file': config['instance']['docker']['file'],
-            'volumeMounts': [{
-                'name': volume['name'],
-                'mountPath': volume['directory'],
-            } for volume in config['instance']['volumes']],
-            'workingDir': config['instance']['docker']['workingDir'],
-            'commands': config['instance']['docker']['commands'],
-            'ports': config['instance']['ports'],
-            'runtimeParameters': config['instance']['docker']['runtimeParameters'],
-        },
-        'instances': [{
-            'name': 'instance',
-            'provider': 'aws',
-            'parameters': {
-                'region': config['instance']['region'],
-                'availabilityZone': config['instance']['availabilityZone'],
-                'subnetId': config['instance']['subnetId'],
-                'instanceType': config['instance']['instanceType'],
-                'onDemandInstance': config['instance']['onDemandInstance'],
-                'amiName': config['instance']['amiName'],
-                'rootVolumeSize': config['instance']['rootVolumeSize'],
-                'dockerDataRoot': config['instance']['docker']['dataRoot'],
-                'maxPrice': config['instance']['maxPrice'],
-                'localSshPort': config['instance']['localSshPort'],
-                'volumes': [{
-                    'name': volume['name'],
-                    'type': VOLUME_TYPE_EBS,
-                    'parameters': {
-                        'volumeName': volume['name'],
-                        'mountDir': volume['directory'],
-                        'size': volume['size'],
-                        'deletionPolicy': volume['deletionPolicy'],
-                    },
-                } for volume in config['instance']['volumes']],
-            },
-        }],
-        'scripts': config['scripts'],
-    }
-
-    def clear_empty_values(c):
-        if isinstance(c, dict):
-            c = {key: clear_empty_values(c[key]) for key in c if c[key]}
-        elif isinstance(c, list):
-            c = [clear_empty_values(row) for row in c]
-
-        return c
-
-    new_config = clear_empty_values(new_config)
-
-    return new_config
 
 
 def is_unique_value(x: List[dict], key):

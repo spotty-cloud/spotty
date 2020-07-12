@@ -6,10 +6,9 @@ from cfn_tools import CfnYamlLoader, CfnYamlDumper
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.validation import is_subdir
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
-from spotty.deployment.commands import get_bash_command
-from spotty.deployment.docker.docker_commands import DockerCommands
-from spotty.deployment.docker.scripts.container_bash_script import ContainerBashScript
-from spotty.deployment.file_structure import INSTANCE_SPOTTY_TMP_DIR, CONTAINER_BASH_SCRIPT_PATH, \
+from spotty.deployment.container.docker.docker_commands import DockerCommands
+from spotty.deployment.container.docker.scripts.container_bash_script import ContainerBashScript
+from spotty.deployment.abstract_cloud_instance.file_structure import INSTANCE_SPOTTY_TMP_DIR, CONTAINER_BASH_SCRIPT_PATH, \
     INSTANCE_STARTUP_SCRIPTS_DIR
 from spotty.providers.aws.cfn_templates.instance.start_container_script import StartContainerScriptWithCfnSignals
 from spotty.providers.aws.helpers.ami import get_ami

@@ -1,6 +1,6 @@
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.errors.instance_not_running import InstanceNotRunningError
-from spotty.deployment.abstract_cloud.abstract_cloud_instance_manager import AbstractCloudInstanceManager
+from spotty.deployment.abstract_cloud_instance.abstract_cloud_instance_manager import AbstractCloudInstanceManager
 from spotty.providers.gcp.config.instance_config import InstanceConfig
 from spotty.providers.gcp.data_transfer import DataTransfer
 from spotty.providers.gcp.instance_deployment import InstanceDeployment

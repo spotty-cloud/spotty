@@ -1,10 +1,10 @@
 import os
 from typing import List
-from spotty.config.abstract_instance_config import AbstractInstanceConfig, VolumeMount
+from spotty.config.abstract_instance_config import AbstractInstanceConfig
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.config.project_config import ProjectConfig
 from spotty.config.host_path_volume import HostPathVolume
-from spotty.providers.local.config.validation import validate_instance_parameters
+from spotty.providers.remote.config.validation import validate_instance_parameters
 
 
 class InstanceConfig(AbstractInstanceConfig):
@@ -16,26 +16,27 @@ class InstanceConfig(AbstractInstanceConfig):
         # validate the config and fill missing parameters with the default values
         return validate_instance_parameters(params)
 
-    def _get_volume_mounts(self) -> (List[VolumeMount], str):
-        volume_mounts, host_project_dir = super()._get_volume_mounts()
+    @property
+    def username(self) -> str:
+        return self._params['username']
 
-        # ignore a volume that matches the container project directory
-        volume_mounts = [volume_mount for volume_mount in volume_mounts
-                         if os.path.relpath(self.container_config.project_dir, volume_mount.mount_path) != '.']
+    @property
+    def hostname(self) -> str:
+        return self._params['hostname']
 
-        # set the host project directory to the local project directory
-        host_project_dir = self.project_config.project_dir
+    @property
+    def port(self) -> int:
+        return self._params['port']
 
-        # mount the local project directory to the container
-        volume_mounts.append(VolumeMount(
-            name=None,
-            host_path=host_project_dir,
-            mount_path=self.container_config.project_dir,
-            mode='rw',
-            hidden=True,
-        ))
+    @property
+    def key_path(self) -> str:
+        key_path = os.path.expanduser(self._params['keyPath'])
+        if not os.path.isabs(key_path):
+            key_path = os.path.join(self.project_config.project_dir, key_path)
 
-        return volume_mounts, host_project_dir
+        key_path = os.path.normpath(key_path)
+
+        return key_path
 
     @property
     def volumes(self) -> List[AbstractInstanceVolume]:

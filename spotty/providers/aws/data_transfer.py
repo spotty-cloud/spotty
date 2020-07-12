@@ -1,6 +1,6 @@
 import logging
 import subprocess
-from spotty.deployment.abstract_cloud.abstract_data_transfer import AbstractDataTransfer
+from spotty.deployment.abstract_cloud_instance.abstract_data_transfer import AbstractDataTransfer
 from spotty.providers.aws.helpers.s3_sync import get_s3_sync_command, check_aws_installed
 
 

@@ -1,7 +1,7 @@
-from argparse import Namespace, ArgumentParser
+from argparse import Namespace
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.abstract_instance_manager import AbstractInstanceManager
+from spotty.deployment.abstract_instance_manager import AbstractInstanceManager
 
 
 class StopCommand(AbstractConfigCommand):

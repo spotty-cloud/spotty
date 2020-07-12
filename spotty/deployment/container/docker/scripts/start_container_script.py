@@ -1,8 +1,8 @@
 import os
 import time
 import chevron
-from spotty.deployment.commands import get_script_command
-from spotty.deployment.docker.scripts.abstract_docker_script import AbstractDockerScript
+from spotty.deployment.utils.commands import get_script_command
+from spotty.deployment.container.docker.scripts.abstract_docker_script import AbstractDockerScript
 
 
 class StartContainerScript(AbstractDockerScript):

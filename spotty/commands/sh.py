@@ -1,9 +1,9 @@
 from argparse import ArgumentParser, Namespace
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.deployment.commands import get_bash_command, get_tmux_session_command
+from spotty.deployment.utils.commands import get_bash_command, get_tmux_session_command
 from spotty.errors.instance_not_running import InstanceNotRunningError
-from spotty.providers.abstract_instance_manager import AbstractInstanceManager
+from spotty.deployment.abstract_instance_manager import AbstractInstanceManager
 
 
 class ShCommand(AbstractConfigCommand):
@@ -35,8 +35,9 @@ class ShCommand(AbstractConfigCommand):
             if args.host_os:
                 # get a command to open a login shell on the host OS
                 session_name = args.session_name if args.session_name else 'spotty-sh-host'
-                command = get_tmux_session_command('', session_name, keep_pane=False) \
-                    if instance_manager.use_tmux else ''
+                shell_command = '$SHELL'
+                command = get_tmux_session_command(shell_command, session_name, keep_pane=False) \
+                    if instance_manager.use_tmux else shell_command
             else:
                 # get a command to run bash inside the docker container
                 command = instance_manager.container_commands.exec(get_bash_command(), interactive=True, tty=True)

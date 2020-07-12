@@ -1,4 +1,4 @@
-from spotty.deployment.abstract_cloud.resources.abstract_bucket import AbstractBucket
+from spotty.deployment.abstract_cloud_instance.resources.abstract_bucket import AbstractBucket
 
 
 class Bucket(AbstractBucket):

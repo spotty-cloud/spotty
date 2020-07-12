@@ -6,7 +6,7 @@ from spotty.config.container_config import ContainerConfig
 from spotty.config.project_config import ProjectConfig
 from spotty.config.validation import DEFAULT_CONTAINER_NAME, is_subdir
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
-from spotty.deployment.file_structure import INSTANCE_SPOTTY_TMP_DIR
+from spotty.deployment.abstract_cloud_instance.file_structure import INSTANCE_SPOTTY_TMP_DIR
 from spotty.utils import filter_list
 
 

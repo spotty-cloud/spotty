@@ -1,7 +1,7 @@
 import os
 import chevron
-from spotty.deployment.commands import get_bash_command
-from spotty.deployment.docker.scripts.abstract_docker_script import AbstractDockerScript
+from spotty.deployment.utils.commands import get_bash_command
+from spotty.deployment.container.docker.scripts.abstract_docker_script import AbstractDockerScript
 
 
 class ContainerBashScript(AbstractDockerScript):

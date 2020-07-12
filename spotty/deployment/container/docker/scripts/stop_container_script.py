@@ -1,6 +1,6 @@
 import os
 import chevron
-from spotty.deployment.docker.scripts.abstract_docker_script import AbstractDockerScript
+from spotty.deployment.container.docker.scripts.abstract_docker_script import AbstractDockerScript
 
 
 class StopContainerScript(AbstractDockerScript):

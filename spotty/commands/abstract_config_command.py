@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import List
 from argparse import Namespace, ArgumentParser
 from spotty.config.config_utils import load_config
-from spotty.providers.abstract_instance_manager import AbstractInstanceManager
+from spotty.deployment.abstract_instance_manager import AbstractInstanceManager
 from spotty.providers.instance_manager_factory import InstanceManagerFactory
 from spotty.commands.abstract_command import AbstractCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter

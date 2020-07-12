@@ -1,5 +1,5 @@
 import unittest
-from spotty.deployment.abstract_cloud.errors.bucket_not_found import BucketNotFoundError
+from spotty.deployment.abstract_cloud_instance.errors.bucket_not_found import BucketNotFoundError
 from spotty.providers.aws.resource_managers.bucket_manager import BucketManager
 from moto import mock_s3
 

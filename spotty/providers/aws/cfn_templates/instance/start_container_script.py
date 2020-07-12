@@ -1,4 +1,4 @@
-from spotty.deployment.docker.scripts.start_container_script import StartContainerScript
+from spotty.deployment.container.docker.scripts.start_container_script import StartContainerScript
 
 
 class StartContainerScriptWithCfnSignals(StartContainerScript):

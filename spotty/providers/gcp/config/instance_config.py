@@ -19,7 +19,7 @@ class InstanceConfig(AbstractInstanceConfig):
         volumes = []
         for volume_config in self._params['volumes']:
             volume_type = volume_config['type']
-            if volume_type == VOLUME_TYPE_DISK:
+            if volume_type == DiskVolume.TYPE_NAME:
                 volumes.append(DiskVolume(volume_config, self.project_config.project_name, self.name))
             else:
                 raise ValueError('GCP volume type "%s" not supported.' % volume_type)

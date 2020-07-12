@@ -1,5 +1,5 @@
 from shutil import which
-from spotty.helpers.cli import shlex_join
+from spotty.deployment.utils.cli import shlex_join
 
 
 def check_aws_installed():

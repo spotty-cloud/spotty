@@ -1,7 +1,7 @@
 import base64
 import os
 import shlex
-from spotty.helpers.cli import shlex_join
+from spotty.deployment.utils.cli import shlex_join
 
 
 def get_bash_command() -> str:
@@ -65,13 +65,16 @@ def get_tmux_session_command(command: str, session_name: str, window_name: str =
         # run the command inside the tmux session
         session_cmd += ' ' + shlex.quote(tmux_cmd)
 
+    # use tmux only if it's installed
+    session_cmd = 'if command -v tmux &> /dev/null; then %s; else %s; fi' % (session_cmd, command)
+
     return session_cmd
 
 
 def get_ssh_command(host: str, port: int, user: str, key_path: str, command: str, env_vars: dict = None,
                     quiet: bool = False) -> str:
 
-    ssh_command = 'ssh -ti %s -o "StrictHostKeyChecking no"' % shlex.quote(key_path)
+    ssh_command = 'ssh -ti %s -o StrictHostKeyChecking=no -o ConnectTimeout=10' % shlex.quote(key_path)
 
     if port != 22:
         ssh_command += ' -p %d' % port

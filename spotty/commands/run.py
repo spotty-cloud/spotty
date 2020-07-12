@@ -2,11 +2,11 @@ import time
 from argparse import ArgumentParser, Namespace
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.deployment.commands import get_script_command, get_log_command, get_tmux_session_command, get_bash_command
+from spotty.deployment.utils.commands import get_script_command, get_log_command, get_tmux_session_command, get_bash_command
 from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.errors.nothing_to_do import NothingToDoError
-from spotty.helpers.run import parse_parameters, render_script
-from spotty.providers.abstract_instance_manager import AbstractInstanceManager
+from spotty.deployment.utils.user_scripts import parse_script_parameters, render_script
+from spotty.deployment.abstract_instance_manager import AbstractInstanceManager
 
 
 class RunCommand(AbstractConfigCommand):
@@ -18,7 +18,7 @@ class RunCommand(AbstractConfigCommand):
         super().configure(parser)
         parser.add_argument('script_name', metavar='SCRIPT_NAME', type=str, help='Script name')
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')
-        parser.add_argument('-l', '--logging', action='store_true', help='Log the script outputs to the file')
+        parser.add_argument('-l', '--logging', action='store_true', help='Log the script outputs to a file')
         parser.add_argument('-p', '--parameter', metavar='PARAMETER=VALUE', action='append', type=str, default=[],
                             help='Set the value for a script parameter (you can use this argument multiple times '
                                  'to set several parameters)')
@@ -32,7 +32,7 @@ class RunCommand(AbstractConfigCommand):
             raise ValueError('Script "%s" is not defined in the configuration file.' % script_name)
 
         # replace script parameters
-        params = parse_parameters(args.parameter)
+        params = parse_script_parameters(args.parameter)
         script_content = render_script(scripts[script_name], params)
 
         # check that the instance is started

@@ -5,7 +5,7 @@ from spotty.providers.gcp.config.image_uri import IMAGE_URI_REGEX
 
 
 def validate_instance_parameters(params: dict):
-    from spotty.providers.gcp.config.instance_config import VOLUME_TYPE_DISK
+    from spotty.providers.gcp.config.disk_volume import DiskVolume
 
     instance_parameters = {
         'zone': And(str, Regex(r'^[a-z0-9-]+$')),
@@ -38,7 +38,7 @@ def validate_instance_parameters(params: dict):
             error='Mount directories cannot be prefixes for each other.'),
     ]
 
-    schema = get_instance_parameters_schema(instance_parameters, VOLUME_TYPE_DISK, instance_checks, volume_checks)
+    schema = get_instance_parameters_schema(instance_parameters, DiskVolume.TYPE_NAME, instance_checks, volume_checks)
 
     return validate_config(schema, params)
 

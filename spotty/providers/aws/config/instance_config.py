@@ -5,7 +5,6 @@ from spotty.providers.aws.config.validation import validate_instance_parameters
 from spotty.providers.aws.config.ebs_volume import EbsVolume
 
 
-VOLUME_TYPE_EBS = 'EBS'
 DEFAULT_AMI_NAME = 'SpottyAMI'
 
 
@@ -32,7 +31,7 @@ class InstanceConfig(AbstractInstanceConfig):
         volumes = []
         for volume_config in self._params['volumes']:
             volume_type = volume_config['type']
-            if volume_type == VOLUME_TYPE_EBS:
+            if volume_type == EbsVolume.TYPE_NAME:
                 volumes.append(EbsVolume(volume_config, self.project_config.project_name, self.name))
             else:
                 raise ValueError('AWS volume type "%s" not supported.' % volume_type)

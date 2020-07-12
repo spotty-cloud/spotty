@@ -3,7 +3,7 @@ from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.errors.instance_not_running import InstanceNotRunningError
 from spotty.errors.nothing_to_do import NothingToDoError
-from spotty.providers.abstract_instance_manager import AbstractInstanceManager
+from spotty.deployment.abstract_instance_manager import AbstractInstanceManager
 
 
 class DownloadCommand(AbstractConfigCommand):

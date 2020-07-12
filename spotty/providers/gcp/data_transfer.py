@@ -1,6 +1,6 @@
 import logging
 import subprocess
-from spotty.deployment.abstract_cloud.abstract_data_transfer import AbstractDataTransfer
+from spotty.deployment.abstract_cloud_instance.abstract_data_transfer import AbstractDataTransfer
 from spotty.providers.gcp.helpers.gsutil_rsync import check_gsutil_installed, get_rsync_command
 
 

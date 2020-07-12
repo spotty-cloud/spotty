@@ -4,6 +4,8 @@ from spotty.providers.aws.config.validation import validate_ebs_volume_parameter
 
 class EbsVolume(AbstractInstanceVolume):
 
+    TYPE_NAME = 'EBS'
+
     DP_CREATE_SNAPSHOT = 'CreateSnapshot'
     DP_UPDATE_SNAPSHOT = 'UpdateSnapshot'
     DP_RETAIN = 'Retain'

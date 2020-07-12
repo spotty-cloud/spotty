@@ -1,5 +1,5 @@
 from datetime import datetime
-from spotty.deployment.abstract_cloud.resources.abstract_instance import AbstractInstance
+from spotty.deployment.abstract_cloud_instance.resources.abstract_instance import AbstractInstance
 from spotty.providers.aws.helpers.instance_prices import get_current_spot_price, get_on_demand_price
 
 

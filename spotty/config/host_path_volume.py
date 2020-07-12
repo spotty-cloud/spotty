@@ -1,8 +1,10 @@
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
-from spotty.providers.local.config.validation import validate_host_path_volume_parameters
+from spotty.config.validation import validate_host_path_volume_parameters
 
 
 class HostPathVolume(AbstractInstanceVolume):
+
+    TYPE_NAME = 'HostPath'
 
     def _validate_volume_parameters(self, params: dict) -> dict:
         return validate_host_path_volume_parameters(params)

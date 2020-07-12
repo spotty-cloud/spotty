@@ -3,7 +3,7 @@ from shutil import which
 import os
 from typing import List
 
-from spotty.helpers.cli import shlex_join
+from spotty.deployment.utils.cli import shlex_join
 
 
 def check_gsutil_installed():

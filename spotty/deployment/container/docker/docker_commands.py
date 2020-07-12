@@ -1,6 +1,6 @@
 import shlex
-from spotty.deployment.abstract_container_commands import AbstractContainerCommands
-from spotty.helpers.cli import shlex_join
+from spotty.deployment.container.abstract_container_commands import AbstractContainerCommands
+from spotty.deployment.utils.cli import shlex_join
 
 
 class DockerCommands(AbstractContainerCommands):
@@ -67,7 +67,7 @@ class DockerCommands(AbstractContainerCommands):
 
         # run "exec" command only if the container is running
         test_cmd = self.is_created(container_name, is_running=True)
-        error_msg = 'Container is not running.\\nUse the "spotty start -C" command to start it.'
-        cond_exec_cmd = 'if %s; then %s; else echo %s; exit 1; fi' % (test_cmd, exec_cmd, shlex.quote(error_msg))
+        error_msg = 'Container is not running.\\nUse the "spotty start -C" command to start it.\\n'
+        cond_exec_cmd = 'if %s; then %s; else printf %s; exit 1; fi' % (test_cmd, exec_cmd, shlex.quote(error_msg))
 
         return cond_exec_cmd

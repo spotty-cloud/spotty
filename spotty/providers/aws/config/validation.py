@@ -4,7 +4,7 @@ from spotty.config.validation import validate_config, get_instance_parameters_sc
 
 
 def validate_instance_parameters(params: dict):
-    from spotty.providers.aws.config.instance_config import VOLUME_TYPE_EBS
+    from spotty.providers.aws.config.ebs_volume import EbsVolume
 
     instance_parameters = {
         'region': And(str, Regex(r'^[a-z0-9-]+$')),
@@ -46,7 +46,7 @@ def validate_instance_parameters(params: dict):
             error='"amiName" and "amiId" parameters cannot be used together.'),
     ]
 
-    schema = get_instance_parameters_schema(instance_parameters, VOLUME_TYPE_EBS, instance_checks, volumes_checks)
+    schema = get_instance_parameters_schema(instance_parameters, EbsVolume.TYPE_NAME, instance_checks, volumes_checks)
 
     return validate_config(schema, params)
 
@@ -83,12 +83,3 @@ def validate_ebs_volume_parameters(params: dict):
     })
 
     return validate_config(schema, params)
-
-
-def is_gpu_instance(instance_type: str):
-    # a list of GPU instance from: https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing
-    return instance_type in [
-        'p2.xlarge', 'p2.8xlarge', 'p2.16xlarge',
-        'p3.2xlarge', 'p3.8xlarge', 'p3.16xlarge', 'p3dn.24xlarge',
-        'g3s.xlarge', 'g3.4xlarge', 'g3.8xlarge', 'g3.16xlarge',
-    ]

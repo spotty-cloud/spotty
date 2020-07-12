@@ -4,10 +4,10 @@ import chevron
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.config.validation import is_subdir
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
-from spotty.deployment.docker.docker_commands import DockerCommands
-from spotty.deployment.docker.scripts.container_bash_script import ContainerBashScript
-from spotty.deployment.docker.scripts.start_container_script import StartContainerScript
-from spotty.deployment.file_structure import CONTAINER_BASH_SCRIPT_PATH, INSTANCE_STARTUP_SCRIPTS_DIR
+from spotty.deployment.container.docker.docker_commands import DockerCommands
+from spotty.deployment.container.docker.scripts.container_bash_script import ContainerBashScript
+from spotty.deployment.container.docker.scripts.start_container_script import StartContainerScript
+from spotty.deployment.abstract_cloud_instance.file_structure import CONTAINER_BASH_SCRIPT_PATH, INSTANCE_STARTUP_SCRIPTS_DIR
 from spotty.providers.gcp.config.disk_volume import DiskVolume
 from spotty.providers.gcp.config.instance_config import InstanceConfig
 
