@@ -47,7 +47,6 @@ class StartCommand(AbstractConfigCommand):
                 if len(instance_manager.project_config.instances) > 1:
                     instance_name = ' ' + instance_manager.instance_config.name
 
-                output.write('\nThe instance was successfully started.\n'
-                             '\n%s\n'
+                output.write('\n%s\n'
                              '\nUse the "spotty sh%s" command to connect to the container.\n'
                              % (instance_manager.get_status_text(), instance_name))

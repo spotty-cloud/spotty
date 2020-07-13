@@ -19,8 +19,3 @@ class StopCommand(AbstractConfigCommand):
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
 
         instance_manager.stop(only_shutdown=False, output=output)
-
-        output.write('\n'
-                     '----------------------------------\n'
-                     'Instance was successfully deleted.\n'
-                     '----------------------------------')

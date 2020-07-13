@@ -32,7 +32,7 @@ class InstanceDeployment(AbstractInstanceDeployment):
 
     @property
     def ssh_key_manager(self) -> SshKeyManager:
-        return SshKeyManager(self._project_name, self.instance_config.zone, self.instance_config.provider_name)
+        return SshKeyManager(self._project_name, self.instance_config.zone)
 
     @property
     def ssh_username(self) -> str:

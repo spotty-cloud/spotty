@@ -7,9 +7,9 @@ from spotty.providers.instance_manager_factory import PROVIDER_GCP
 
 class SshKeyManager(object):
 
-    def __init__(self, project_name: str, zone: str, provider_name: str):
+    def __init__(self, project_name: str, zone: str):
         self._key_name = 'spotty-key-%s-%s' % (project_name.lower(), zone)
-        self._keys_dir = os.path.join(get_spotty_keys_dir(PROVIDER_GCP), provider_name)
+        self._keys_dir = get_spotty_keys_dir(PROVIDER_GCP)
 
     @property
     def private_key_file(self):

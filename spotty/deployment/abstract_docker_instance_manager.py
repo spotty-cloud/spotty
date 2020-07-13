@@ -1,3 +1,4 @@
+import os
 from abc import ABC
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
 from spotty.deployment.utils.commands import get_script_command
@@ -6,6 +7,7 @@ from spotty.deployment.container.docker.scripts.start_container_script import St
 from spotty.deployment.container.docker.scripts.stop_container_script import StopContainerScript
 from spotty.deployment.abstract_instance_manager import AbstractInstanceManager
 from spotty.errors.nothing_to_do import NothingToDoError
+from spotty.utils import render_table
 
 
 class AbstractDockerInstanceManager(AbstractInstanceManager, ABC):
@@ -15,8 +17,18 @@ class AbstractDockerInstanceManager(AbstractInstanceManager, ABC):
         """A collection of commands to manage a container from the host OS."""
         return DockerCommands(self.instance_config)
 
+    def is_container_running(self) -> bool:
+        """Checks if the container is running."""
+        is_running_cmd = self.container_commands.is_created(is_running=True)
+        exit_code = self.exec(is_running_cmd)
+
+        return exit_code == 0
+
     def start_container(self, output: AbstractOutputWriter, dry_run=False):
         """Starts or restarts container on the host OS."""
+        # make sure the Dockerfile exists
+        self._check_dockerfile_exists()
+
         # sync files
         try:
             self.sync(output, dry_run=dry_run)
@@ -44,3 +56,18 @@ class AbstractDockerInstanceManager(AbstractInstanceManager, ABC):
         exit_code = self.exec(stop_container_command)
         if exit_code != 0:
             raise ValueError('Failed to stop the container')
+
+    def get_status_text(self):
+        if self.is_container_running():
+            msg = 'Container is running.'
+        else:
+            msg = 'Container is not running.'
+
+        return render_table([(msg,)])
+
+    def _check_dockerfile_exists(self):
+        """Raises an error if a Dockerfile specified in the configuration file but doesn't exist."""
+        if self.instance_config.dockerfile_path:
+            if not os.path.isfile(self.instance_config.dockerfile_path):
+                raise ValueError('A Dockerfile specified in the container configuration but doesn\'t exist: ' +
+                                 self.instance_config.dockerfile_path)

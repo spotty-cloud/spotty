@@ -25,8 +25,6 @@ def validate_basic_config(data, project_dir):
                                               And(lambda x: not os.path.isabs(x),
                                                   error='Path to the Dockerfile should be relative to the '
                                                         'project\'s root directory.'),
-                                              And(lambda x: os.path.isfile(os.path.join(project_dir, x)),
-                                                  error='Dockerfile not found.'),
                                               ),
             Optional('volumeMounts', default=[]): (And(
                 [{

@@ -23,11 +23,3 @@ class InstanceManager(AbstractDockerInstanceManager):
 
     def download(self, download_filters: list, output: AbstractOutputWriter, dry_run=False):
         raise NothingToDoError('Nothing to do. The project directory is mounted to the container.')
-
-    def get_status_text(self):
-        if self.is_running():
-            msg = 'Container is running.'
-        else:
-            msg = 'Container is not running.'
-
-        return msg

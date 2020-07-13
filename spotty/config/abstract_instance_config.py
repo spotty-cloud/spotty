@@ -69,7 +69,7 @@ class AbstractInstanceConfig(ABC):
     @property
     def full_container_name(self) -> str:
         """A container name that is used in the "docker run" command."""
-        return 'spotty-%s-%s' % (self.project_config.project_name, self.container_name)
+        return ('spotty-%s-%s-%s' % (self.project_config.project_name, self.name, self.container_name)).lower()
 
     @property
     def docker_data_root(self) -> str:

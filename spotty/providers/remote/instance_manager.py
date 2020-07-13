@@ -71,14 +71,6 @@ class InstanceManager(AbstractSshInstanceManager):
         if exit_code != 0:
             raise ValueError('Failed to download files from the instance.')
 
-    def get_status_text(self):
-        if self.is_running():
-            msg = 'Container is running.'
-        else:
-            msg = 'Container is not running.'
-
-        return msg
-
     @property
     def ssh_hostname(self) -> str:
         return self.instance_config.hostname

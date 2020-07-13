@@ -55,6 +55,9 @@ class AbstractCloudInstanceManager(AbstractSshInstanceManager, ABC):
         return instance and instance.is_running
 
     def start(self, output: AbstractOutputWriter, dry_run=False):
+        # make sure the Dockerfile exists
+        self._check_dockerfile_exists()
+
         if not dry_run:
             # check if the instance is already running
             instance = self.instance_deployment.get_instance()
