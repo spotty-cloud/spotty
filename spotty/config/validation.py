@@ -49,12 +49,19 @@ def validate_basic_config(data, project_dir):
             Optional('env', default={}): {
                 And(str, Regex(r'^[a-zA-Z_]+[a-zA-Z0-9_]*$')): str,
             },
+            Optional('hostNetwork', default=False): bool,
+            Optional('ports', default=[]): [{
+                'containerPort': And(int, lambda x: 0 < x < 65536),
+                Optional('hostPort', default=None): And(int, lambda x: 0 < x < 65536),
+            }],
             Optional('commands', default=''): str,
             # TODO: allow to use only certain runtime parameters
             Optional('runtimeParameters', default=[]): And([str], Use(lambda x: [p.strip() for p in x])),
         },
         And(lambda x: x['image'] or x['file'], error='Either "image" or "file" should be specified.'),
         And(lambda x: not (x['image'] and x['file']), error='"image" and "file" cannot be specified together.'),
+        And(lambda x: not (x['hostNetwork'] and x['ports']),
+            error='Published ports and the host network mode cannot be used together.'),
     )
 
     schema = Schema(And(

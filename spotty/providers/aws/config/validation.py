@@ -21,7 +21,7 @@ def validate_instance_parameters(params: dict):
                                                        error='"rootVolumeSize" should be greater than 0 or should '
                                                              'not be specified.'),
                                                    ),
-        Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
+        Optional('ports', default=[]): [And(int, lambda x: 0 < x < 65536)],
         Optional('maxPrice', default=0): And(Or(float, int, str), Use(str),
                                              Regex(r'^\d+(\.\d{1,6})?$', error='Incorrect value for "maxPrice".'),
                                              Use(float),

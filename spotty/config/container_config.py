@@ -1,3 +1,6 @@
+from typing import List
+
+
 class ContainerConfig(object):
 
     def __init__(self, container_config: dict):
@@ -37,8 +40,16 @@ class ContainerConfig(object):
         return working_dir
 
     @property
-    def env(self):
+    def env(self) -> dict:
         return self._config['env']
+
+    @property
+    def host_network(self) -> bool:
+        return self._config['hostNetwork']
+
+    @property
+    def ports(self) -> List[dict]:
+        return self._config['ports']
 
     @property
     def runtime_parameters(self) -> list:

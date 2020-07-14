@@ -51,7 +51,7 @@ class AbstractInstanceManager(ABC):
         """Deletes the stack."""
         raise NotImplementedError
 
-    def exec(self, command: str) -> int:
+    def exec(self, command: str, tty: bool = True) -> int:
         """Executes a command on the host OS."""
         return subprocess.call(command, shell=True)
 

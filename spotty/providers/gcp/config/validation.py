@@ -24,7 +24,7 @@ def validate_instance_parameters(params: dict):
                                                      error='"rootVolumeSize" should be greater than 0 or should '
                                                            'not be specified.'),
                                                  ),
-        Optional('ports', default=[]): [And(int, lambda x: 0 <= x <= 65535)],
+        Optional('ports', default=[]): [And(int, lambda x: 0 < x < 65536)],
     }
 
     instance_checks = [

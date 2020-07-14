@@ -21,7 +21,15 @@ class DockerCommands(AbstractContainerCommands):
         image_name = image_name if image_name else self._instance_config.container_config.image
 
         # prepare "docker run" arguments
-        args = ['-td', '--net=host'] + self._instance_config.container_config.runtime_parameters
+        args = ['-td'] + self._instance_config.container_config.runtime_parameters
+
+        if self._instance_config.container_config.host_network:
+            args += ['--net=host']
+
+        for port in self._instance_config.container_config.ports:
+            host_port = port['hostPort']
+            container_port = port['containerPort']
+            args += ['-p', ('%d:%d' % (host_port, container_port)) if host_port else str(container_port)]
 
         for volume_mount in self._instance_config.volume_mounts:
             args += ['-v', '%s:%s:%s' % (volume_mount.host_path, volume_mount.mount_path, volume_mount.mode)]

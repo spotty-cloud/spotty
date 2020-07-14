@@ -7,13 +7,13 @@ from spotty.deployment.abstract_docker_instance_manager import AbstractDockerIns
 
 class AbstractSshInstanceManager(AbstractDockerInstanceManager):
 
-    def exec(self, command: str) -> int:
+    def exec(self, command: str, tty: bool = True) -> int:
         """Executes a command on the host OS."""
         if not os.path.isfile(self.ssh_key_path):
             raise ValueError('SSH key doesn\'t exist: ' + self.ssh_key_path)
 
         ssh_command = get_ssh_command(self.ssh_hostname, self.ssh_port, self.ssh_user, self.ssh_key_path,
-                                      command, env_vars=self.ssh_env_vars)
+                                      command, env_vars=self.ssh_env_vars, tty=tty)
         logging.debug('SSH command: ' + ssh_command)
 
         return super().exec(ssh_command)
