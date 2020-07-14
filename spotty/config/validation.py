@@ -1,12 +1,12 @@
 import os
 from typing import List
-from schema import Schema, And, Use, Optional, Or, Regex, SchemaError
+from schema import Schema, And, Use, Optional, Or, Regex, Hook, SchemaError, SchemaForbiddenKeyError
 
 
 DEFAULT_CONTAINER_NAME = 'default'
 
 
-def validate_basic_config(data, project_dir):
+def validate_basic_config(data):
 
     container = And(
         {
@@ -64,11 +64,11 @@ def validate_basic_config(data, project_dir):
             error='Published ports and the host network mode cannot be used together.'),
     )
 
-    schema = Schema(And(
-        {
-            'project': {
-                'name': And(str, Regex(r'^[a-zA-Z0-9][a-zA-Z0-9-]{,26}[a-zA-Z0-9]$')),
-                Optional('syncFilters', default=[]): [And(
+    schema = Schema({
+        'project': {
+            'name': And(str, Regex(r'^[a-zA-Z0-9][a-zA-Z0-9-]{,26}[a-zA-Z0-9]$')),
+            Optional('syncFilters', default=[]): And(
+                [And(
                     {
                         Optional('exclude'): [And(str, len, And(lambda x: '**' not in x,
                                                                 error='Use single asterisks ("*") in sync filters'))],
@@ -78,31 +78,32 @@ def validate_basic_config(data, project_dir):
                     And(lambda x: x, error='Either "exclude" or "include" filter should be specified.'),
                     And(lambda x: not ('exclude' in x and 'include' in x),
                         error='"exclude" and "include" filters should be specified as different list items.'),
-                )]
-            },
-            Optional('container', default=None): container,
-            Optional('containers', default=[]): And(
-                [container],
-                And(lambda x: is_unique_value(x, 'name'), error='Each container must have a unique name.'),
-            ),
-            'instances': And(
-                [{
-                    'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
-                    'provider': str,
-                    Optional('parameters', default={}): {
-                        And(str, Regex(r'^[\w]+$')): object,
-                    }
-                }],
-                And(lambda x: len(x), error='At least one instance must be specified in the configuration file.'),
-                And(lambda x: is_unique_value(x, 'name'), error='Each instance must have a unique name.'),
-            ),
-            Optional('scripts', default={}): {
-                And(str, Regex(r'^[\w-]+$')): And(str, len),
-            },
+                )],
+                error='"project.syncFilters" field must be a list.',
+            )
         },
-        And(lambda x: ((bool(x['container']) ^ bool(x['containers'])) or (not x['container'] and not x['containers'])),
-            error='"container" and "containers" parameters cannot be specified together.'),
-    ))
+        WrongKey('container', error='Use "containers" field instead of "container".'): object,
+        Optional('containers', default=[]): And(
+            [container],
+            And(lambda x: is_unique_value(x, 'name'), error='Each container must have a unique name.'),
+            error='"containers" field must be a list.',
+        ),
+        WrongKey('instance', error='Use "instances" field instead of "instance".'): object,
+        'instances': And(
+            [{
+                'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),
+                'provider': str,
+                Optional('parameters', default={}): {
+                    And(str, Regex(r'^[\w]+$')): object,
+                }
+            }],
+            And(lambda x: len(x), error='At least one instance must be specified in the configuration file.'),
+            And(lambda x: is_unique_value(x, 'name'), error='Each instance must have a unique name.'),
+        ),
+        Optional('scripts', default={}): {
+            And(str, Regex(r'^[\w-]+$')): And(str, len),
+        },
+    })
 
     return validate_config(schema, data)
 
@@ -182,6 +183,14 @@ def validate_config(schema: Schema, config):
     try:
         validated = schema.validate(config)
     except SchemaError as e:
-        raise ValueError(e.errors[-1] if e.errors[-1] else e.autos[-1])
+        raise ValueError('Validation error: ' + (e.errors[-1] if e.errors[-1] else e.autos[-1]))
 
     return validated
+
+
+class WrongKey(Hook):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, handler=self.raise_error)
+
+    def raise_error(self, key, *args):
+        raise SchemaForbiddenKeyError(self._error)

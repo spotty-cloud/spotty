@@ -17,12 +17,12 @@ class InstanceConfig(AbstractInstanceConfig):
         return validate_instance_parameters(params)
 
     @property
-    def username(self) -> str:
-        return self._params['username']
+    def user(self) -> str:
+        return self._params['user']
 
     @property
-    def hostname(self) -> str:
-        return self._params['hostname']
+    def host(self) -> str:
+        return self._params['host']
 
     @property
     def port(self) -> int:

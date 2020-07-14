@@ -5,7 +5,7 @@ class ProjectConfig(object):
 
     def __init__(self, config: dict, project_dir: str):
         # validate the config
-        config = validate_basic_config(config, project_dir)
+        config = validate_basic_config(config)
 
         self._project_dir = project_dir
         self._config = config
@@ -24,7 +24,7 @@ class ProjectConfig(object):
 
     @property
     def containers(self) -> list:
-        return [self._config['container']] if self._config['container'] else self._config['containers']
+        return self._config['containers']
 
     @property
     def instances(self) -> list:

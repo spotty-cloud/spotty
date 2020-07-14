@@ -6,9 +6,9 @@ def validate_instance_parameters(params: dict):
     from spotty.config.host_path_volume import HostPathVolume
 
     instance_parameters = {
-        'username': str,
-        'hostname': str,
-        Optional('port', default=22): And(int, lambda x: 0 <= x <= 65535),
+        'user': str,
+        'host': str,
+        Optional('port', default=22): And(int, lambda x: 0 < x < 65536),
         'keyPath': str,
     }
 
