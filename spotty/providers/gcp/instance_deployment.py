@@ -34,10 +34,6 @@ class InstanceDeployment(AbstractInstanceDeployment):
     def ssh_key_manager(self) -> SshKeyManager:
         return SshKeyManager(self._project_name, self.instance_config.zone)
 
-    @property
-    def ssh_username(self) -> str:
-        return 'spotty'
-
     def get_instance(self) -> Instance:
         return Instance.get_by_name(self._ce, self.instance_config.machine_name)
 
@@ -78,14 +74,13 @@ class InstanceDeployment(AbstractInstanceDeployment):
             public_key_value = self.ssh_key_manager.get_public_key_value()
 
             # prepare the deployment template
-            sync_project_cmd = data_transfer.get_download_bucket_to_instance_command(bucket_name)
+            sync_project_cmd = data_transfer.get_download_bucket_to_instance_command(bucket_name=bucket_name)
             template = prepare_instance_template(
                 instance_config=self.instance_config,
                 docker_commands=container_commands,
                 image_link=image_link,
                 bucket_name=bucket_name,
                 sync_project_cmd=sync_project_cmd,
-                ssh_username=self.ssh_username,
                 public_key_value=public_key_value,
                 service_account_email=self._credentials.service_account_email,
                 output=output,

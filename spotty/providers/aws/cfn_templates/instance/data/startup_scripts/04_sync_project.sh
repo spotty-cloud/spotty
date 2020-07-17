@@ -4,7 +4,7 @@ cfn-signal -e 0 --stack ${AWS::StackName} --region ${AWS::Region} --resource Syn
 
 # create a project directory
 if [ -n "${HostProjectDirectory}" ]; then
-  mkdir -p ${HostProjectDirectory}
+  mkdir -pm 777 ${HostProjectDirectory}
 fi
 
 # sync project files from S3 bucket to the instance

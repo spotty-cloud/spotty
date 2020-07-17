@@ -2,6 +2,7 @@ import os
 from typing import List
 import chevron
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.config.tmp_dir_volume import TmpDirVolume
 from spotty.config.validation import is_subdir
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container.docker.docker_commands import DockerCommands
@@ -13,13 +14,17 @@ from spotty.providers.gcp.config.instance_config import InstanceConfig
 
 
 def prepare_instance_template(instance_config: InstanceConfig, docker_commands: DockerCommands, image_link: str,
-                              bucket_name: str, sync_project_cmd: str, ssh_username: str, public_key_value: str,
+                              bucket_name: str, sync_project_cmd: str, public_key_value: str,
                               service_account_email: str, output: AbstractOutputWriter):
     """Prepares deployment template to run an instance."""
 
     # get disk attachments
     disk_attachments, disk_device_names, disk_mount_dirs = \
         _get_disk_attachments(instance_config.volumes, instance_config.zone)
+
+    # run sync command as a non-root user
+    if instance_config.container_config.run_as_host_user:
+        sync_project_cmd = 'sudo -u %s %s' % (instance_config.user, sync_project_cmd)
 
     startup_scripts_templates = [
         {
@@ -28,7 +33,7 @@ def prepare_instance_template(instance_config: InstanceConfig, docker_commands: 
                 'CONTAINER_BASH_SCRIPT_PATH': CONTAINER_BASH_SCRIPT_PATH,
                 'CONTAINER_BASH_SCRIPT': ContainerBashScript(docker_commands).render(),
                 'IS_GPU_INSTANCE': bool(instance_config.gpu),
-                'SSH_USERNAME': ssh_username,
+                'SSH_USERNAME': instance_config.user,
             },
         },
         {
@@ -36,6 +41,8 @@ def prepare_instance_template(instance_config: InstanceConfig, docker_commands: 
             'params': {
                 'DISK_DEVICE_NAMES': ('"%s"' % '" "'.join(disk_device_names)) if disk_device_names else '',
                 'DISK_MOUNT_DIRS': ('"%s"' % '" "'.join(disk_mount_dirs)) if disk_mount_dirs else '',
+                'TMP_VOLUME_DIRS': [{'PATH': volume.host_path} for volume in instance_config.volumes
+                                    if isinstance(volume, TmpDirVolume)],
             },
         },
         {
@@ -101,7 +108,7 @@ def prepare_instance_template(instance_config: InstanceConfig, docker_commands: 
         'GPU_TYPE': instance_config.gpu['type'] if instance_config.gpu else '',
         'GPU_COUNT': instance_config.gpu['count'] if instance_config.gpu else 0,
         'DISK_ATTACHMENTS': disk_attachments,
-        'SSH_USERNAME': ssh_username,
+        'SSH_USERNAME': instance_config.user,
         'PUB_KEY_VALUE': public_key_value,
         'PORTS': ', '.join([str(port) for port in set([22] + instance_config.ports)]),
     }, partials_dict={

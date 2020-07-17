@@ -62,9 +62,5 @@ class InstanceManager(AbstractCloudInstanceManager):
         return render_table(table)
 
     @property
-    def ssh_user(self):
-        return 'ubuntu'
-
-    @property
     def ssh_key_path(self):
         return self.instance_deployment.key_pair_manager.key_path

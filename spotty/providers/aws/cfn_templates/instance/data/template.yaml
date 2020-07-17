@@ -18,10 +18,6 @@ Parameters:
   RootVolumeSize:
     Description: Root volume size
     Type: String
-  VolumeMountDirectories:
-    Description: Directories where the volumes should be mounted (bash array)
-    Type: String
-    Default: ''
   DockerDataRootDirectory:
     Description: Docker data root directory
     Type: String

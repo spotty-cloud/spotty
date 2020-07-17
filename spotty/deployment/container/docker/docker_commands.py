@@ -15,6 +15,10 @@ class DockerCommands(AbstractContainerCommands):
         build_cmd = 'docker build -t %s -f %s %s' % (image_name, shlex.quote(self._instance_config.dockerfile_path),
                                                      shlex.quote(self._instance_config.docker_context_path))
 
+        if self._instance_config.container_config.run_as_host_user:
+            build_cmd += ' --build-arg USER_ID=$(id -u %s) --build-arg GROUP_ID=$(id -g %s)' \
+                         % (self._instance_config.user, self._instance_config.user)
+
         return build_cmd
 
     def run(self, image_name: str = None) -> str:
@@ -39,8 +43,13 @@ class DockerCommands(AbstractContainerCommands):
 
         args += ['--name', self._instance_config.full_container_name]
 
-        run_cmd = 'docker run $(nvidia-smi &> /dev/null && echo "--gpus all") %s %s /bin/sh > /dev/null' \
-                  % (shlex_join(args), image_name)
+        run_cmd = 'docker run $(nvidia-smi &> /dev/null && echo "--gpus all")'
+
+        if self._instance_config.container_config.run_as_host_user:
+            run_cmd += ' -u $(id -u %s):$(id -g %s) -e HOST_USER_ID=$(id -u %s) -e HOST_GROUP_ID=$(id -g %s)' \
+                       % tuple([self._instance_config.user] * 4)
+
+        run_cmd += ' %s %s /bin/sh > /dev/null' % (shlex_join(args), image_name)
 
         return run_cmd
 
@@ -55,8 +64,8 @@ class DockerCommands(AbstractContainerCommands):
     def remove(self):
         return 'docker rm -f "%s" > /dev/null' % self._instance_config.full_container_name
 
-    def exec(self, command: str, interactive: bool = False, tty: bool = False, container_name: str = None,
-             working_dir: str = None) -> str:
+    def exec(self, command: str, interactive: bool = False, tty: bool = False, user: str = None,
+             container_name: str = None, working_dir: str = None) -> str:
         container_name = container_name if container_name else self._instance_config.full_container_name
         working_dir = working_dir if working_dir else self._instance_config.container_config.working_dir
 
@@ -68,7 +77,11 @@ class DockerCommands(AbstractContainerCommands):
         if tty:
             exec_cmd += ' -t'
 
+        if user:
+            exec_cmd += ' -u ' + shlex.quote(user)
+
         if working_dir:
+            # no quoting, it can be environmental variable
             exec_cmd += ' -w ' + working_dir
 
         exec_cmd += ' %s %s' % (container_name, command)

@@ -4,6 +4,7 @@ from collections import OrderedDict, namedtuple
 from typing import List
 from spotty.config.container_config import ContainerConfig
 from spotty.config.project_config import ProjectConfig
+from spotty.config.tmp_dir_volume import TmpDirVolume
 from spotty.config.validation import DEFAULT_CONTAINER_NAME, is_subdir
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.abstract_cloud_instance.file_structure import INSTANCE_SPOTTY_TMP_DIR
@@ -30,12 +31,20 @@ class AbstractInstanceConfig(ABC):
 
         self._container_config = ContainerConfig(container_configs[0])
 
-        # get container volume mounts and a host project directory
+        # get volumes
+        self._volumes = self._get_volumes()
+
+        # get container volume mounts and the host project directory
         self._volume_mounts, self._host_project_dir = self._get_volume_mounts()
 
     @abstractmethod
     def _validate_instance_params(self, params: dict) -> dict:
         """Validates instance parameters and fill missing ones with the default values."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _get_instance_volumes(self) -> List[AbstractInstanceVolume]:
+        """Returns specific to the provider volumes that should be mounted on the host OS."""
         raise NotImplementedError
 
     @property
@@ -48,8 +57,7 @@ class AbstractInstanceConfig(ABC):
 
     @property
     @abstractmethod
-    def volumes(self) -> List[AbstractInstanceVolume]:
-        """List of volume configs."""
+    def user(self):
         raise NotImplementedError
 
     @property
@@ -92,6 +100,10 @@ class AbstractInstanceConfig(ABC):
         return self._host_project_dir
 
     @property
+    def volumes(self) -> List[AbstractInstanceVolume]:
+        return self._volumes
+
+    @property
     def volume_mounts(self) -> List[VolumeMount]:
         return self._volume_mounts
 
@@ -131,6 +143,22 @@ class AbstractInstanceConfig(ABC):
         """
         return self.host_container_dir + '/volumes'
 
+    def _get_volumes(self) -> List[AbstractInstanceVolume]:
+        """Returns volumes that should be mounted on the host OS."""
+        volumes = self._get_instance_volumes()
+
+        # create temporary volumes for the volume mounts that don't have corresponding
+        # volumes in the instance configuration
+        instance_volume_names = set(volume.name for volume in volumes)
+        for container_volume in self.container_config.volume_mounts:
+            if container_volume['name'] not in instance_volume_names:
+                volumes.append(TmpDirVolume(volume_config={
+                    'name': container_volume['name'],
+                    'parameters': {'path': '%s/%s' % (self.host_volumes_dir, container_volume['name'])}
+                }, project_name=self.project_config.project_name, instance_name=self.name))
+
+        return volumes
+
     def _get_volume_mounts(self) -> (List[VolumeMount], str):
         """Returns container volume mounts and a path to the project directory on the host OS."""
         # get mount directories for the volumes
@@ -139,12 +167,9 @@ class AbstractInstanceConfig(ABC):
         # get container volumes mapping
         volume_mounts = []
         for container_volume in self.container_config.volume_mounts:
-            volume_name = container_volume['name']
-            host_path = host_paths.get(volume_name, '%s/%s' % (self.host_volumes_dir, volume_name))
-
             volume_mounts.append(VolumeMount(
-                name=volume_name,
-                host_path=host_path,
+                name=container_volume['name'],
+                host_path=host_paths[container_volume['name']],
                 mount_path=container_volume['mountPath'],
                 mode='rw',
                 hidden=False,

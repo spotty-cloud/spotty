@@ -9,7 +9,12 @@ do
   MOUNT_DIR=${MOUNT_DIRS[$i]}
 
   blkid -o value -s TYPE $DEVICE || mkfs -t ext4 $DEVICE
-  mkdir -p $MOUNT_DIR
+  mkdir -pm 777 $MOUNT_DIR
   mount $DEVICE $MOUNT_DIR
   resize2fs $DEVICE
 done
+
+# create directories for temporary volumes
+{{#TMP_VOLUME_DIRS}}
+mkdir -pm 777 {{PATH}}
+{{/TMP_VOLUME_DIRS}}

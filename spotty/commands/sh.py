@@ -13,6 +13,8 @@ class ShCommand(AbstractConfigCommand):
 
     def configure(self, parser: ArgumentParser):
         super().configure(parser)
+        parser.add_argument('-u', '--user', type=str, default=None,
+                            help='Container username or UID (format: <name|uid>[:<group|gid>')
         parser.add_argument('-H', '--host-os', action='store_true', help='Connect to the host OS instead of the Docker '
                                                                          'container')
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')
@@ -40,7 +42,8 @@ class ShCommand(AbstractConfigCommand):
                     if instance_manager.use_tmux else shell_command
             else:
                 # get a command to run bash inside the docker container
-                command = instance_manager.container_commands.exec(get_bash_command(), interactive=True, tty=True)
+                command = instance_manager.container_commands.exec(get_bash_command(), interactive=True, tty=True,
+                                                                   user=args.user)
 
                 # wrap the command with the tmux session
                 if instance_manager.use_tmux:

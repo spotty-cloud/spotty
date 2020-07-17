@@ -14,8 +14,7 @@ class InstanceConfig(AbstractInstanceConfig):
     def _validate_instance_params(self, params: dict) -> dict:
         return validate_instance_parameters(params)
 
-    @property
-    def volumes(self) -> List[AbstractInstanceVolume]:
+    def _get_instance_volumes(self) -> List[AbstractInstanceVolume]:
         volumes = []
         for volume_config in self._params['volumes']:
             volume_type = volume_config['type']
@@ -25,6 +24,10 @@ class InstanceConfig(AbstractInstanceConfig):
                 raise ValueError('GCP volume type "%s" not supported.' % volume_type)
 
         return volumes
+
+    @property
+    def user(self):
+        return 'spotty'
 
     @property
     def machine_name(self) -> str:

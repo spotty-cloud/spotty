@@ -33,7 +33,7 @@ class StartContainerScript(AbstractDockerScript):
         if self._commands.instance_config.container_config.commands:
             startup_script_cmd = get_script_command('container-startup-commands',
                                                     self._commands.instance_config.container_config.commands)
-            exec_script_cmd = self.commands.exec(startup_script_cmd)
+            exec_script_cmd = self.commands.exec(startup_script_cmd, user='root')
 
         # generate "docker run" command
         run_container_cmd = self.commands.run(image_name)

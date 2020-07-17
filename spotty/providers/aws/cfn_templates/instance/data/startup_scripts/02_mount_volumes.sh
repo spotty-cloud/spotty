@@ -4,7 +4,7 @@ cfn-signal -e 0 --stack ${AWS::StackName} --region ${AWS::Region} --resource Mou
 
 # mount volumes
 DEVICE_LETTERS=(f g h i j k l m n o p)
-MOUNT_DIRS=(${VolumeMountDirectories})
+MOUNT_DIRS=({{{MOUNT_DIRS}}})
 
 for i in ${!!MOUNT_DIRS[*]}
 do
@@ -22,7 +22,12 @@ do
   fi
 
   blkid -o value -s TYPE $DEVICE || mkfs -t ext4 $DEVICE
-  mkdir -p $MOUNT_DIR
+  mkdir -pm 777 $MOUNT_DIR
   mount $DEVICE $MOUNT_DIR
   resize2fs $DEVICE
 done
+
+# create directories for temporary volumes
+{{#TMP_VOLUME_DIRS}}
+mkdir -pm 777 {{PATH}}
+{{/TMP_VOLUME_DIRS}}

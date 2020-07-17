@@ -29,17 +29,16 @@ class DataTransfer(AbstractDataTransfer):
         """Downloads files from the bucket to local."""
         raise NotImplementedError
 
-    def get_download_bucket_to_instance_command(self, bucket_name: str) -> str:
+    def get_download_bucket_to_instance_command(self, bucket_name: str, use_sudo: bool = False) -> str:
         """A remote command to download files from the bucket to the instance."""
-        # "sudo" should be called with the "-i" flag to use the root environment and let aws-cli find
-        # the config file in the root home directory
         remote_cmd = get_rsync_command(self._get_bucket_project_path(bucket_name), self._host_project_dir,
-                                       filters=self._sync_filters, quiet=True)
-        remote_cmd = 'sudo -i ' + remote_cmd
+                                       filters=self._sync_filters)
+        if use_sudo:
+            remote_cmd = 'sudo ' + remote_cmd
 
         return remote_cmd
 
-    def get_upload_instance_to_bucket_command(self, bucket_name: str, download_filters: list,
+    def get_upload_instance_to_bucket_command(self, bucket_name: str, download_filters: list, use_sudo: bool = False,
                                               dry_run: bool = False) -> str:
         """A remote command to upload files from the instance to the bucket.
 

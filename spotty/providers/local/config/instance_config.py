@@ -16,6 +16,17 @@ class InstanceConfig(AbstractInstanceConfig):
         # validate the config and fill missing parameters with the default values
         return validate_instance_parameters(params)
 
+    def _get_instance_volumes(self) -> List[AbstractInstanceVolume]:
+        volumes = []
+        for volume_config in self._params['volumes']:
+            volume_type = volume_config['type']
+            if volume_type == HostPathVolume.TYPE_NAME:
+                volumes.append(HostPathVolume(volume_config, self.project_config.project_name, self.name))
+            else:
+                raise ValueError('Volume type "%s" is not supported.' % volume_type)
+
+        return volumes
+
     def _get_volume_mounts(self) -> (List[VolumeMount], str):
         volume_mounts, host_project_dir = super()._get_volume_mounts()
 
@@ -36,15 +47,3 @@ class InstanceConfig(AbstractInstanceConfig):
         ))
 
         return volume_mounts, host_project_dir
-
-    @property
-    def volumes(self) -> List[AbstractInstanceVolume]:
-        volumes = []
-        for volume_config in self._params['volumes']:
-            volume_type = volume_config['type']
-            if volume_type == HostPathVolume.TYPE_NAME:
-                volumes.append(HostPathVolume(volume_config, self.project_config.project_name, self.name))
-            else:
-                raise ValueError('Volume type "%s" is not supported.' % volume_type)
-
-        return volumes

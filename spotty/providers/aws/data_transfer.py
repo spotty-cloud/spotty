@@ -46,18 +46,16 @@ class DataTransfer(AbstractDataTransfer):
         if exit_code != 0:
             raise ValueError('Failed to download files from the S3 bucket to local')
 
-    def get_download_bucket_to_instance_command(self, bucket_name: str) -> str:
+    def get_download_bucket_to_instance_command(self, bucket_name: str, use_sudo: bool = False) -> str:
         """A remote command to download files from the bucket to the instance."""
-        # "sudo" should be called with the "-i" flag to use the root environment and let aws-cli find
-        # the config file in the root home directory
         remote_cmd = get_s3_sync_command(self._get_bucket_project_path(bucket_name), self._host_project_dir,
-                                         region=self._region, filters=self._sync_filters, exact_timestamp=True,
-                                         quiet=True)
-        remote_cmd = 'sudo -i ' + remote_cmd
+                                         region=self._region, filters=self._sync_filters, exact_timestamp=True)
+        if use_sudo:
+            remote_cmd = 'sudo ' + remote_cmd
 
         return remote_cmd
 
-    def get_upload_instance_to_bucket_command(self, bucket_name: str, download_filters: list,
+    def get_upload_instance_to_bucket_command(self, bucket_name: str, download_filters: list, use_sudo: bool = False,
                                               dry_run: bool = False) -> str:
         """A remote command to upload files from the instance to the bucket.
 
@@ -70,6 +68,7 @@ class DataTransfer(AbstractDataTransfer):
         # the config file from the root home directory
         remote_cmd = get_s3_sync_command(self._host_project_dir, self._get_bucket_downloads_path(bucket_name),
                                          region=self._region, filters=download_filters, delete=True, dry_run=dry_run)
-        remote_cmd = 'sudo -i ' + remote_cmd
+        if use_sudo:
+            remote_cmd = 'sudo ' + remote_cmd
 
         return remote_cmd

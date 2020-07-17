@@ -26,6 +26,7 @@ def validate_basic_config(data):
                                                   error='Path to the Dockerfile should be relative to the '
                                                         'project\'s root directory.'),
                                               ),
+            Optional('runAsHostUser', default=False): bool,
             Optional('volumeMounts', default=[]): (And(
                 [{
                     'name': And(Or(int, str), Use(str), Regex(r'^[\w-]+$')),

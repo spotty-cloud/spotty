@@ -118,7 +118,10 @@ class AbstractCloudInstanceManager(AbstractSshInstanceManager, ABC):
         if not dry_run:
             # sync the S3 bucket with the instance
             output.write('Syncing the bucket with the instance...')
-            remote_cmd = self.data_transfer.get_download_bucket_to_instance_command(bucket_name)
+            remote_cmd = self.data_transfer.get_download_bucket_to_instance_command(
+                bucket_name=bucket_name,
+                use_sudo=(not self.instance_config.container_config.run_as_host_user),
+            )
             logging.debug('Remote sync command: ' + remote_cmd)
 
             # execute the command on the host OS
@@ -132,9 +135,12 @@ class AbstractCloudInstanceManager(AbstractSshInstanceManager, ABC):
 
         # sync files from the instance to a temporary S3 directory
         output.write('Uploading files from the instance to the bucket...')
-        remote_cmd = self.data_transfer.get_upload_instance_to_bucket_command(bucket_name=bucket_name,
-                                                                              download_filters=download_filters,
-                                                                              dry_run=dry_run)
+        remote_cmd = self.data_transfer.get_upload_instance_to_bucket_command(
+            bucket_name=bucket_name,
+            download_filters=download_filters,
+            use_sudo=(not self.instance_config.container_config.run_as_host_user),
+            dry_run=dry_run,
+        )
         logging.debug('Remote sync command: ' + remote_cmd)
 
         # execute the command on the host OS
@@ -148,7 +154,7 @@ class AbstractCloudInstanceManager(AbstractSshInstanceManager, ABC):
             self.data_transfer.download_bucket_to_local(bucket_name=bucket_name, download_filters=download_filters)
 
     @property
-    def ssh_hostname(self):
+    def ssh_host(self):
         """Returns an IP address that will be used for SSH connections."""
         if self._instance_config.local_ssh_port:
             return '127.0.0.1'

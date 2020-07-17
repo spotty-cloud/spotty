@@ -16,6 +16,8 @@ class ExecCommand(AbstractConfigCommand):
         super().configure(parser)
         parser.add_argument('-i', '--interactive', action='store_true', help='Pass STDIN to the container')
         parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY')
+        parser.add_argument('-u', '--user', type=str, default=None,
+                            help='Container username or UID (format: <name|uid>[:<group|gid>')
         parser.add_argument('--no-sync', action='store_true', help='Don\'t sync the project before running the script')
 
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
@@ -32,7 +34,8 @@ class ExecCommand(AbstractConfigCommand):
 
         # generate a "docker exec" command
         command = shlex_join(args.custom_args)
-        command = instance_manager.container_commands.exec(command, interactive=args.interactive, tty=args.tty)
+        command = instance_manager.container_commands.exec(command, interactive=args.interactive, tty=args.tty,
+                                                           user=args.user)
 
         # execute the command on the host OS
         instance_manager.exec(command, tty=args.tty)

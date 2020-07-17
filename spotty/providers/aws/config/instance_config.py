@@ -13,21 +13,7 @@ class InstanceConfig(AbstractInstanceConfig):
     def _validate_instance_params(self, params: dict) -> dict:
         return validate_instance_parameters(params)
 
-    def _get_volume_mounts(self) -> (List[VolumeMount], str):
-        volume_mounts, host_project_dir = super()._get_volume_mounts()
-
-        volume_mounts.append(VolumeMount(
-            name=None,
-            host_path='/root/.aws',
-            mount_path='/root/.aws',
-            mode='ro',
-            hidden=True,
-        ))
-
-        return volume_mounts, host_project_dir
-
-    @property
-    def volumes(self) -> List[AbstractInstanceVolume]:
+    def _get_instance_volumes(self) -> List[AbstractInstanceVolume]:
         volumes = []
         for volume_config in self._params['volumes']:
             volume_type = volume_config['type']
@@ -37,6 +23,10 @@ class InstanceConfig(AbstractInstanceConfig):
                 raise ValueError('AWS volume type "%s" not supported.' % volume_type)
 
         return volumes
+
+    @property
+    def user(self):
+        return 'ubuntu'
 
     @property
     def ec2_instance_name(self) -> str:

@@ -12,6 +12,6 @@ class AbstractContainerCommands(ABC):
         return self._instance_config
 
     @abstractmethod
-    def exec(self, command: str, interactive: bool = False, tty: bool = False, container_name: str = None,
-             working_dir: str = None) -> str:
+    def exec(self, command: str, interactive: bool = False, tty: bool = False, user: str = None,
+             container_name: str = None, working_dir: str = None) -> str:
         raise NotImplementedError

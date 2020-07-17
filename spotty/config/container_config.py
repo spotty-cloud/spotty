@@ -23,6 +23,10 @@ class ContainerConfig(object):
         return self._config['file']
 
     @property
+    def run_as_host_user(self) -> str:
+        return self._config['runAsHostUser']
+
+    @property
     def volume_mounts(self) -> list:
         return self._config['volumeMounts']
 

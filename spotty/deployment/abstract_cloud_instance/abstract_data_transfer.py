@@ -37,12 +37,12 @@ class AbstractDataTransfer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_download_bucket_to_instance_command(self, bucket_name: str) -> str:
+    def get_download_bucket_to_instance_command(self, bucket_name: str, use_sudo: bool = False) -> str:
         """A remote command to download files from the bucket to the instance."""
         raise NotImplementedError
 
     @abstractmethod
-    def get_upload_instance_to_bucket_command(self, bucket_name: str, download_filters: list,
+    def get_upload_instance_to_bucket_command(self, bucket_name: str, download_filters: list, use_sudo: bool = False,
                                               dry_run: bool = False) -> str:
         """A remote command to upload files from the instance to the bucket."""
         raise NotImplementedError

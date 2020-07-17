@@ -12,7 +12,7 @@ class AbstractSshInstanceManager(AbstractDockerInstanceManager):
         if not os.path.isfile(self.ssh_key_path):
             raise ValueError('SSH key doesn\'t exist: ' + self.ssh_key_path)
 
-        ssh_command = get_ssh_command(self.ssh_hostname, self.ssh_port, self.ssh_user, self.ssh_key_path,
+        ssh_command = get_ssh_command(self.ssh_host, self.ssh_port, self.ssh_user, self.ssh_key_path,
                                       command, env_vars=self.ssh_env_vars, tty=tty)
         logging.debug('SSH command: ' + ssh_command)
 
@@ -20,12 +20,7 @@ class AbstractSshInstanceManager(AbstractDockerInstanceManager):
 
     @property
     @abstractmethod
-    def ssh_hostname(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def ssh_user(self) -> str:
+    def ssh_host(self):
         raise NotImplementedError
 
     @property
@@ -37,6 +32,10 @@ class AbstractSshInstanceManager(AbstractDockerInstanceManager):
     @abstractmethod
     def ssh_key_path(self) -> str:
         raise NotImplementedError
+
+    @property
+    def ssh_user(self) -> str:
+        return self.instance_config.user
 
     @property
     def ssh_env_vars(self) -> dict:

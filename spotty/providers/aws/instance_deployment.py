@@ -81,7 +81,7 @@ class InstanceDeployment(AbstractInstanceDeployment):
                 instance_config=self.instance_config,
                 docker_commands=container_commands,
                 availability_zone=availability_zone,
-                sync_project_cmd=data_transfer.get_download_bucket_to_instance_command(bucket_name),
+                sync_project_cmd=data_transfer.get_download_bucket_to_instance_command(bucket_name=bucket_name),
                 output=output,
             )
 

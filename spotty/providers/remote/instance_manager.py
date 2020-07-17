@@ -33,10 +33,11 @@ class InstanceManager(AbstractSshInstanceManager):
             local_dir=self.project_config.project_dir,
             remote_dir=self.instance_config.host_project_dir,
             ssh_user=self.ssh_user,
-            ssh_hostname=self.ssh_hostname,
+            ssh_host=self.ssh_host,
             ssh_key_path=self.ssh_key_path,
             ssh_port=self.ssh_port,
             filters=self.project_config.sync_filters,
+            use_sudo=(not self.instance_config.container_config.run_as_host_user),
             dry_run=dry_run,
         )
 
@@ -58,10 +59,11 @@ class InstanceManager(AbstractSshInstanceManager):
             local_dir=self.project_config.project_dir,
             remote_dir=self.instance_config.host_project_dir,
             ssh_user=self.ssh_user,
-            ssh_hostname=self.ssh_hostname,
+            ssh_host=self.ssh_host,
             ssh_key_path=self.ssh_key_path,
             ssh_port=self.ssh_port,
             filters=download_filters,
+            use_sudo=(not self.instance_config.container_config.run_as_host_user),
             dry_run=dry_run,
         )
 
@@ -72,12 +74,8 @@ class InstanceManager(AbstractSshInstanceManager):
             raise ValueError('Failed to download files from the instance.')
 
     @property
-    def ssh_hostname(self) -> str:
-        return self.instance_config.hostname
-
-    @property
-    def ssh_user(self) -> str:
-        return self.instance_config.username
+    def ssh_host(self) -> str:
+        return self.instance_config.host
 
     @property
     def ssh_key_path(self) -> str:

@@ -4,6 +4,7 @@ import chevron
 import yaml
 from cfn_tools import CfnYamlLoader, CfnYamlDumper
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+from spotty.config.tmp_dir_volume import TmpDirVolume
 from spotty.config.validation import is_subdir
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container.docker.docker_commands import DockerCommands
@@ -90,6 +91,13 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, docker_comma
         },
     }
 
+    # run sync command as a non-root user
+    if instance_config.container_config.run_as_host_user:
+        sync_project_cmd = 'sudo -u %s %s' % (instance_config.user, sync_project_cmd)
+
+    # get mount directories
+    mount_dirs = [volume.mount_dir for volume in instance_config.volumes if isinstance(volume, EbsVolume)]
+
     # set CloudFormation configs
     cfn_init_configs = [
         {
@@ -131,7 +139,11 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, docker_comma
                     'group': 'ubuntu',
                     'mode': '000755',
                     'content': {
-                        'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '02_mount_volumes.sh')),
+                        'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '02_mount_volumes.sh'), {
+                            'MOUNT_DIRS': ('"%s"' % '" "'.join(mount_dirs)) if mount_dirs else '',
+                            'TMP_VOLUME_DIRS': [{'PATH': volume.host_path} for volume in instance_config.volumes
+                                                if isinstance(volume, TmpDirVolume)],
+                        }),
                     },
                 },
             },
@@ -354,11 +366,8 @@ def get_template_parameters(ec2, instance_config: InstanceConfig, instance_profi
         # if a root volume size is not specified, make it 5GB larger than the AMI size
         root_volume_size = ami.size + 5
 
-    # get mount directories for the volumes
-    ebs_volumes = [volume for volume in instance_config.volumes if isinstance(volume, EbsVolume)]
-    mount_dirs = [volume.mount_dir for volume in ebs_volumes]
-
     # print info about the Docker data root
+    ebs_volumes = [volume for volume in instance_config.volumes if isinstance(volume, EbsVolume)]
     if instance_config.docker_data_root:
         docker_data_volume_name = [volume.name for volume in ebs_volumes
                                    if is_subdir(instance_config.docker_data_root, volume.mount_dir)][0]
@@ -372,7 +381,6 @@ def get_template_parameters(ec2, instance_config: InstanceConfig, instance_profi
         'KeyName': key_pair_name,
         'ImageId': ami.image_id,
         'RootVolumeSize': str(root_volume_size),
-        'VolumeMountDirectories': ('"%s"' % '" "'.join(mount_dirs)) if mount_dirs else '',
         'DockerDataRootDirectory': instance_config.docker_data_root,
         'InstanceNameTag': instance_config.ec2_instance_name,
         'HostProjectDirectory': instance_config.host_project_dir,

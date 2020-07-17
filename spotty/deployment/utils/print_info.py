@@ -11,15 +11,11 @@ def render_volumes_info_table(volume_mounts: List[VolumeMount], volumes: List[Ab
     volumes_dict = {volume.name: volume for volume in volumes}
     for volume_mount in volume_mounts:
         if not volume_mount.hidden:
-            if volume_mount.name in volumes_dict:
-                # the volume will be mounted to the container
-                volume = volumes_dict[volume_mount.name]
-                deletion_policy = volume.deletion_policy_title if volume.deletion_policy_title else '-'
-                table.append((volume_mount.name, volume_mount.mount_path, volume.title, deletion_policy))
-            else:
-                # a temporary directory will be mounted to the container
-                vol_mount_name = '-' if volume_mount.name is None else volume_mount.name
-                table.append((vol_mount_name, volume_mount.mount_path, 'temporary directory', '-'))
+            # the volume will be mounted to the container
+            volume = volumes_dict[volume_mount.name]
+            vol_mount_name = '-' if volume_mount.name is None else volume_mount.name
+            deletion_policy = volume.deletion_policy_title if volume.deletion_policy_title else '-'
+            table.append((vol_mount_name, volume_mount.mount_path, volume.title, deletion_policy))
 
     # add volumes that were not mounted to the container to the info table
     volume_mounts_dict = {volume_mount.name for volume_mount in volume_mounts}
