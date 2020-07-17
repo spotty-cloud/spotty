@@ -149,7 +149,7 @@ def get_instance_parameters_schema(instance_parameters: dict, default_volume_typ
                 And(lambda x: is_unique_value(x, 'name'), error='Each instance volume must have a unique name.'),
                 *volumes_checks,
             ),
-            Optional('localSshPort', default=None): Or(None, And(int, lambda x: 0 <= x <= 65535)),
+            Optional('localSshPort', default=None): Or(None, And(int, lambda x: 0 < x < 65536)),
             Optional('commands', default=''): str,
         },
         And(lambda x: not x['dockerDataRoot'] or any([True for v in x['volumes'] if v['parameters']['mountDir'] and

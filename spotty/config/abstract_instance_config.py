@@ -57,7 +57,7 @@ class AbstractInstanceConfig(ABC):
 
     @property
     @abstractmethod
-    def user(self):
+    def user(self) -> str:
         raise NotImplementedError
 
     @property
