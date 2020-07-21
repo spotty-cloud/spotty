@@ -5,7 +5,6 @@ from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.config.project_config import ProjectConfig
 from spotty.config.host_path_volume import HostPathVolume
 from spotty.providers.local.config.validation import validate_instance_parameters
-import getpass
 
 
 class InstanceConfig(AbstractInstanceConfig):
@@ -51,4 +50,4 @@ class InstanceConfig(AbstractInstanceConfig):
 
     @property
     def user(self) -> str:
-        return getpass.getuser()
+        return ''

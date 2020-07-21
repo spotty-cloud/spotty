@@ -34,8 +34,11 @@ class AbstractInstanceConfig(ABC):
         # get volumes
         self._volumes = self._get_volumes()
 
-        # get container volume mounts and the host project directory
-        self._volume_mounts, self._host_project_dir = self._get_volume_mounts()
+        # get container volume mounts
+        self._volume_mounts = self._get_volume_mounts()
+
+        # get the host project directory
+        self._host_project_dir = self._get_host_project_dir()
 
     @abstractmethod
     def _validate_instance_params(self, params: dict) -> dict:
@@ -175,24 +178,20 @@ class AbstractInstanceConfig(ABC):
                 hidden=False,
             ))
 
-        # get host project directory
+        return volume_mounts
+
+    def _get_host_project_dir(self) -> str:
+        """Returns the host project directory."""
         host_project_dir = None
-        for _, host_path, mount_path, _, _ in volume_mounts:
-            if is_subdir(self.container_config.project_dir, mount_path):
+        for volume_mount in sorted(self.volume_mounts, key=lambda x: len(x.mount_path), reverse=True):
+            if is_subdir(self.container_config.project_dir, volume_mount.mount_path):
                 # the project directory is a subdirectory of a Volume Mount directory
-                project_subdir = os.path.relpath(self.container_config.project_dir, mount_path)
-                host_project_dir = os.path.normpath(host_path + '/' + project_subdir)
+                project_subdir = os.path.relpath(self.container_config.project_dir, volume_mount.mount_path)
+                host_project_dir = os.path.normpath(volume_mount.host_path + '/' + project_subdir)
                 break
 
-        if not host_project_dir:
-            # use temporary directory for the project
-            host_project_dir = self.host_volumes_dir + '/.project'
-            volume_mounts.append(VolumeMount(
-                name=None,
-                host_path=host_project_dir,
-                mount_path=self.container_config.project_dir,
-                mode='rw',
-                hidden=False,
-            ))
+        # this should not be the case as the volume mount for the project directory should be added automatically
+        # if it doesn't exist in the configuration
+        assert host_project_dir is not None, 'A volume mount that contains the project directory not found.'
 
-        return volume_mounts, host_project_dir
+        return host_project_dir

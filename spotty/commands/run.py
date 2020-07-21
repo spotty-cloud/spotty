@@ -18,7 +18,7 @@ class RunCommand(AbstractConfigCommand):
         super().configure(parser)
         parser.add_argument('script_name', metavar='SCRIPT_NAME', type=str, help='Script name')
         parser.add_argument('-u', '--user', type=str, default=None,
-                            help='Container username or UID (format: <name|uid>[:<group|gid>')
+                            help='Container username or UID (format: <name|uid>[:<group|gid>])')
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')
         parser.add_argument('-l', '--logging', action='store_true', help='Log the script outputs to a file')
         parser.add_argument('-p', '--parameter', metavar='PARAMETER=VALUE', action='append', type=str, default=[],

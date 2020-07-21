@@ -14,7 +14,7 @@ class ShCommand(AbstractConfigCommand):
     def configure(self, parser: ArgumentParser):
         super().configure(parser)
         parser.add_argument('-u', '--user', type=str, default=None,
-                            help='Container username or UID (format: <name|uid>[:<group|gid>')
+                            help='Container username or UID (format: <name|uid>[:<group|gid>])')
         parser.add_argument('-H', '--host-os', action='store_true', help='Connect to the host OS instead of the Docker '
                                                                          'container')
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')

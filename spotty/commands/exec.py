@@ -1,3 +1,4 @@
+import sys
 from argparse import ArgumentParser, Namespace
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
@@ -17,10 +18,15 @@ class ExecCommand(AbstractConfigCommand):
         parser.add_argument('-i', '--interactive', action='store_true', help='Pass STDIN to the container')
         parser.add_argument('-t', '--tty', action='store_true', help='Allocate a pseudo-TTY')
         parser.add_argument('-u', '--user', type=str, default=None,
-                            help='Container username or UID (format: <name|uid>[:<group|gid>')
+                            help='Container username or UID (format: <name|uid>[:<group|gid>])')
         parser.add_argument('--no-sync', action='store_true', help='Don\'t sync the project before running the script')
 
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
+        # check that the command is provided
+        if not args.custom_args:
+            raise ValueError('Use the double-dash ("--") to split Spotty arguments from the command that should be '
+                             'executed inside the container.')
+
         # check that the instance is started
         if not instance_manager.is_running():
             raise InstanceNotRunningError(instance_manager.instance_config.name)
@@ -38,4 +44,5 @@ class ExecCommand(AbstractConfigCommand):
                                                            user=args.user)
 
         # execute the command on the host OS
-        instance_manager.exec(command, tty=args.tty)
+        exit_code = instance_manager.exec(command, tty=args.tty)
+        sys.exit(exit_code)
