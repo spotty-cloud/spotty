@@ -29,7 +29,7 @@ class AbstractDockerInstanceManager(AbstractInstanceManager, ABC):
         # make sure the Dockerfile exists
         self._check_dockerfile_exists()
 
-        # sync files
+        # sync the project with the instance
         try:
             self.sync(output, dry_run=dry_run)
         except NothingToDoError:
@@ -67,7 +67,8 @@ class AbstractDockerInstanceManager(AbstractInstanceManager, ABC):
 
     def _check_dockerfile_exists(self):
         """Raises an error if a Dockerfile specified in the configuration file but doesn't exist."""
-        if self.instance_config.dockerfile_path:
-            if not os.path.isfile(self.instance_config.dockerfile_path):
+        if self.instance_config.container_config.file:
+            dockerfile_path = os.path.join(self.project_config.project_dir, self.instance_config.container_config.file)
+            if not os.path.isfile(dockerfile_path):
                 raise ValueError('A Dockerfile specified in the container configuration but doesn\'t exist: ' +
-                                 self.instance_config.dockerfile_path)
+                                 dockerfile_path)

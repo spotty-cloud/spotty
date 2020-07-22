@@ -21,6 +21,12 @@ class ExecCommand(AbstractConfigCommand):
                             help='Container username or UID (format: <name|uid>[:<group|gid>])')
         parser.add_argument('--no-sync', action='store_true', help='Don\'t sync the project before running the script')
 
+        # add the "double-dash" argument to the usage message
+        parser.prog = 'spotty exec'
+        parser.usage = parser.format_usage()[7:-1] + ' -- COMMAND [args...]\n'
+        parser.epilog = 'The double dash (--) separates the command that you want to execute inside the container ' \
+                        'from the Spotty arguments.'
+
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
         # check that the command is provided
         if not args.custom_args:

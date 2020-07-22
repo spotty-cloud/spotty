@@ -113,6 +113,7 @@ def validate_host_path_volume_parameters(params: dict):
     schema = Schema({
         'path': And(
             str,
+            Use(os.path.expanduser),
             And(os.path.isabs, error='Use absolute path in the "path" parameter'),
             Use(lambda x: x.rstrip('/')),
         ),

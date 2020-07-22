@@ -35,10 +35,10 @@ class AbstractInstanceConfig(ABC):
         self._volumes = self._get_volumes()
 
         # get container volume mounts
-        self._volume_mounts = self._get_volume_mounts()
+        self._volume_mounts = self._get_volume_mounts(self._volumes)
 
         # get the host project directory
-        self._host_project_dir = self._get_host_project_dir()
+        self._host_project_dir = self._get_host_project_dir(self._volume_mounts)
 
     @abstractmethod
     def _validate_instance_params(self, params: dict) -> dict:
@@ -162,10 +162,11 @@ class AbstractInstanceConfig(ABC):
 
         return volumes
 
-    def _get_volume_mounts(self) -> (List[VolumeMount], str):
+    def _get_volume_mounts(self, volumes: List[AbstractInstanceVolume]) \
+            -> List[VolumeMount]:
         """Returns container volume mounts and a path to the project directory on the host OS."""
         # get mount directories for the volumes
-        host_paths = OrderedDict([(volume.name, volume.host_path) for volume in self.volumes])
+        host_paths = OrderedDict([(volume.name, volume.host_path) for volume in volumes])
 
         # get container volumes mapping
         volume_mounts = []
@@ -180,10 +181,10 @@ class AbstractInstanceConfig(ABC):
 
         return volume_mounts
 
-    def _get_host_project_dir(self) -> str:
+    def _get_host_project_dir(self, volume_mounts: List[VolumeMount]) -> str:
         """Returns the host project directory."""
         host_project_dir = None
-        for volume_mount in sorted(self.volume_mounts, key=lambda x: len(x.mount_path), reverse=True):
+        for volume_mount in sorted(volume_mounts, key=lambda x: len(x.mount_path), reverse=True):
             if is_subdir(self.container_config.project_dir, volume_mount.mount_path):
                 # the project directory is a subdirectory of a Volume Mount directory
                 project_subdir = os.path.relpath(self.container_config.project_dir, volume_mount.mount_path)

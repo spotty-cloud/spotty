@@ -2,6 +2,7 @@ import os
 from typing import List
 from spotty.config.abstract_instance_config import AbstractInstanceConfig, VolumeMount
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
+from spotty.config.container_config import PROJECT_VOLUME_MOUNT_NAME
 from spotty.config.project_config import ProjectConfig
 from spotty.config.host_path_volume import HostPathVolume
 from spotty.providers.local.config.validation import validate_instance_parameters
@@ -27,26 +28,23 @@ class InstanceConfig(AbstractInstanceConfig):
 
         return volumes
 
-    def _get_volume_mounts(self) -> (List[VolumeMount], str):
-        volume_mounts, host_project_dir = super()._get_volume_mounts()
+    def _get_volume_mounts(self, volumes: List[AbstractInstanceVolume]) -> List[VolumeMount]:
+        volume_mounts = super()._get_volume_mounts(volumes)
 
         # ignore a volume that matches the container project directory
         volume_mounts = [volume_mount for volume_mount in volume_mounts
                          if os.path.relpath(self.container_config.project_dir, volume_mount.mount_path) != '.']
 
-        # set the host project directory to the local project directory
-        host_project_dir = self.project_config.project_dir
-
         # mount the local project directory to the container
         volume_mounts.append(VolumeMount(
-            name=None,
-            host_path=host_project_dir,
+            name=PROJECT_VOLUME_MOUNT_NAME,
+            host_path=self.project_config.project_dir,
             mount_path=self.container_config.project_dir,
             mode='rw',
             hidden=True,
         ))
 
-        return volume_mounts, host_project_dir
+        return volume_mounts
 
     @property
     def user(self) -> str:

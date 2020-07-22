@@ -12,7 +12,7 @@ from spotty.deployment.abstract_instance_manager import AbstractInstanceManager
 class RunCommand(AbstractConfigCommand):
 
     name = 'run'
-    description = 'Run a script from the configuration file inside the Docker container'
+    description = 'Run a custom script from the configuration file inside the container'
 
     def configure(self, parser: ArgumentParser):
         super().configure(parser)
@@ -22,9 +22,16 @@ class RunCommand(AbstractConfigCommand):
         parser.add_argument('-s', '--session-name', type=str, default=None, help='tmux session name')
         parser.add_argument('-l', '--logging', action='store_true', help='Log the script outputs to a file')
         parser.add_argument('-p', '--parameter', metavar='PARAMETER=VALUE', action='append', type=str, default=[],
-                            help='Set the value for a script parameter (you can use this argument multiple times '
-                                 'to set several parameters)')
+                            help='Set a value for the script parameter (format: PARAMETER=VALUE). This '
+                                 'argument can be used multiple times to set several parameters. Parameters can be '
+                                 'used in the script as Mustache variables (for example: {{PARAMETER}}).')
         parser.add_argument('--no-sync', action='store_true', help='Don\'t sync the project before running the script')
+
+        # add the "double-dash" argument to the usage message
+        parser.prog = 'spotty run'
+        parser.usage = parser.format_usage()[7:-1] + ' [-- args...]\n'
+        parser.epilog = 'The double dash (--) separates custom arguments that you can pass to the script ' \
+                        'from the Spotty arguments.'
 
     def _run(self, instance_manager: AbstractInstanceManager, args: Namespace, output: AbstractOutputWriter):
         # check that the script exists
