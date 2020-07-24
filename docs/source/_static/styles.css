@@ -1,0 +1,23 @@
+.wy-nav-content {
+    max-width: 1280px;
+}
+
+.wy-side-nav-search {
+    background: none;
+}
+
+.wy-menu-vertical header, .wy-menu-vertical p.caption {
+    color: #e44859;
+}
+
+.wy-side-nav-search > a img.logo, .wy-side-nav-search .wy-dropdown > a img.logo {
+    max-width: 75%;
+}
+
+.wy-breadcrumbs a.icon-home {
+    color: #e44859;
+}
+
+.section#welcome-to-spotty-documentation {
+    display: none;
+}
