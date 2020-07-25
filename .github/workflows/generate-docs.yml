@@ -1,0 +1,40 @@
+# This workflows will upload a Python Package using Twine when a release is created
+# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
+
+name: Generate Docs
+
+on:
+  pull_request:
+    branches:
+      - refactoring
+
+jobs:
+  update-doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+
+      - name: generate docs
+        run: |
+          cd docs
+          make html
+          cd build/html
+
+          touch .nojekyll
+          echo "spotty.cloud" > CNAME
+          
+          git init
+          git config --local user.email "github-bot@spotty.cloud"
+          git config --local user.name "Spotty Dev Bot"
+          git add .
+          git commit -m "generated docs" -a
+
+      - uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.BOT_GITHUB_TOKEN }}
+          repository: spotty-cloud/website
+          force: true
+          directory: docs/build/html
