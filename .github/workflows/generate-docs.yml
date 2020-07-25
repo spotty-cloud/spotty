@@ -5,6 +5,7 @@ name: Generate Docs
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
     branches:
       - refactoring
 
