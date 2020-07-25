@@ -26,8 +26,8 @@ jobs:
           cd build/html
 
           touch .nojekyll
-          echo "spotty.cloud" > CNAME
-          
+          # echo "spotty.cloud" > CNAME
+
           git init
           git config --local user.email "github-bot@spotty.cloud"
           git config --local user.name "Spotty Dev Bot"
