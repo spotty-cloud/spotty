@@ -1,0 +1,168 @@
+Description: Spotty EC2 Instance
+Parameters:
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+  InstanceProfileArn:
+    Description: Instance Profile ARN
+    Type: String
+  InstanceType:
+    Description: Instance type
+    Type: String
+  KeyName:
+    Description: EC2 Key Pair name
+    Type: AWS::EC2::KeyPair::KeyName
+  ImageId:
+    Description: AMI ID
+    Type: AWS::EC2::Image::Id
+  RootVolumeSize:
+    Description: Root volume size
+    Type: String
+  DockerDataRootDirectory:
+    Description: Docker data root directory
+    Type: String
+    Default: ''
+  InstanceNameTag:
+    Description: Name for the instance
+    Type: String
+    Default: ''
+  HostProjectDirectory:
+    Description: Destination directory for the project
+    Type: String
+    Default: ''
+  LogsS3Path:
+    Description: An S3 path where logs will be uploaded in the case of a failure
+    Type: String
+    Default: ''
+Resources:
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref InstanceLaunchTemplate
+        Version: !GetAtt InstanceLaunchTemplate.LatestVersionNumber
+
+  InstanceLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Ref ImageId
+        KeyName: !Ref KeyName
+        EbsOptimized: 'false'
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Ref InstanceNameTag
+        IamInstanceProfile:
+          Arn: !Ref InstanceProfileArn
+        SecurityGroupIds:
+          - !Ref InstanceSecurityGroup
+        InstanceInitiatedShutdownBehavior: terminate
+        InstanceMarketOptions:
+          MarketType: spot
+          SpotOptions:
+            SpotInstanceType: one-time
+            InstanceInterruptionBehavior: terminate
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: !Ref RootVolumeSize
+              DeleteOnTermination: true
+        UserData: ''
+    Metadata:
+      'AWS::CloudFormation::Init': {}
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcId
+      GroupDescription: Spotty security group
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+        - CidrIpv6: ::/0
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+        - CidrIpv6: ::/0
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+
+  PreparingInstanceSignal:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT30M
+
+  MountingVolumesSignal:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT30M
+
+  SettingDockerRootSignal:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT60M
+
+  SyncingProjectSignal:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT60M
+
+  RunningInstanceStartupCommandsSignal:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT60M
+
+  BuildingDockerImageSignal:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT60M
+
+  StartingContainerSignal:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT60M
+
+  RunningContainerStartupCommandsSignal:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT60M
+
+  DockerReadyWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT30M
+
+Outputs:
+  InstanceId:
+    Value: !Ref Instance
+  AvailabilityZone:
+    Value: !GetAtt Instance.AvailabilityZone

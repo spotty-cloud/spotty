@@ -36,7 +36,10 @@ setup(name='spotty',
       long_description_content_type='text/markdown',
       packages=find_packages(exclude=['tests*']),
       package_data={
-          'spotty.providers.aws.deployment.cf_templates': ['data/*.yaml'],
+          'spotty.providers.aws.deployment.cf_templates': [
+              'data/*.yaml',
+              'data/instance/**/*',
+          ],
           'spotty.providers.gcp.deployment.dm_templates': ['image/*.yaml', 'instance/*.yaml'],
       },
       scripts=['bin/spotty'],
