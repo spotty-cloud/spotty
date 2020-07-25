@@ -11,6 +11,12 @@ class DiskVolume(AbstractInstanceVolume):
     DP_RETAIN = 'Retain'
     DP_DELETE = 'Delete'
 
+    def __init__(self, volume_config: dict, project_name: str, instance_name: str):
+        super().__init__(volume_config)
+
+        self._project_name = project_name
+        self._instance_name = instance_name
+
     def _validate_volume_parameters(self, params: dict) -> dict:
         return validate_disk_volume_parameters(params)
 

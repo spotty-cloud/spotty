@@ -3,12 +3,9 @@ from abc import ABC, abstractmethod
 
 class AbstractInstanceVolume(ABC):
 
-    def __init__(self, volume_config: dict, project_name: str, instance_name: str):
+    def __init__(self, volume_config: dict):
         self._name = volume_config['name']
         self._params = self._validate_volume_parameters(volume_config['parameters'])
-
-        self._project_name = project_name
-        self._instance_name = instance_name
 
     @abstractmethod
     def _validate_volume_parameters(self, params: dict) -> dict:

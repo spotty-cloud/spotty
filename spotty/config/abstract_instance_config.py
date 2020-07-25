@@ -158,7 +158,7 @@ class AbstractInstanceConfig(ABC):
                 volumes.append(TmpDirVolume(volume_config={
                     'name': container_volume['name'],
                     'parameters': {'path': '%s/%s' % (self.host_volumes_dir, container_volume['name'])}
-                }, project_name=self.project_config.project_name, instance_name=self.name))
+                }))
 
         return volumes
 

@@ -44,7 +44,7 @@ class InstanceConfig(AbstractInstanceConfig):
         for volume_config in self._params['volumes']:
             volume_type = volume_config['type']
             if volume_type == HostPathVolume.TYPE_NAME:
-                volumes.append(HostPathVolume(volume_config, self.project_config.project_name, self.name))
+                volumes.append(HostPathVolume(volume_config))
             else:
                 raise ValueError('Volume type "%s" is not supported.' % volume_type)
 
