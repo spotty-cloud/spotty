@@ -38,7 +38,6 @@ class InstanceConfig(AbstractInstanceConfig):
 
         return key_path
 
-    @property
     def _get_instance_volumes(self) -> List[AbstractInstanceVolume]:
         volumes = []
         for volume_config in self._params['volumes']:

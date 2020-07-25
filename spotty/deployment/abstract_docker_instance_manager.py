@@ -70,5 +70,5 @@ class AbstractDockerInstanceManager(AbstractInstanceManager, ABC):
         if self.instance_config.container_config.file:
             dockerfile_path = os.path.join(self.project_config.project_dir, self.instance_config.container_config.file)
             if not os.path.isfile(dockerfile_path):
-                raise ValueError('A Dockerfile specified in the container configuration but doesn\'t exist: ' +
-                                 dockerfile_path)
+                raise FileNotFoundError('A Dockerfile specified in the container configuration doesn\'t exist:\n  ' +
+                                        dockerfile_path)

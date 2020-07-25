@@ -21,6 +21,9 @@ class DockerCommands(AbstractContainerCommands):
 
         return build_cmd
 
+    def pull(self) -> str:
+        return 'docker pull ' + self._instance_config.container_config.image
+
     def run(self, image_name: str = None) -> str:
         image_name = image_name if image_name else self._instance_config.container_config.image
 

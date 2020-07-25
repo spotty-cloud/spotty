@@ -24,9 +24,11 @@ class StartContainerScript(AbstractDockerScript):
         if self._commands.instance_config.dockerfile_path:
             image_name = '%s:%d' % (self._commands.instance_config.full_container_name, time.time())
             build_image_cmd = self._commands.build(image_name)
+            pull_image_cmd = ''
         else:
             image_name = self._commands.instance_config.container_config.image
             build_image_cmd = ''
+            pull_image_cmd = self.commands.pull()
 
         # generate a command to run the startup script
         exec_script_cmd = ''
@@ -35,16 +37,14 @@ class StartContainerScript(AbstractDockerScript):
                                                     self._commands.instance_config.container_config.commands)
             exec_script_cmd = self.commands.exec(startup_script_cmd, user='root')
 
-        # generate "docker run" command
-        run_container_cmd = self.commands.run(image_name)
-
         # render the script
         content = chevron.render(template, data={
             'bash_flags': 'set -xe' if print_trace else 'set -e',
             'is_created_cmd': self.commands.is_created(),
             'remove_cmd': self.commands.remove(),
             'build_image_cmd': build_image_cmd,
-            'start_container_cmd': run_container_cmd,
+            'pull_image_cmd': pull_image_cmd,
+            'start_container_cmd': self.commands.run(image_name),
             'docker_exec_startup_script_cmd': exec_script_cmd,
         }, partials_dict=self._partials())
 

@@ -27,7 +27,7 @@ class AbstractInstanceConfig(ABC):
         # get container config
         container_configs = filter_list(project_config.containers, 'name', self.container_name)
         if not container_configs:
-            raise ValueError('Container configuration for the instance not found.')
+            raise ValueError('Container configuration with the name "%s" not found.' % self.container_name)
 
         self._container_config = ContainerConfig(container_configs[0])
 

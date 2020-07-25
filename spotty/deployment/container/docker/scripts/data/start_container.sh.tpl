@@ -17,19 +17,18 @@ echo 'Building Docker image...'
 
 {{> before_container_run}}
 
+{{#pull_image_cmd}}
 i=0
 until [ "$i" -ge 3 ]
 do
-  if [ "$i" -eq 0 ]; then
-    printf 'Starting container... '
-  else
-    echo "Retrying to start the container $i..."
+  if [ "$i" -ne 0 ]; then
+    echo "Retrying to pull the image $i..."
   fi
 
-  RUN_EXIT_CODE=0
-  {{{start_container_cmd}}} || RUN_EXIT_CODE=$?
+  PULL_EXIT_CODE=0
+  {{{pull_image_cmd}}} || PULL_EXIT_CODE=$?
 
-  if [ "$RUN_EXIT_CODE" -ne 125 ]; then
+  if [ "$PULL_EXIT_CODE" -ne 125 ]; then
     break
   fi
 
@@ -37,10 +36,13 @@ do
   sleep 10
 done
 
-if [ "$RUN_EXIT_CODE" -ne 0 ]; then
-  exit $RUN_EXIT_CODE
+if [ "$PULL_EXIT_CODE" -ne 0 ]; then
+  exit $PULL_EXIT_CODE
 fi
+{{/pull_image_cmd}}
 
+printf 'Starting container... '
+{{{start_container_cmd}}}
 echo 'DONE'
 
 {{> before_startup_commands}}
