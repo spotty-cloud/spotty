@@ -4,10 +4,9 @@
 name: Generate Docs
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, edited]
+  push:
     branches:
-      - refactoring
+      - master
 
 jobs:
   update-doc:
@@ -26,7 +25,7 @@ jobs:
           cd build/html
 
           touch .nojekyll
-          # echo "spotty.cloud" > CNAME
+          echo "spotty.cloud" > CNAME
 
           git init
           git config --local user.email "github-bot@spotty.cloud"
