@@ -27,3 +27,7 @@ if ! command -v nvidia-smi &> /dev/null; then
   fi
 fi
 {{/IS_GPU_INSTANCE}}
+
+# create common temporary directories
+mkdir -pm 777 '{{SPOTTY_TMP_DIR}}'
+mkdir -pm 777 '{{CONTAINERS_TMP_DIR}}'

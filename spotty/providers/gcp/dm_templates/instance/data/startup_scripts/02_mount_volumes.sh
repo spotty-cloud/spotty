@@ -15,7 +15,7 @@ do
   resize2fs $DEVICE
 done
 
-# create directories for temporary volumes
+# create directories for temporary container volumes
 {{#TMP_VOLUME_DIRS}}
 mkdir -p {{PATH}}
 chmod 777 {{PATH}}

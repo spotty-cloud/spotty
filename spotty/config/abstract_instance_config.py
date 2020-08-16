@@ -7,7 +7,7 @@ from spotty.config.project_config import ProjectConfig
 from spotty.config.tmp_dir_volume import TmpDirVolume
 from spotty.config.validation import DEFAULT_CONTAINER_NAME, is_subdir
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
-from spotty.deployment.abstract_cloud_instance.file_structure import INSTANCE_SPOTTY_TMP_DIR
+from spotty.deployment.abstract_cloud_instance.file_structure import INSTANCE_SPOTTY_TMP_DIR, CONTAINERS_TMP_DIR
 from spotty.utils import filter_list
 
 
@@ -131,7 +131,7 @@ class AbstractInstanceConfig(ABC):
     @property
     def host_container_dir(self):
         """A temporary directory on the host OS that contains container-related files and directories."""
-        return '%s/containers/%s' % (INSTANCE_SPOTTY_TMP_DIR, self.full_container_name)
+        return '%s/%s' % (CONTAINERS_TMP_DIR, self.full_container_name)
 
     @property
     def host_logs_dir(self):

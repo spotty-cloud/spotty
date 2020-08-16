@@ -8,7 +8,8 @@ from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container.docker.docker_commands import DockerCommands
 from spotty.deployment.container.docker.scripts.container_bash_script import ContainerBashScript
 from spotty.deployment.container.docker.scripts.start_container_script import StartContainerScript
-from spotty.deployment.abstract_cloud_instance.file_structure import CONTAINER_BASH_SCRIPT_PATH, INSTANCE_STARTUP_SCRIPTS_DIR
+from spotty.deployment.abstract_cloud_instance.file_structure import CONTAINER_BASH_SCRIPT_PATH, \
+    INSTANCE_STARTUP_SCRIPTS_DIR, CONTAINERS_TMP_DIR, INSTANCE_SPOTTY_TMP_DIR
 from spotty.providers.gcp.config.disk_volume import DiskVolume
 from spotty.providers.gcp.config.instance_config import InstanceConfig
 
@@ -34,6 +35,8 @@ def prepare_instance_template(instance_config: InstanceConfig, docker_commands: 
                 'CONTAINER_BASH_SCRIPT': ContainerBashScript(docker_commands).render(),
                 'IS_GPU_INSTANCE': bool(instance_config.gpu),
                 'SSH_USERNAME': instance_config.user,
+                'SPOTTY_TMP_DIR': INSTANCE_SPOTTY_TMP_DIR,
+                'CONTAINERS_TMP_DIR': CONTAINERS_TMP_DIR,
             },
         },
         {

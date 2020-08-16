@@ -9,8 +9,9 @@ from spotty.config.validation import is_subdir
 from spotty.config.abstract_instance_volume import AbstractInstanceVolume
 from spotty.deployment.container.docker.docker_commands import DockerCommands
 from spotty.deployment.container.docker.scripts.container_bash_script import ContainerBashScript
-from spotty.deployment.abstract_cloud_instance.file_structure import INSTANCE_SPOTTY_TMP_DIR, CONTAINER_BASH_SCRIPT_PATH, \
-    INSTANCE_STARTUP_SCRIPTS_DIR
+from spotty.deployment.abstract_cloud_instance.file_structure import INSTANCE_SPOTTY_TMP_DIR, \
+    CONTAINER_BASH_SCRIPT_PATH, \
+    INSTANCE_STARTUP_SCRIPTS_DIR, CONTAINERS_TMP_DIR
 from spotty.providers.aws.cfn_templates.instance.start_container_script import StartContainerScriptWithCfnSignals
 from spotty.providers.aws.helpers.ami import get_ami
 from spotty.providers.aws.helpers.vpc import get_vpc_id
@@ -109,8 +110,9 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, docker_comma
                     'mode': '000755',
                     'content': {
                         'Fn::Sub': _read_template_file(os.path.join('startup_scripts', '01_prepare_instance.sh'), {
-                            'INSTANCE_SPOTTY_TMP_DIR': INSTANCE_SPOTTY_TMP_DIR,
                             'CONTAINER_BASH_SCRIPT_PATH': CONTAINER_BASH_SCRIPT_PATH,
+                            'SPOTTY_TMP_DIR': INSTANCE_SPOTTY_TMP_DIR,
+                            'CONTAINERS_TMP_DIR': CONTAINERS_TMP_DIR,
                         }),
                     },
                 },

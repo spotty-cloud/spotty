@@ -1,4 +1,3 @@
-import time
 from argparse import ArgumentParser, Namespace
 from spotty.commands.abstract_config_command import AbstractConfigCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
@@ -56,15 +55,10 @@ class RunCommand(AbstractConfigCommand):
                 pass
 
         # get a command to run the script with "docker exec"
-        script_command = get_script_command(script_name, script_content, script_args=args.custom_args)
+        script_command = get_script_command(script_name, script_content, script_args=args.custom_args,
+                                            logging=args.logging)
         command = instance_manager.container_commands.exec(script_command, interactive=True, tty=True,
                                                            user=args.user)
-
-        # wrap the command with logging
-        if args.logging:
-            log_file_path = instance_manager.instance_config.host_logs_dir + '/run/%s-%d.log' \
-                            % (script_name, time.time())
-            command = get_log_command(command, log_file_path)
 
         # wrap the command with the tmux session
         if instance_manager.use_tmux:

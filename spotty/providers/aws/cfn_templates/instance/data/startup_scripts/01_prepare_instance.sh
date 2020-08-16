@@ -15,3 +15,7 @@ apt-get install -y jq
 CONTAINER_BASH_ALIAS=container
 echo "alias $CONTAINER_BASH_ALIAS=\"{{CONTAINER_BASH_SCRIPT_PATH}}\"" >> /home/ubuntu/.bashrc
 echo "alias $CONTAINER_BASH_ALIAS=\"{{CONTAINER_BASH_SCRIPT_PATH}}\"" >> /root/.bashrc
+
+# create common temporary directories
+mkdir -pm 777 '{{SPOTTY_TMP_DIR}}'
+mkdir -pm 777 '{{CONTAINERS_TMP_DIR}}'

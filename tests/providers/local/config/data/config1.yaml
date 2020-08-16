@@ -6,14 +6,14 @@ project:
         - .idea/*
         - '*/__pycache__/*'
 
-container:
-  projectDir: /workspace/project
-  file: docker/Dockerfile
-  volumeMounts:
-    - name: workspace
-      mountPath: /workspace
-  commands: |
-    echo test
+containers:
+  - projectDir: /workspace/project
+    file: docker/Dockerfile
+    volumeMounts:
+      - name: workspace
+        mountPath: /workspace
+    commands: |
+      echo test
 
 instances:
   - name: local-1

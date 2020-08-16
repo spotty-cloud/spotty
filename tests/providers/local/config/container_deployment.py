@@ -9,7 +9,7 @@ from spotty.providers.local.config.instance_config import InstanceConfig
 class TestContainerDeployment(unittest.TestCase):
 
     def test_instance_volume(self):
-        local_project_dir = os.path.join(os.path.dirname(__file__), 'data', 'configs')
+        local_project_dir = os.path.join(os.path.dirname(__file__), 'config', 'data')
         config = _read_yaml(os.path.join(local_project_dir, 'config1.yaml'))
 
         project_config = ProjectConfig(config, local_project_dir)

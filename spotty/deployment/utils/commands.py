@@ -1,6 +1,7 @@
 import base64
 import os
 import shlex
+import time
 from spotty.deployment.utils.cli import shlex_join
 
 
@@ -8,7 +9,8 @@ def get_bash_command() -> str:
     return '/usr/bin/env bash'
 
 
-def get_script_command(script_name: str, script_content: str, script_args: list = None) -> str:
+def get_script_command(script_name: str, script_content: str, script_args: list = None,
+                       logging: bool = False) -> str:
     """Encodes a multi-line script into base64 and returns a one-line command
     that unpacks the script to a temporary file and runs it."""
 
@@ -26,6 +28,12 @@ def get_script_command(script_name: str, script_content: str, script_args: list 
         '$TMP_SCRIPT_PATH ' + script_args,
     ])
 
+    # log the command output to a file
+    if logging:
+        log_file_path = '/var/log/spotty/run/%s-%d.log' % (script_name, time.time())
+        script_cmd = get_log_command(script_cmd, log_file_path)
+
+    # execute the command with bash
     script_cmd = '%s -c %s' % (get_bash_command(), shlex.quote(script_cmd))
 
     return script_cmd
@@ -37,8 +45,8 @@ def get_log_command(command: str, log_file_path: str) -> str:
     log_cmd = '; '.join([
         'set -o pipefail',
         ' && '.join([
-            'mkdir -p' + log_dir,
-            '(%s) 2>&1 | tee %s' % (command, log_file_path),
+            'mkdir -pm 777 ' + shlex.quote(log_dir),
+            '(%s) 2>&1 | tee %s' % (command, shlex.quote(log_file_path)),
         ]),
     ])
 
