@@ -3,7 +3,6 @@ from argparse import Namespace, ArgumentParser
 import sys
 from spotty.commands.abstract_command import AbstractCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.helpers.commands import add_subparsers
 
 
 class AbstractProviderCommand(AbstractCommand):
@@ -16,6 +15,7 @@ class AbstractProviderCommand(AbstractCommand):
         raise NotImplementedError
 
     def configure(self, parser: ArgumentParser):
+        from spotty.cli import add_subparsers
         add_subparsers(parser, self.commands)
 
     def run(self, args: Namespace, output: AbstractOutputWriter):

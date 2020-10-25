@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from time import sleep
 import googleapiclient.discovery
 
 
@@ -87,3 +88,42 @@ class CEClient(object):
         res = self._client.disks().insert(project=self._project_id, zone=self._zone, body=params).execute()
 
         return res['targetLink']
+
+    def get_machine_types(self, machine_type: str = None):
+        """Returns a list of images that satisfy the name.
+            This method is used instead of the "get" because it doesn't raise an exception if an image doesn't exist.
+        """
+        filter_str = ('name=%s' % machine_type) if machine_type else None
+        res = self._client.machineTypes().list(project=self._project_id, zone=self._zone, filter=filter_str).execute()
+
+        if not res.get('items'):
+            return []
+
+        return res['items']
+
+    def stop_instance(self, machine_name: str, wait: bool = True) -> str:
+        """Stops the instance."""
+        operation = self._client.instances().stop(project=self._project_id, zone=self._zone,
+                                            instance=machine_name).execute()
+        if wait:
+            operation = self._wait_operation(operation)
+
+        return operation['targetLink']
+
+    def delete_instance(self, machine_name: str, wait: bool = True) -> str:
+        """Deletes the instance."""
+        operation = self._client.instances().delete(project=self._project_id, zone=self._zone,
+                                                    instance=machine_name).execute()
+        if wait:
+            operation = self._wait_operation(operation)
+
+        return operation['targetLink']
+
+    def _wait_operation(self, operation: dict):
+        """Waits util the operation is finished/"""
+        while operation['status'] != 'DONE':
+            sleep(5)
+            operation = self._client.zoneOperations().wait(project=self._project_id, zone=self._zone,
+                                                           operation=operation['name']).execute()
+
+        return operation

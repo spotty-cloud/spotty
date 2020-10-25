@@ -2,13 +2,13 @@ from argparse import ArgumentParser, Namespace
 import boto3
 from spotty.commands.abstract_command import AbstractCommand
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
-from spotty.providers.aws.helpers.spot_prices import get_spot_prices
+from spotty.providers.aws.helpers.instance_prices import get_spot_prices
 
 
 class SpotPricesCommand(AbstractCommand):
 
     name = 'spot-prices'
-    description = 'Get spot instance prices for particular instance type across all regions'
+    description = 'Get Spot Instance prices for an instance type across all AWS regions or within a specific region.'
 
     def configure(self, parser: ArgumentParser):
         super().configure(parser)

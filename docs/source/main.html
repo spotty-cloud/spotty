@@ -1,0 +1,123 @@
+<style>
+    #main-page-title {
+        text-align: center;
+        font-family: Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;
+        font-weight: normal;
+        margin-bottom: 30px;
+    }
+
+    #main-page-buttons {
+        text-align: center;
+        margin-bottom: 70px;
+    }
+
+    #main-page-buttons .btn.btn-get-started {
+        background-color: #e64759 !important;
+    }
+
+    #main-page-buttons .btn.btn-get-started:hover {
+        background-color: #c64b60 !important;
+    }
+
+    #main-page-features td.block {
+        width: 50%;
+        padding-bottom: 50px;
+    }
+
+    #main-page-features td.block .icon {
+        width: 100px;
+        text-align: center;
+        height: 100%;
+    }
+
+    #main-page-features td.block .title {
+        font-weight: bold;
+        margin-bottom: 10px;
+        font-size: 18px;
+    }
+
+    #main-page-features td.block .description {
+        color: #888;
+    }
+</style>
+
+<div class="page-content">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <img src="_static/images/logo_740x240.png" style="height: 120px;"/>
+    </div>
+
+    <h1 id="main-page-title">
+        An Open-source Tool for Training<br />Deep Learning Models in the Cloud
+    </h1>
+
+    <div id="main-page-buttons">
+        <a href="docs/user-guide/getting-started.html" class="btn btn-get-started">
+            <i class="fa fa-terminal"></i> Get started now
+        </a>
+        <a href="https://github.com/apls777/spotty" target="_blank" class="btn btn-neutral">
+            <i class="fa fa-github"></i> View it on GitHub
+        </a>
+    </div>
+
+    <div id="main-page-features">
+        <table>
+            <tr>
+                <td class="block">
+                    <table>
+                        <tr>
+                            <td class="icon">
+                                <i class="fa fa-cloud-upload fa-4x" style="color: #a35063;"></i>
+                            </td>
+                            <td class="text">
+                                <div class="title">Run Training on AWS and GCP Instances</div>
+                                <div class="description">Spotty makes training of deep learning models on AWS and GCP instances as simple as training on your local machine.</div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td class="block">
+                    <table>
+                        <tr>
+                            <td class="icon">
+                                <i class="fa fa-dollar fa-4x" style="color: #2d9681;"></i>
+                            </td>
+                            <td class="text">
+                                <div class="title">Reduce Training Costs</div>
+                                <div class="description">Spotty can save you up to 70% of the costs by using <a href="https://aws.amazon.com/ec2/spot/">AWS Spot Instances</a>
+                                    or <a href="https://cloud.google.com/preemptible-vms/">GCP Preemtible VMs</a>.</div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td class="block">
+                    <table>
+                        <tr>
+                            <td class="icon">
+                                <i class="fa fa-github fa-4x"></i>
+                            </td>
+                            <td class="text">
+                                <div class="title">Share Your Model with Everyone</div>
+                                <div class="description">Spotty makes your model trainable locally or in the cloud by everyone with a couple of commands.</div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td class="block">
+                    <table>
+                        <tr>
+                            <td class="icon">
+                                <i class="fa fa-cube fa-4x" style="color: #1f89c4;"></i>
+                            </td>
+                            <td class="text">
+                                <div class="title">Develop with Docker</div>
+                                <div class="description">Spotty helps you to develop your model locally using a Docker container, so the environment can be set up by anyone and anywhere with a single command.</div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>

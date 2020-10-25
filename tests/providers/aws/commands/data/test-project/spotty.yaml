@@ -1,0 +1,19 @@
+project:
+  name: test-project
+  syncFilters:
+    - exclude:
+        - ignored-dir/*
+        - ignored-file
+    - include:
+        - ignored-dir/included-file
+
+containers:
+  - projectDir: /workspace/project
+    image: ubuntu:16.04
+
+instances:
+  - name: aws-1
+    provider: aws
+    parameters:
+      region: us-east-2
+      instanceType: t2.small

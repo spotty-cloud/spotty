@@ -24,7 +24,7 @@ article on Medium for a real-world example.
 ## Installation
 
 Requirements:
-  * Python >=3.5
+  * Python >=3.6
   * AWS CLI (see [Installing the AWS Command Line Interface](http://docs.aws.amazon.com/cli/latest/userguide/installing.html)) 
   if you're using AWS
   * Google Cloud SDK (see [Installing Google Cloud SDK](https://cloud.google.com/sdk/install)) 
@@ -56,12 +56,12 @@ Use [pip](http://www.pip-installer.org/en/latest/) to install or upgrade Spotty:
     To connect to the running container via SSH, use the following command:
 
     ```bash
-    $ spotty ssh
+    $ spotty sh
     ```
 
     It runs a [tmux](https://github.com/tmux/tmux/wiki) session, so you can always detach this session using
     __`Ctrl + b`__, then __`d`__ combination of keys. To be attached to that session later, just use the
-    `spotty ssh` command again.
+    `spotty sh` command again.
 
     Also, you can run your custom scripts inside the Docker container using the `spotty run <SCRIPT_NAME>` command. Read more
     about custom scripts in the documentation: 
