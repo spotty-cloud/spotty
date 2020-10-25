@@ -1,0 +1,10 @@
+project:
+  name: test-project
+
+containers:
+  - projectDir: /workspace/project
+    image: ubuntu:16.04
+
+instances:
+  - name: local-1
+    provider: local

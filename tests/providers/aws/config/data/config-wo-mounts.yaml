@@ -1,0 +1,13 @@
+project:
+  name: my-project
+
+containers:
+  - projectDir: /workspace/project
+    file: docker/Dockerfile
+
+instances:
+  - name: aws-1
+    provider: aws
+    parameters:
+      region: us-east-2
+      instanceType: t2.small

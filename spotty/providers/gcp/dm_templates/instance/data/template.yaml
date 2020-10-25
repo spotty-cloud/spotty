@@ -1,0 +1,91 @@
+resources:
+  - name: {{MACHINE_NAME}}
+    type: compute.v1.instance
+    properties:
+      zone: {{ZONE}}
+      machineType: zones/{{ZONE}}/machineTypes/{{MACHINE_TYPE}}
+      scheduling:
+        {{#GPU_TYPE}}
+        onHostMaintenance: TERMINATE
+        automaticRestart: false
+        {{/GPU_TYPE}}
+        preemptible: {{PREEMPTIBLE}}
+      serviceAccounts:
+        - email: {{SERVICE_ACCOUNT_EMAIL}}
+          scopes: ['https://www.googleapis.com/auth/cloud-platform']
+      tags:
+        items:
+          - {{MACHINE_NAME}}
+      disks:
+        - deviceName: boot
+          type: PERSISTENT
+          boot: true
+          autoDelete: true
+          initializeParams:
+            sourceImage: {{SOURCE_IMAGE}}
+            {{#BOOT_DISK_SIZE}}
+            diskSizeGb: {{BOOT_DISK_SIZE}}
+            {{/BOOT_DISK_SIZE}}
+
+        {{#DISK_ATTACHMENTS}}
+        - source: {{DISK_LINK}}
+          deviceName: {{DEVICE_NAME}}
+          type: PERSISTENT
+          mode: READ_WRITE
+          boot: false
+          autoDelete: false
+        {{/DISK_ATTACHMENTS}}
+      networkInterfaces:
+        - network: global/networks/default
+          accessConfigs:
+            - name: External NAT
+              type: ONE_TO_ONE_NAT
+      {{#GPU_TYPE}}
+      guestAccelerators:
+        - acceleratorType: zones/{{ZONE}}/acceleratorTypes/{{GPU_TYPE}}
+          acceleratorCount: {{GPU_COUNT}}
+      {{/GPU_TYPE}}
+      metadata:
+        items:
+          - key: 'ssh-keys'
+            value: |
+              {{SSH_USERNAME}}:ssh-rsa {{{PUB_KEY_VALUE}}} {{SSH_USERNAME}}
+          - key: 'startup-script'
+            value: |
+              {{> STARTUP_SCRIPT}}
+
+  - name: {{MACHINE_NAME}}-firewall-rule
+    type: compute.v1.firewall
+    properties:
+      network: global/networks/default
+      sourceRanges:
+        - 0.0.0.0/0
+      targetTags:
+        - {{MACHINE_NAME}}
+      allowed:
+        - IPProtocol: tcp
+          ports: [{{PORTS}}]
+
+  - name: {{MACHINE_NAME}}-docker-status
+    type: runtimeconfig.v1beta1.config
+    properties:
+      config: {{MACHINE_NAME}}-docker-status
+      description: Docker status
+
+  - name: {{MACHINE_NAME}}-docker-waiter
+    type: runtimeconfig.v1beta1.waiter
+    metadata:
+      dependsOn:
+        - {{MACHINE_NAME}}
+    properties:
+      parent: $(ref.{{MACHINE_NAME}}-docker-status.name)
+      waiter: {{MACHINE_NAME}}-docker-waiter
+      timeout: 1800s
+      success:
+        cardinality:
+          path: /success
+          number: 1
+      failure:
+        cardinality:
+          path: /failure
+          number: 1

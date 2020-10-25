@@ -13,14 +13,19 @@ class TestBucketResource(unittest.TestCase):
 
         expected_params = {
             **required_params,
-            'amiName': None,
             'amiId': None,
+            'amiName': None,
             'availabilityZone': '',
+            'commands': '',
+            'containerName': None,
             'dockerDataRoot': '',
+            'instanceProfileArn': None,
             'localSshPort': None,
+            'managedPolicyArns': [],
             'maxPrice': 0,
-            'onDemandInstance': False,
+            'ports': [],
             'rootVolumeSize': 0,
+            'spotInstance': False,
             'subnetId': '',
             'volumes': [],
         }
