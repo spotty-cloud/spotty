@@ -14,7 +14,7 @@ If you need help, please reach out to us by opening an issue.
 ## Report a bug 
 
 Reporting bugs is one of the best ways to contribute. Before creating a bug report, 
-please check that an [issue](https://github.com/apls777/spotty/issues) reporting the same problem does not already 
+please check that an [issue](https://github.com/spotty-cloud/spotty/issues) reporting the same problem does not already 
 exist. If there is such an issue, you may add your information as a comment.
 
 To report a new bug you should open an issue that summarizes the bug and set the label to "bug".
@@ -24,13 +24,13 @@ described in section [Contribute Code](#contribute-code).
 
 ## Suggest a feature
 
-To request a new feature you should open an [issue](https://github.com/apls777/spotty/issues/new) and summarize 
+To request a new feature you should open an [issue](https://github.com/spotty-cloud/spotty/issues/new) and summarize 
 the desired functionality and its use case. Set the issue label to "feature".  
 
 ## Contribute code
 
 This is a rough outline of what the workflow for code contributions looks like:
-- Check the list of open [issues](https://github.com/apls777/spotty/issues). Either assign an existing issue to 
+- Check the list of open [issues](https://github.com/spotty-cloud/spotty/issues). Either assign an existing issue to 
 yourself or create a new one that you would like to work on and discuss your ideas and use cases. It is always best to 
 discuss your plans beforehand, to ensure that your contribution is in line with our goals for Spotty.
 - Fork the repository on GitHub
@@ -38,7 +38,7 @@ discuss your plans beforehand, to ensure that your contribution is in line with 
 - Make commits of logical units
 - Write good commit messages (see below)
 - Push your changes to a topic branch in your fork of the repository
-- Submit a pull request to [apls777/spotty](https://github.com/apls777/spotty)
+- Submit a pull request to [spotty-cloud/spotty](https://github.com/spotty-cloud/spotty)
 
 Thanks for your contributions!
 

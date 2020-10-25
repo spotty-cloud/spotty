@@ -1,4 +1,4 @@
-<img src="https://spotty.cloud/assets/images/logo_740x240.png" width="370" height="120" />
+<img src="https://spotty.cloud/_static/images/logo_740x240.png" width="370" height="120" />
 
 [![Documentation](https://img.shields.io/badge/documentation-reference-brightgreen.svg)](https://spotty.cloud)
 [![PyPI](https://img.shields.io/pypi/v/spotty.svg)](https://pypi.org/project/spotty/)
