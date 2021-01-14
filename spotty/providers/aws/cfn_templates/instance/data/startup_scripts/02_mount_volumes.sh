@@ -13,7 +13,7 @@ do
 
   # NVMe EBS volume (see: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/nvme-ebs-volumes.html)
   if [ ! -b $DEVICE ]; then
-    VOLUME_ID=$(cfn-get-metadata --stack spotty-instance-my-project-i1 --region us-east-2 --resource VolumeAttachment${!DEVICE_LETTERS[$i]^} -k VolumeId)
+    VOLUME_ID=$(cfn-get-metadata --stack ${AWS::StackName} --region us-east-2 --resource VolumeAttachment${!DEVICE_LETTERS[$i]^} -k VolumeId)
     DEVICE=$(lsblk -o NAME,SERIAL -dpJ | jq -rc ".blockdevices[] | select(.serial == \"${!VOLUME_ID//-}\") | .name")
     if [ -z "$DEVICE" ]; then
       echo "Device for the volume $VOLUME_ID not found"
