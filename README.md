@@ -38,7 +38,7 @@ Use [pip](http://www.pip-installer.org/en/latest/) to install or upgrade Spotty:
 
 1. Prepare a `spotty.yaml` file and put it to the root directory of your project:
 
-   - See the file specification [here](https://spotty.cloud/docs/configuration-file/).
+   - See the file specification [here](https://spotty.cloud/docs/user-guide/configuration-file.html).
    - Read [this](https://medium.com/@apls/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365) 
    article for a real-world example.
 
