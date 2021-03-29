@@ -20,6 +20,7 @@ from spotty.providers.aws.resources.volume import Volume
 from spotty.providers.aws.config.instance_config import InstanceConfig
 from spotty.providers.aws.config.ebs_volume import EbsVolume
 from spotty.providers.aws.helpers.logs import get_logs_s3_path
+from netaddr import IPNetwork
 
 
 def prepare_instance_template(ec2, instance_config: InstanceConfig, docker_commands: DockerCommands,
@@ -56,20 +57,16 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, docker_comma
             }]
         del template['Resources']['InstanceLaunchTemplate']['Properties']['LaunchTemplateData']['SecurityGroupIds']
 
-    # add ports to the security group
-    for port in instance_config.ports:
-        if port != 22:
-            template['Resources']['InstanceSecurityGroup']['Properties']['SecurityGroupIngress'] += [{
-                'CidrIp': '0.0.0.0/0',
-                'IpProtocol': 'tcp',
-                'FromPort': port,
-                'ToPort': port,
-            }, {
-                'CidrIpv6': '::/0',
-                'IpProtocol': 'tcp',
-                'FromPort': port,
-                'ToPort': port,
-            }]
+    # add ports to the security group for the user-defined inbound IP
+    ipnetwork = IPNetwork(instance_config.instance_inbound_ip)
+    cidr_ip = 'CidrIpv6' if ipnetwork.version == 6 else 'CidrIp'
+    for port in [22] + instance_config.ports:
+        template['Resources']['InstanceSecurityGroup']['Properties']['SecurityGroupIngress'] += [{
+            cidr_ip: str(ipnetwork),
+            'IpProtocol': 'tcp',
+            'FromPort': port,
+            'ToPort': port,
+        }]
 
     if instance_config.is_spot_instance:
         # set maximum price

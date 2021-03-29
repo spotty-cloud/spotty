@@ -30,6 +30,7 @@ def validate_instance_parameters(params: dict):
                                              ),
         Optional('managedPolicyArns', default=[]): [str],
         Optional('instanceProfileArn', default=None): str,
+        Optional('inboundIp', default="0.0.0.0/0"): str
     }
 
     volumes_checks = [
