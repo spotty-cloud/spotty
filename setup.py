@@ -49,6 +49,7 @@ setup(name='spotty',
           'cfn_flip',  # to work with CloudFormation templates
           'schema',
           'chevron',
+          'netaddr' # validates configuration IP addresses
       ],
       tests_require=['moto'],
       test_suite='tests',
