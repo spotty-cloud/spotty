@@ -28,6 +28,7 @@ class TestBucketResource(unittest.TestCase):
             'spotInstance': False,
             'subnetId': '',
             'volumes': [],
+            'inboundIp': "0.0.0.0/0"
         }
 
         self.assertEqual(expected_params, validate_instance_parameters(required_params))
