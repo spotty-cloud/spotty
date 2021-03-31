@@ -58,7 +58,7 @@ def prepare_instance_template(ec2, instance_config: InstanceConfig, docker_comma
 
     # add ports to the security group for the user-defined inbound IP
     inbound_ip = instance_config.inbound_ip
-    cidr_ip = 'CidrIpv6' if inbound_ip == 6 else 'CidrIp'
+    cidr_ip = 'CidrIpv6' if inbound_ip.version == 6 else 'CidrIp'
     for port in [22] + instance_config.ports:
         template['Resources']['InstanceSecurityGroup']['Properties']['SecurityGroupIngress'] += [{
             cidr_ip: str(inbound_ip),
