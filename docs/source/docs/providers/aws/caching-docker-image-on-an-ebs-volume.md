@@ -5,8 +5,8 @@ You can cache images that you've built or downloaded from the internet on an EBS
 A configuration file has the "__dockerDataRoot__" parameter. It's a directory on the host OS where the Docker 
 daemon will save all the images.
 
-Specify the `moundDir` directory for one of the instance volumes and set the `dockerDataRoot` parameter
-to the same value (or to a subdirectory of the `moundDir` directory). Also, consider changing a deletion policy
+Specify the `mountDir` directory for one of the instance volumes and set the `dockerDataRoot` parameter
+to the same value (or to a subdirectory of the `mountDir` directory). Also, consider changing a deletion policy
 for that volume to "__retain__", then the volume with the cache will be retained and the next time it just will be 
 attached to the instance.
 
