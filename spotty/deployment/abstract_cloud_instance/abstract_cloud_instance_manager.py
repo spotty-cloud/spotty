@@ -164,12 +164,11 @@ class AbstractCloudInstanceManager(AbstractSshInstanceManager, ABC):
         if not instance or not instance.is_running:
             raise InstanceNotRunningError(self.instance_config.name)
 
-        public_ip_address = instance.public_ip_address
-        if not public_ip_address:
-            raise ValueError('The running instance doesn\'t have a public IP address.\n'
-                             'Use the "localSshPort" parameter if you want to create a tunnel to the instance.')
+        instance_ip_address = instance.public_ip_address if instance.public_ip_address else instance.private_ip_address
+        if not instance_ip_address:
+            raise ValueError('Instance IP address not found')
 
-        return public_ip_address
+        return instance_ip_address
 
     @property
     def ssh_port(self) -> int:

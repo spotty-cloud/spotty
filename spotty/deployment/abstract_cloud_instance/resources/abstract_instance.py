@@ -8,6 +8,10 @@ class AbstractInstance(ABC):
         raise NotImplementedError
 
     @property
+    def private_ip_address(self):
+        raise NotImplementedError
+
+    @property
     def is_running(self):
         """Returns true if the instance is running."""
         raise NotImplementedError
