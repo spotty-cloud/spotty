@@ -36,6 +36,10 @@ class Instance(AbstractInstance):
         return self._data.get('PublicIpAddress', None)
 
     @property
+    def private_ip_address(self) -> str:
+        return self._data.get('PrivateIpAddress', None)
+
+    @property
     def state(self) -> str:
         return self._data['State']['Name']
 

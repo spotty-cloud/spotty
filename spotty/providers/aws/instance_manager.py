@@ -49,6 +49,8 @@ class InstanceManager(AbstractCloudInstanceManager):
 
         if instance.public_ip_address:
             table.append(('Public IP Address', instance.public_ip_address))
+        elif instance.private_ip_address:
+            table.append(('Private IP Address', instance.private_ip_address))
 
         if instance.lifecycle == 'spot':
             spot_price = instance.get_spot_price()
