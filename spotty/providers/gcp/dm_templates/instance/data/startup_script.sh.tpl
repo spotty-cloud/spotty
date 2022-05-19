@@ -14,11 +14,10 @@ chmod +x {{INSTANCE_STARTUP_SCRIPTS_DIR}}/{{filename}}
 {{/STARTUP_SCRIPTS}}
 
 # run startup scripts
-( \
 {{#STARTUP_SCRIPTS}}
 {{INSTANCE_STARTUP_SCRIPTS_DIR}}/{{filename}} && \
 {{/STARTUP_SCRIPTS}}
-true) 2>&1 | tee /var/log/startup-script.log
+true
 
 # send signal that the Docker container is ready or failed
 EXIT_CODE=$?
