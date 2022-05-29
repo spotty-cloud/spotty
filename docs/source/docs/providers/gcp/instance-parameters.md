@@ -29,7 +29,7 @@ the `spotty gcp create-image` command to create it. By default, the command will
 "spotty". This image will be used to run your application inside the Docker container. If you didn't create your own 
 image, see the behaviour of the `imageUrl` parameter.
 
-- __`imageUrl`__ _(optional)_ - a URL of the image with NVIDIA Docker. You can use this parameter to work with an image
+- __`imageUri`__ _(optional)_ - a URI of the image with NVIDIA Docker. You can use this parameter to work with an image
 from another GCP project. If this parameter is not specified and you didn't create your own image (see the `imageName` 
 parameter), Spotty will be using the `projects/spotty-cloud/global/images/family/spotty` image provided by the Spotty 
 project.
