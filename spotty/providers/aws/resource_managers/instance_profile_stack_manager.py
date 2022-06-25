@@ -58,7 +58,7 @@ class InstanceProfileStackManager(object):
         )
 
         # wait for the stack to be created
-        stack.wait_stack_created(delay=15)
+        stack.wait_stack_created(delay_secs=15)
 
     def _update_stack(self, template: str, output: AbstractOutputWriter):
         """Updates the stack and waits until it will be updated."""

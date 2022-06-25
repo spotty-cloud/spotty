@@ -3,6 +3,7 @@ from time import sleep
 from typing import List, Dict
 from botocore.exceptions import EndpointConnectionError, ClientError
 from spotty.commands.writers.abstract_output_writrer import AbstractOutputWriter
+import logging
 
 
 Task = namedtuple('Task', ['message', 'start_resource', 'finish_resource', 'enabled'])
@@ -65,19 +66,19 @@ class Stack(object):
     def delete(self):
         return self._cf.delete_stack(StackName=self.stack_id)
 
-    def wait_stack_created(self, delay=30):
+    def wait_stack_created(self, delay_secs: int = 30):
         waiter = self._cf.get_waiter('stack_create_complete')
-        waiter.wait(StackName=self.stack_id, WaiterConfig={'Delay': delay})
+        waiter.wait(StackName=self.stack_id, WaiterConfig={'Delay': delay_secs})
 
-    def wait_stack_updated(self, delay=30):
+    def wait_stack_updated(self, delay_secs: int = 30):
         waiter = self._cf.get_waiter('stack_update_complete')
-        waiter.wait(StackName=self.stack_id, WaiterConfig={'Delay': delay})
+        waiter.wait(StackName=self.stack_id, WaiterConfig={'Delay': delay_secs})
 
-    def wait_stack_deleted(self, delay=30):
+    def wait_stack_deleted(self, delay_secs: int = 30):
         waiter = self._cf.get_waiter('stack_delete_complete')
-        waiter.wait(StackName=self.stack_id, WaiterConfig={'Delay': delay})
+        waiter.wait(StackName=self.stack_id, WaiterConfig={'Delay': delay_secs})
 
-    def wait_status_changed(self, stack_waiting_status: str, output: AbstractOutputWriter, delay: int = 5):
+    def wait_status_changed(self, stack_waiting_status: str, output: AbstractOutputWriter, delay_secs: int = 5):
         stack = None
         while True:
             # get the latest status of the stack
@@ -90,12 +91,12 @@ class Stack(object):
             if stack.status != stack_waiting_status:
                 break
 
-            sleep(delay)
+            sleep(delay_secs)
 
         return stack
 
     def wait_tasks(self, tasks: List[Task], resource_success_status: str, resource_fail_status: str,
-                   output: AbstractOutputWriter, delay: int = 5):
+                   output: AbstractOutputWriter, delay_secs: int = 5):
         resource_statuses = self._get_resource_statuses()
 
         for task in tasks:
@@ -114,12 +115,8 @@ class Stack(object):
                     task_finished = True
                     output.write('DONE')
                 else:
-                    sleep(delay)
-                    try:
-                        resource_statuses = self._get_resource_statuses()
-                    except EndpointConnectionError as e:
-                        output.write(str(e))
-                        continue
+                    sleep(delay_secs)
+                    resource_statuses = self._get_resource_statuses()
 
                     # check that the stack is not failed
                     for status in resource_statuses.values():
@@ -129,9 +126,15 @@ class Stack(object):
                             return
 
     def _get_resource_statuses(self) -> Dict[str, str]:
-        stack_resources = self._cf.list_stack_resources(StackName=self.stack_id)
+        stack_resources = None
+        try:
+            stack_resources = self._cf.list_stack_resources(StackName=self.stack_id)
+        except Exception as e:
+            logging.warning(str(e))
 
-        resource_statuses = {row['LogicalResourceId']: row['ResourceStatus']
-                             for row in stack_resources['StackResourceSummaries']}
+        resource_statuses = {}
+        if stack_resources:
+            resource_statuses = {row['LogicalResourceId']: row['ResourceStatus']
+                                 for row in stack_resources['StackResourceSummaries']}
 
         return resource_statuses
