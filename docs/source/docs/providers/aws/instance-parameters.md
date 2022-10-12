@@ -65,6 +65,9 @@ Read more: [Caching Docker Image on an EBS Volume].
     ```
     It will open ports 6006 for TensorBoard and 8888 for Jupyter Notebook. 
 
+-__`inboundIp`__ _(optional)_ - an IP address or CIDR range to use as a whitelist for all ports provided
+to the security group. The default is to not use a whitelist. 
+
 - __`localSshPort`__ _(optional)_ - if this parameter is set, all the Spotty commands will create SSH connections 
 with the instance using the IP address __127.0.0.1__ and the specified port. This can be useful in case when an 
 instance doesn't have a public IP address and a jump-server is used for tunneling.

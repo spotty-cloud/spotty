@@ -1,5 +1,6 @@
 import os
 from schema import Schema, Optional, And, Regex, Or, Use
+from netaddr import IPNetwork
 from spotty.config.validation import validate_config, get_instance_parameters_schema, has_prefix
 
 
@@ -30,6 +31,8 @@ def validate_instance_parameters(params: dict):
                                              ),
         Optional('managedPolicyArns', default=[]): [str],
         Optional('instanceProfileArn', default=None): str,
+        Optional('inboundIp', default='0.0.0.0/0'): Use(IPNetwork, error='"inboundIp" should be a valid IP '
+                                                                         'address or CIDR range'),
     }
 
     volumes_checks = [

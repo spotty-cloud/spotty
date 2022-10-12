@@ -75,7 +75,11 @@ class InstanceConfig(AbstractInstanceConfig):
     @property
     def managed_policy_arns(self) -> list:
         return self._params['managedPolicyArns']
-    
+
     @property
     def instance_profile_arn(self) -> str:
         return self._params['instanceProfileArn']
+
+    @property
+    def inbound_ip(self) -> str:
+        return self._params['inboundIp']
