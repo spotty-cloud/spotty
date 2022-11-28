@@ -12,7 +12,7 @@ class DockerCommands(AbstractContainerCommands):
         if not self._instance_config.docker_context_path:
             raise ValueError('Cannot generate the "build" command as Docker context path is not set')
 
-        build_cmd = 'docker build -t %s -f %s %s' % (image_name, shlex.quote(self._instance_config.dockerfile_path),
+        build_cmd = 'DOCKER_BUILDKIT=1 docker build -t %s -f %s %s' % (image_name, shlex.quote(self._instance_config.dockerfile_path),
                                                      shlex.quote(self._instance_config.docker_context_path))
 
         if self._instance_config.container_config.run_as_host_user:
