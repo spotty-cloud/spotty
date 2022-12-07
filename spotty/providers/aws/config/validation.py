@@ -70,7 +70,7 @@ def validate_ebs_volume_parameters(params: dict):
         ),
         Optional('size', default=0): And(int, lambda x: x > 0),
         # TODO: add the "iops" parameter to support the "io1" EBS volume type
-        Optional('type', default='gp2'): lambda x: x in ['gp2', 'sc1', 'st1', 'standard'],
+        Optional('type', default='gp2'): lambda x: x in ['gp3', 'gp2', 'sc1', 'st1', 'standard'],
         Optional('deletionPolicy', default=EbsVolume.DP_RETAIN): And(
             str,
             lambda x: x in [EbsVolume.DP_CREATE_SNAPSHOT,
