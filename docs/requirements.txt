@@ -6,3 +6,4 @@ PyYAML
 schema
 chevron
 boto3
+tabulate
